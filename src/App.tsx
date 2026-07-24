@@ -40,7 +40,6 @@ import {
   Zap,
   MapPin,
   Monitor,
-  Shield,
   LogOut,
   Languages,
   Edit2
@@ -146,10 +145,11 @@ export default function App() {
     return s ? JSON.parse(s) : defaultLinks;
   });
 
-  const defaultToggles = ['theme', 'language', 'sound', 'contrast', 'proxy', 'terminal', 'dashboard'];
+  const defaultToggles = ['theme', 'language', 'sound', 'contrast'];
   const [activeToggles, setActiveToggles] = useState<string[]>(() => {
     const s = localStorage.getItem('linkerru_toggles');
-    return s ? JSON.parse(s) : defaultToggles;
+    const parsed = s ? JSON.parse(s) : defaultToggles;
+    return parsed.filter((t: string) => defaultToggles.includes(t));
   });
 
   const [activeSupportQr, setActiveSupportQr] = useState<string | null>(null);
@@ -1212,13 +1212,13 @@ export default function App() {
         </div>
 
         {/* WIDGET 4: Lisyan Connect */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative" id="card-lisyan-connect" onClick={() => { playChime('click'); setIsLisyanConnectOpen(true); }}>
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] opacity-75 cursor-default relative" id="card-lisyan-connect">
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: activePalette.primary }}>
               <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect" className="w-full h-full object-cover p-1" />
             </div>
-            <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider" style={{ color: activePalette.primary }}>
-              P2P
+            <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
+              {lang === 'ru' ? 'В разработке' : 'Coming Soon'}
             </div>
           </div>
           <div className="flex-1 mt-5 flex flex-col pr-8">
@@ -1228,13 +1228,13 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
+            <span className="text-xs font-bold text-[var(--on-surface-var)] mr-2">{lang === 'ru' ? 'Статус:' : 'Status:'}</span>
             <div className="flex gap-2 flex-1">
               <button
-                onClick={(e) => { e.stopPropagation(); playChime('click'); setIsLisyanConnectOpen(true); }}
-                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-white transition-all text-center hover:opacity-90 active:scale-95"
-                style={{ backgroundColor: activePalette.primary }}
+                disabled
+                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--on-surface-var)] transition-all bg-[var(--surface-dim)] border border-[var(--outline-var)] cursor-not-allowed text-center"
               >
-                {lang === 'ru' ? 'Открыть' : 'Open'}
+                {lang === 'ru' ? 'Ожидайте' : 'Coming Soon'}
               </button>
             </div>
           </div>
@@ -1291,11 +1291,8 @@ export default function App() {
             </div>
 
             {/* Blank Placeholder Apps to match design */}
-            <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { playChime('click'); setIsLisyanConnectOpen(true); }}>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 overflow-hidden" style={{ backgroundColor: activePalette.primary }}>
-                <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect" className="w-full h-full object-cover p-1" />
-              </div>
-              <span className="text-[9px] font-bold text-[var(--on-surface)]">Connect</span>
+            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
+              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
             </div>
             <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
               <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
@@ -1440,54 +1437,6 @@ export default function App() {
                 <div className="flex flex-col items-start text-left">
                   <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Contrast</span>
                   <span className="text-[8px] text-[var(--on-surface-var)]">{isContrast ? 'High' : 'Normal'}</span>
-                </div>
-              </button>
-            )}
-            
-            {activeToggles.includes('privacy') && (
-              <button className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 group">
-                <div className="p-2 rounded-full transition-colors flex items-center justify-center" style={{ backgroundColor: activePalette.primary, color: 'white' }}>
-                  <Shield size={14} />
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Privacy</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">Protected</span>
-                </div>
-              </button>
-            )}
-
-            {activeToggles.includes('proxy') && (
-              <button className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 opacity-50 cursor-not-allowed">
-                <div className="p-2 rounded-full bg-[var(--surface-dim)] text-[var(--on-surface-var)] flex items-center justify-center">
-                  <Globe size={14} />
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Proxy</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">Offline</span>
-                </div>
-              </button>
-            )}
-
-            {activeToggles.includes('terminal') && (
-              <button className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 opacity-50 cursor-not-allowed">
-                <div className="p-2 rounded-full bg-[var(--surface-dim)] text-[var(--on-surface-var)] flex items-center justify-center">
-                  <Monitor size={14} />
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Terminal</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">Locked</span>
-                </div>
-              </button>
-            )}
-
-            {activeToggles.includes('dashboard') && (
-              <button className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 opacity-50 cursor-not-allowed">
-                <div className="p-2 rounded-full bg-[var(--surface-dim)] text-[var(--on-surface-var)] flex items-center justify-center">
-                  <Newspaper size={14} />
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Dashboard</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">System</span>
                 </div>
               </button>
             )}
@@ -1669,14 +1618,7 @@ export default function App() {
 
       {/* Floating Weather App Window */}
       <AnimatePresence>
-        <LisyanConnectModal
-          isOpen={isLisyanConnectOpen}
-          onClose={() => setIsLisyanConnectOpen(false)}
-          lang={lang}
-          theme={theme}
-          primaryColor={activePalette.primary}
-          onCopy={() => triggerToast(t.copied_toast)}
-        />
+        <LisyanConnectModal isOpen={isLisyanConnectOpen} onClose={() => setIsLisyanConnectOpen(false)} />
       {isWeatherAppOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}

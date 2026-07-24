@@ -1267,8 +1267,9 @@ export default function FullSettingsModal({
                           <div className="grid grid-cols-2 gap-3">
                             {(() => {
                               const s = localStorage.getItem('linkerru_toggles');
-                              const defaultToggles = ['theme', 'language', 'sound', 'contrast', 'proxy', 'terminal', 'dashboard'];
-                              const activeToggles: string[] = s ? JSON.parse(s) : defaultToggles;
+                              const defaultToggles = ['theme', 'language', 'sound', 'contrast'];
+                              const parsedToggles: string[] = s ? JSON.parse(s) : defaultToggles;
+                              const activeToggles = parsedToggles.filter(t => defaultToggles.includes(t));
                               
                               const saveToggles = (newToggles: string[]) => {
                                 localStorage.setItem('linkerru_toggles', JSON.stringify(newToggles));
@@ -1289,11 +1290,7 @@ export default function FullSettingsModal({
                                 { id: 'theme', name: lang === 'ru' ? 'Тема (Светлая/Темная)' : 'Theme (Light/Dark)' },
                                 { id: 'language', name: lang === 'ru' ? 'Язык' : 'Language' },
                                 { id: 'sound', name: lang === 'ru' ? 'Звук' : 'Sound' },
-                                { id: 'contrast', name: lang === 'ru' ? 'Контраст' : 'Contrast' },
-                                { id: 'privacy', name: lang === 'ru' ? 'Приватность' : 'Privacy' },
-                                { id: 'proxy', name: lang === 'ru' ? 'Прокси' : 'Proxy' },
-                                { id: 'terminal', name: lang === 'ru' ? 'Терминал' : 'Terminal' },
-                                { id: 'dashboard', name: lang === 'ru' ? 'Дашборд' : 'Dashboard' }
+                                { id: 'contrast', name: lang === 'ru' ? 'Контраст' : 'Contrast' }
                               ];
 
                               return allAvailableToggles.map(tgl => (
