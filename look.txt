@@ -1,0 +1,181 @@
+          <History size={14} />
+          <span>v1/262608</span>
+        </button>
+      </section>
+
+      {/* --- ROW 1: BENTO LAYOUT MAIN WIDGETS --- */}
+      <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
+        {/* WIDGET 1: Proxy Server Hub selector */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-proxy-space">
+          <div className="absolute top-6 right-6 flex items-center gap-2 text-[var(--accent)] hover:text-[var(--on-surface)] transition-colors cursor-pointer" title="Proxy Status: Online">
+            <Lightbulb size={20} />
+          </div>
+          <div className="flex justify-between items-start h-[44px]">
+            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
+              <Globe size={20} className="text-white" />
+            </div>
+          </div>
+          <div className="flex-1 mt-5 flex flex-col pr-8">
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Space Proxy Hub</h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {t.multi_server_desc}
+            </p>
+          </div>
+          <div className="mt-4 flex items-end">
+            <button
+              onClick={() => {
+                playChime('click');
+                setIsServerOpen(true);
+              }}
+              className="w-full py-3 rounded-full text-xs font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
+              style={{ backgroundColor: activePalette.primary }}
+              id="proxy-card-action-btn"
+            >
+              {t.select_server_label}
+            </button>
+          </div>
+        </div>
+
+        {/* WIDGET 2: Agno GPT */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
+          <div className="absolute top-6 right-6 flex items-center gap-2 text-[var(--accent)] hover:text-[var(--on-surface)] transition-colors cursor-pointer" title="Status: Online">
+            <Lightbulb size={20} />
+          </div>
+          <div className="flex justify-between items-start h-[44px]">
+            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner">
+              <Bot size={20} className="text-white" />
+            </div>
+          </div>
+          <div className="flex-1 mt-5 flex flex-col pr-8">
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Agno GPT</h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {lang === 'ru' ? 'Персональный ИИ-ассистент на базе OpenAI' : 'Personal AI assistant powered by OPENAI'}
+            </p>
+          </div>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-xs font-bold text-[var(--on-surface-var)] mr-2">{lang === 'ru' ? 'Отрыть в:' : 'Open:'}</span>
+            <div className="flex gap-2 flex-1">
+              <button
+                onClick={() => {
+                  playChime('click');
+                  setIsAgnoOpen(true);
+                }}
+                className="flex-1 py-3 bg-[var(--container)] hover:bg-[var(--container-high)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-full text-[10px] font-black cursor-pointer shadow-sm transition-all hover:scale-[1.02] active:scale-95 px-1"
+              >
+                Linker.Ru
+              </button>
+              <button
+                onClick={() => {
+                  playChime('click');
+                  const win = window.open('about:blank', '_blank');
+                  if (win) {
+                    win.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>Agno GPT</title>
+                        <style>
+                          body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #09090b; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; }
+                          .loader { border: 4px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+                          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                        </style>
+                      </head>
+                      <body>
+                        <div id="bell" style="position:fixed; top:20px; right:20px; z-index:9999; background:rgba(255,255,255,0.1); padding:10px; border-radius:50%; cursor:pointer; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s;">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                        </div>
+                        <div id="loader" class="loader"></div>
+                        <iframe id="frame" src="https://agno-agent-ui.vercel.app/" style="width: 100vw; height: 100vh; border: none; display: none;"></iframe>
+                        <script>
+                          document.getElementById('bell').addEventListener('click', () => {
+                            if (window.opener) {
+                              window.opener.postMessage('openNotifications', '*');
+                            }
+                          });
+                          document.getElementById('bell').addEventListener('mouseover', function() { this.style.background = 'rgba(255,255,255,0.2)' });
+                          document.getElementById('bell').addEventListener('mouseout', function() { this.style.background = 'rgba(255,255,255,0.1)' });
+                          setTimeout(() => {
+                            document.getElementById('loader').style.display = 'none';
+                            document.getElementById('frame').style.display = 'block';
+                          }, 3000);
+                        </script>
+                      </body>
+                      </html>
+                    `);
+                  }
+                }}
+                className="flex-1 py-3 bg-[var(--container)] hover:bg-[var(--container-high)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-full text-[10px] font-black cursor-pointer shadow-sm transition-all hover:scale-[1.02] active:scale-95 px-1"
+              >
+                about:blank
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* WIDGET 3: LinkerGAMES */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] opacity-75 cursor-default relative" id="card-linkergames">
+          <div className="flex justify-between items-start h-[44px]">
+            <div className="w-11 h-11 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
+              <Gamepad2 size={20} className="text-[var(--on-surface)]" />
+            </div>
+            <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
+              {lang === 'ru' ? 'В разработке' : 'Coming Soon'}
+            </div>
+          </div>
+          <div className="flex-1 mt-5 flex flex-col pr-8">
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">LinkerGAMES</h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {lang === 'ru' ? 'Игры и развлечения в будущих обновлениях.' : 'Games and entertainment in future updates.'}
+            </p>
+          </div>
+          <div className="mt-4 flex items-end">
+            <button
+              disabled
+              className="w-full py-3 rounded-full text-xs font-extrabold text-[var(--on-surface-var)] transition-all bg-[var(--surface-dim)] border border-[var(--outline-var)] cursor-not-allowed text-center"
+              id="linkergames-action-btn"
+            >
+              {lang === 'ru' ? 'Ожидайте' : 'Coming Soon'}
+            </button>
+          </div>
+        </div>
+
+        {/* WIDGET 4: Lisyan Connect */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
+          <div className="absolute top-6 right-6 flex items-center gap-2 text-[var(--accent)] hover:text-[var(--on-surface)] transition-colors cursor-pointer" title="Status: Online">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse shadow-[0_0_8px_currentColor]"></div>
+          </div>
+          <div className="flex justify-between items-start h-[44px]">
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: activePalette.primary }}>
+              <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect" className="w-full h-full object-cover p-1" />
+            </div>
+          </div>
+          <div className="flex-1 mt-5 flex flex-col pr-8">
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan Connect</h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {lang === 'ru' ? 'Веб-сервис для быстрой, безопасной и анонимной P2P-передачи файлов между любыми устройствами прямо через браузер.' : 'Web service for fast, secure and anonymous P2P file transfer between any devices right in your browser.'}
+            </p>
+          </div>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-xs font-bold text-[var(--on-surface-var)] mr-2">{lang === 'ru' ? 'Отрыть в:' : 'Open:'}</span>
+            <div className="flex gap-2 flex-1">
+              <button
+                onClick={() => {
+                  playChime('click');
+                  window.open('/apps/lisyan-connect.html', '_blank');
+                }}
+                className="flex-1 py-3 bg-[var(--container)] hover:bg-[var(--container-high)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-full text-[10px] font-black cursor-pointer shadow-sm transition-all hover:scale-[1.02] active:scale-95 px-1"
+              >
+                Linker.Ru
+              </button>
+              <button
+                onClick={() => {
+                  playChime('click');
+                  const win = window.open('about:blank', '_blank');
+                  if (win) {
+                    win.document.write('<!DOCTYPE html><html><head><title>Loading...</title><style>body{background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;}</style></head><body>Loading...</body></html>');
+                    fetch('/apps/lisyan-connect.html')
+                      .then(r => r.text())
+                      .then(html => {
+                        win.document.open();
+                        win.document.write(html);
+                        win.document.close();

@@ -1,0 +1,6 @@
+{
+  "name": "LinkerRu Launcher",
+  "description": "A highly polished Material 3-inspired launcher and portal dashboard with dynamic pastel theme tints, real-time clock, weather widget, calendar events, and configurable settings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
