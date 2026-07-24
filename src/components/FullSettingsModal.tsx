@@ -55,6 +55,8 @@ interface FullSettingsModalProps {
   onPanicKeyChange: (key: string) => void;
   panicUrl: string;
   onPanicUrlChange: (url: string) => void;
+  onDeveloperReset: () => void;
+  onOpenLoginPreview: () => void;
   isMobileLayout?: boolean;
   standbyBg: string;
   onStandbyBgChange: (bg: string) => void;
@@ -64,7 +66,7 @@ interface FullSettingsModalProps {
   onMainWallpaperChange: (w: string) => void;
 }
 
-type Tab = 'appearance' | 'language' | 'notifications' | 'about' | 'security' | 'links' | 'toggles';
+type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles';
 
 export default function FullSettingsModal({
   isOpen,
@@ -93,6 +95,8 @@ export default function FullSettingsModal({
   onPanicKeyChange,
   panicUrl,
   onPanicUrlChange,
+  onDeveloperReset,
+  onOpenLoginPreview,
   isMobileLayout,
   standbyBg,
   onStandbyBgChange,
@@ -496,6 +500,8 @@ export default function FullSettingsModal({
                     t.page_notifications
                   ) : activeTab === 'security' ? (
                     lang === 'ru' ? 'Безопасность' : 'Security'
+                  ) : activeTab === 'sound' ? (
+                    lang === 'ru' ? 'Звук' : 'Sound'
                   ) : activeTab === 'links' ? (
                     lang === 'ru' ? 'Пользовательские ссылки' : 'Custom Links'
                   ) : activeTab === 'toggles' ? (
@@ -1174,6 +1180,36 @@ export default function FullSettingsModal({
 
                           <button onClick={() => window.location.replace(panicUrl || 'https://google.com')} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold text-xs mt-2 hover:bg-red-600 transition-colors">
                             {lang === 'ru' ? 'АКТИВИРОВАТЬ ПАНИКУ (ТЕСТ)' : 'ACTIVATE PANIC (TEST)'}
+                          </button>
+                        </div>
+
+                        <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-3">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)] shrink-0">
+                              <Wind size={18} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-[var(--on-surface)]">
+                                {t.developer_options_title}
+                              </div>
+                              <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                {t.developer_options_desc}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={onOpenLoginPreview}
+                            className="w-full py-3 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline)] text-[var(--on-surface)] font-bold text-xs transition-colors hover:bg-[var(--container)]"
+                          >
+                            {t.open_login_preview}
+                          </button>
+
+                          <button
+                            onClick={onDeveloperReset}
+                            className="w-full py-3 rounded-xl bg-red-500 text-white font-bold text-xs transition-colors hover:bg-red-600"
+                          >
+                            {t.full_local_reset}
                           </button>
                         </div>
                       </div>

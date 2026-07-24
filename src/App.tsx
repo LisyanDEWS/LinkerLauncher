@@ -62,6 +62,7 @@ import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
 import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
+import LoginPreviewModal from './components/LoginPreviewModal';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -163,6 +164,7 @@ export default function App() {
 
   const [isAgnoOpen, setIsAgnoOpen] = useState(false);
   const [isLisyanConnectOpen, setIsLisyanConnectOpen] = useState(false);
+  const [isLoginPreviewOpen, setIsLoginPreviewOpen] = useState(false);
   const [isAgnoFullscreen, setIsAgnoFullscreen] = useState(false);
   const [isWeatherAppOpen, setIsWeatherAppOpen] = useState(false);
     const [isWeatherAppFullscreen, setIsWeatherAppFullscreen] = useState(false);
@@ -292,12 +294,17 @@ export default function App() {
       }
       const audio = new Audio(url);
       audio.volume = soundVolume / 100;
-      audio.play().catch(e => console.log('Audio play error:', e));
+      const playPromise = audio.play();
+      playPromise.catch(e => console.log('Audio play error:', e));
       if (fileId === 'iphone') {
-        setTimeout(() => {
-          audio.pause();
-          audio.currentTime = 0;
-        }, 2000);
+        playPromise.then(() => {
+          setTimeout(() => {
+            if (!audio.paused) {
+              audio.pause();
+              audio.currentTime = 0;
+            }
+          }, 2000);
+        }).catch(() => {});
       }
     };
 
@@ -722,24 +729,90 @@ export default function App() {
   };
 
   // --- Reset All Settings (Destroy Session) ---
-  const handleDestroySession = () => {
-    if (window.confirm(t.confirm_destroy)) {
+  const wipeAppLocalState = async () => {
+    try {
+      sessionStorage.clear();
+    } catch {}
+
+    try {
       localStorage.clear();
+    } catch {}
+
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName).catch(() => false)));
+      } catch {}
+    }
+
+    if (window.indexedDB && typeof window.indexedDB.databases === 'function') {
+      try {
+        const dbs = await window.indexedDB.databases();
+        await Promise.all(
+          dbs
+            .map((db) => db.name)
+            .filter((name): name is string => Boolean(name))
+            .map(
+              (name) =>
+                new Promise<void>((resolve) => {
+                  const req = window.indexedDB.deleteDatabase(name);
+                  req.onsuccess = () => resolve();
+                  req.onerror = () => resolve();
+                  req.onblocked = () => resolve();
+                })
+            )
+        );
+      } catch {}
+    }
+
+    delete (window as any).LINKER_THEME;
+    delete (window as any).__LINKER_CONFIG;
+  };
+
+  const handleDestroySession = async () => {
+    if (window.confirm(t.confirm_destroy)) {
+      if (pomodoroIntervalRef.current) clearInterval(pomodoroIntervalRef.current);
+      await wipeAppLocalState();
+
       setLang('ru');
       setTheme('light');
       setActivePaletteId('sage_khaki');
       setIsContrast(false);
       setIsToastEnabled(true);
       setIsSoundEnabled(true);
+      setSoundVolume(50);
+      setBrightness(100);
+      setClickSound('tap');
+      setNotifySound('opal_bell');
+      setStandbyBg('gradient-1');
+      setMainWallpaper('none');
+      setFontFamily('"Space Grotesk", "Inter", sans-serif');
+      setCustomLinks(defaultLinks);
+      setActiveToggles(defaultToggles);
+      setNotifications([]);
+      setToasts([]);
+      setUserLocation(null);
+      setShowLocationPrompt(false);
       
       setPanicKey('');
       setPanicUrl('https://google.com');
       setSelectedServer('Server 1');
+      setTabletChoice(null);
+      setShowTabletPrompt(window.innerWidth >= 768 && window.innerWidth < 1024);
+      setIsMobileLayout(window.innerWidth < 768);
       setPomodoroRunning(false);
       setPomodoroTime(1500);
       setGameVictory(false);
       setGameCards(baseEmojis.map((emoji, idx) => ({ id: idx, emoji, flipped: false, matched: false })));
       setSelectedCards([]);
+      setIsQuickSettingsOpen(false);
+      setIsFullSettingsOpen(false);
+      setIsLisyanConnectOpen(false);
+      setIsLoginPreviewOpen(false);
+      setIsAgnoOpen(false);
+      setIsWeatherAppOpen(false);
+      setIsStandbyOpen(false);
+      setIsStandbySetupOpen(false);
 
       playChime('reset');
       setTimeout(() => {
@@ -1593,8 +1666,14 @@ export default function App() {
           </div>
           
           <div className="mt-4 flex flex-col gap-2">
-            <button className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm">
-              {lang === 'ru' ? 'Управление аккаунтом' : 'Manage Account'}
+            <button
+              onClick={() => {
+                playChime('click');
+                setIsLoginPreviewOpen(true);
+              }}
+              className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm"
+            >
+              {t.login_preview_title}
             </button>
             <p className="text-[9px] text-[var(--on-surface-var)] text-center select-none font-semibold">
               {t.ph_danger_hint}
@@ -1960,18 +2039,36 @@ export default function App() {
           if (url && isSoundEnabled && soundVolume > 0) {
             const audio = new Audio(url);
             audio.volume = soundVolume / 100;
-            audio.play().catch(e => console.log(e));
+            const playPromise = audio.play();
+            playPromise.catch(e => console.log(e));
             if (s === 'iphone') {
-              setTimeout(() => {
-                audio.pause();
-                audio.currentTime = 0;
-              }, 2000);
+              playPromise.then(() => {
+                setTimeout(() => {
+                  if (!audio.paused) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                  }
+                }, 2000);
+              }).catch(() => {});
             }
           }
         }}
         volume={soundVolume}
         onVolumeChange={setSoundVolume}
+        onDeveloperReset={handleDestroySession}
+        onOpenLoginPreview={() => setIsLoginPreviewOpen(true)}
       />
+
+      <AnimatePresence>
+        {isLoginPreviewOpen && (
+          <LoginPreviewModal
+            isOpen={isLoginPreviewOpen}
+            onClose={() => setIsLoginPreviewOpen(false)}
+            lang={lang}
+            primaryColor={activePalette.primary}
+          />
+        )}
+      </AnimatePresence>
 
       {!isMobileLayout && (
         <NotificationsModal

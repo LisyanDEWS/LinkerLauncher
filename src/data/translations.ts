@@ -75,7 +75,12 @@ export const translations = {
     sound_effects: "Звуковые эффекты",
     sound_desc: "Проигрывать клики и оповещения",
     proxy_server: "Прокси-сервер",
-    active_server: "Активный сервер"
+    active_server: "Активный сервер",
+    login_preview_title: "Предпросмотр входа",
+    developer_options_title: "Параметры разработчика",
+    developer_options_desc: "Инструменты предварительного просмотра и локального сброса приложения.",
+    open_login_preview: "Открыть предпросмотр логина",
+    full_local_reset: "Полный локальный сброс (разрушительно)"
   },
   en: {
     settings_label: "settings",
@@ -153,6 +158,11 @@ export const translations = {
     sound_effects: "Sound effects",
     sound_desc: "Play interactive feedback audio",
     proxy_server: "Proxy Server",
-    active_server: "Active Server"
+    active_server: "Active Server",
+    login_preview_title: "Login Preview",
+    developer_options_title: "Developer Options",
+    developer_options_desc: "Preview and local app reset tools.",
+    open_login_preview: "Open Login Preview",
+    full_local_reset: "Full Local Reset (Destructive)"
   }
 };
