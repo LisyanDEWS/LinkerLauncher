@@ -1673,7 +1673,7 @@ export default function App() {
               }}
               className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm"
             >
-              {lang === 'ru' ? 'Предпросмотр входа' : 'Login Preview'}
+              {t.login_preview_title}
             </button>
             <p className="text-[9px] text-[var(--on-surface-var)] text-center select-none font-semibold">
               {t.ph_danger_hint}

@@ -1190,12 +1190,10 @@ export default function FullSettingsModal({
                             </div>
                             <div>
                               <div className="text-sm font-bold text-[var(--on-surface)]">
-                                {lang === 'ru' ? 'Параметры разработчика' : 'Developer Options'}
+                                {t.developer_options_title}
                               </div>
                               <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
-                                {lang === 'ru'
-                                  ? 'Инструменты предварительного просмотра и локального сброса приложения.'
-                                  : 'Preview and local app reset tools.'}
+                                {t.developer_options_desc}
                               </div>
                             </div>
                           </div>
@@ -1204,14 +1202,14 @@ export default function FullSettingsModal({
                             onClick={onOpenLoginPreview}
                             className="w-full py-3 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline)] text-[var(--on-surface)] font-bold text-xs transition-colors hover:bg-[var(--container)]"
                           >
-                            {lang === 'ru' ? 'Открыть предпросмотр логина' : 'Open Login Preview'}
+                            {t.open_login_preview}
                           </button>
 
                           <button
                             onClick={onDeveloperReset}
                             className="w-full py-3 rounded-xl bg-red-500 text-white font-bold text-xs transition-colors hover:bg-red-600"
                           >
-                            {lang === 'ru' ? 'Полный локальный сброс (разрушительно)' : 'Full Local Reset (Destructive)'}
+                            {t.full_local_reset}
                           </button>
                         </div>
                       </div>
