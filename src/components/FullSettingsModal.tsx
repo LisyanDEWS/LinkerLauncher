@@ -55,6 +55,7 @@ interface FullSettingsModalProps {
   onPanicKeyChange: (key: string) => void;
   panicUrl: string;
   onPanicUrlChange: (url: string) => void;
+  isMobileLayout?: boolean;
   standbyBg: string;
   onStandbyBgChange: (bg: string) => void;
   fontFamily: string;
@@ -92,6 +93,7 @@ export default function FullSettingsModal({
   onPanicKeyChange,
   panicUrl,
   onPanicUrlChange,
+  isMobileLayout,
   standbyBg,
   onStandbyBgChange,
   fontFamily,
@@ -846,6 +848,7 @@ export default function FullSettingsModal({
                         </div>
 
                         {/* Standby Mode Background Section */}
+                        {!isMobileLayout && (
                         <div className="space-y-3 mt-4" id="standby-bg-settings">
                           <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
                             Standby Mode
@@ -882,6 +885,7 @@ export default function FullSettingsModal({
                             </div>
                           </div>
                         </div>
+                        )}
                       </div>
                     )}
 

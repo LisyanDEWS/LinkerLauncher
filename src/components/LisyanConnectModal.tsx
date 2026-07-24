@@ -84,11 +84,11 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
       const elapsed = Date.now() - transferStartTime.current;
       if (elapsed < 3000) {
         const remaining = 3000 - elapsed;
-        let p = 100;
-        if (artificialProgress) {
-            p = Math.max(artificialProgress.percent, 99);
-        }
-        setArtificialProgress({ percent: p, name: artificialProgress?.name || 'File' });
+        
+        setArtificialProgress(prev => {
+          const p = Math.max(prev?.percent || 0, 99);
+          return { percent: 100, name: prev?.name || 'File' };
+        });
         
         transferTimer.current = setTimeout(() => {
           setIsTransferring(false);
@@ -102,7 +102,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
     return () => {
       if (transferTimer.current) clearTimeout(transferTimer.current);
     };
-  }, [progress, isTransferring, artificialProgress]);
+  }, [progress, isTransferring]);
 
   const resetState = () => {
     setView('landing');
@@ -132,25 +132,31 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 20 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-      className={`fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 ${isFullscreen ? 'bg-[var(--bg)]' : 'bg-black/40 backdrop-blur-md'}`}
+      className={isMobile 
+        ? `fixed inset-0 z-[200] flex items-center justify-center ${isFullscreen ? 'p-0 bg-[var(--bg)]' : 'p-4 sm:p-6 bg-black/40 backdrop-blur-md'}`
+        : `fixed z-[200] flex flex-col overflow-hidden shadow-2xl border border-[var(--outline)] bg-[var(--surface)] transition-all duration-300 ${isFullscreen ? 'inset-0 rounded-none border-none' : 'inset-10 rounded-3xl'}`
+      }
     >
-      <div className={`flex flex-col bg-[var(--surface)] border border-[var(--outline)] shadow-2xl transition-all duration-500 overflow-hidden ${isFullscreen ? 'w-full h-full rounded-none border-none' : 'w-full max-w-xl rounded-3xl h-[85vh] max-h-[800px]'}`}>
+      <div 
+        className={isMobile 
+          ? `flex flex-col bg-[var(--surface)] shadow-2xl transition-all duration-500 overflow-hidden ${isFullscreen ? 'w-full h-full rounded-none border-none pb-4 pt-[max(env(safe-area-inset-top),_16px)]' : 'w-full max-w-xl rounded-3xl border border-[var(--outline)] h-[85vh] max-h-[800px]'}`
+          : "flex flex-col h-full w-full"
+        }
+      >
         
         {/* HEADER */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--outline-var)] bg-[var(--surface-dim)] shrink-0">
+        <div className={`flex items-center justify-between border-b border-[var(--outline-var)] shrink-0 ${isMobile ? 'p-3 bg-[var(--surface)]' : 'p-4 bg-[var(--surface-dim)]'}`}>
           <div className="flex flex-col">
-            <span className="text-sm font-black text-[var(--on-surface)] uppercase tracking-widest flex items-center gap-2">
-              <Monitor size={16} /> LISYAN CONNECT
+            <span className={`font-black text-[var(--on-surface)] uppercase tracking-widest flex items-center gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+              <Monitor size={isMobile ? 14 : 16} /> LISYAN CONNECT
             </span>
-            <span className="text-[10px] font-bold text-[var(--on-surface-var)]">
+            <span className="text-[9px] sm:text-[10px] font-bold text-[var(--on-surface-var)]">
               {lang === 'ru' ? 'P2P ПЕРЕДАЧА ФАЙЛОВ' : 'P2P FILE TRANSFER'}
             </span>
           </div>
@@ -160,7 +166,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
                 {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
               </button>
             )}
-            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--container)] transition-colors text-[var(--on-surface)] bg-[var(--container-high)]">
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--surface-dim)] transition-colors text-[var(--on-surface)] bg-[var(--surface-dim)]">
               <X size={14} />
             </button>
           </div>
@@ -176,89 +182,92 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex flex-col h-full"
+                className={isMobile ? "flex flex-col h-full" : "flex flex-row h-full w-full divide-x divide-[var(--outline)]"}
               >
                 {!isMobile && (
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-black text-[var(--on-surface)] mb-2 tracking-tight">
+                  <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-[var(--surface-dim)] rounded-2xl flex items-center justify-center text-[var(--on-surface)] mb-6 shadow-sm border border-[var(--outline)]">
+                      <Monitor size={32} />
+                    </div>
+                    <h2 className="text-3xl font-black text-[var(--on-surface)] mb-4 tracking-tight">
                       {lang === 'ru' ? 'Откройте LinkerRu везде' : 'Open LinkerRu anywhere'}
                     </h2>
-                    <p className="text-xs font-bold text-[var(--on-surface-var)] max-w-md mx-auto mb-4">
+                    <p className="text-sm font-bold text-[var(--on-surface-var)] max-w-sm mx-auto mb-8">
                       {lang === 'ru' 
                         ? 'Lisyan Connect позволяет передавать файлы напрямую между устройствами. Чтобы открыть на телефоне, отсканируйте код или введите адрес:' 
                         : 'Lisyan Connect allows direct file transfer between devices. To open on phone, scan the code or enter this address:'}
                     </p>
-                    <div className="mt-4 flex flex-col items-center">
-                      <div className="bg-white p-2 rounded-2xl mb-2">
-                        <QRCode value={'https://linkerrulauncher.netlify.app/'} size={80} />
-                      </div>
-                      <code className="text-[10px] font-mono font-bold bg-[var(--surface-dim)] px-2 py-1 rounded text-[var(--on-surface-var)] break-all max-w-[250px]">
-                        https://linkerrulauncher.netlify.app/
-                      </code>
+                    <div className="bg-white p-4 rounded-3xl mb-4 shadow-sm">
+                      <QRCode value={'https://linkerrulauncher.netlify.app/'} size={140} />
                     </div>
+                    <code className="text-xs font-mono font-bold bg-[var(--surface-dim)] px-4 py-2 rounded-xl text-[var(--on-surface-var)] border border-[var(--outline)]">
+                      https://linkerrulauncher.netlify.app/
+                    </code>
                   </div>
                 )}
 
-                <div className="mb-6 max-w-md mx-auto w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl p-4 flex items-start gap-3">
-                  <div className="text-[var(--on-surface-var)] shrink-0 mt-0.5">
-                    <AlertTriangle size={18} />
-                  </div>
-                  <p className="text-xs font-bold text-[var(--on-surface-var)]">
-                    {lang === 'ru' ? 'Lisyan Connect может не работать в публичных или школьных Wi-Fi сетях (из-за ограничений WebRTC). Рекомендуется использовать мобильную точку доступа или мобильный интернет.' : 'Lisyan Connect may not work on public or school Wi-Fi networks (due to WebRTC restrictions). It is recommended to use a mobile hotspot or cellular data.'}
-                  </p>
-                </div>
-
-                <div className="space-y-6 max-w-sm mx-auto w-full">
-                  {!isMobile && (
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-[var(--on-surface-var)] uppercase ml-1">{lang === 'ru' ? 'Тип устройства' : 'Device Type'}</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { id: 'pc', icon: Monitor, label: 'PC' },
-                        { id: 'laptop', icon: Laptop, label: 'Laptop' },
-                        { id: 'phone', icon: Smartphone, label: 'Phone' }
-                      ].map((type) => {
-                        const Icon = type.icon;
-                        return (
-                          <button
-                            key={type.id}
-                            onClick={() => setDeviceType(type.id as any)}
-                            className={`flex flex-col items-center justify-center py-4 rounded-2xl border-2 transition-all ${deviceType === type.id ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-md' : 'border-[var(--outline)] bg-[var(--surface-dim)] text-[var(--on-surface-var)] hover:border-[var(--outline-high)]'}`}
-                          >
-                            <Icon size={24} />
-                            <span className="text-xs font-bold mt-2">{type.label}</span>
-                          </button>
-                        );
-                      })}
+                <div className={isMobile ? "flex flex-col h-full" : "flex-1 p-8 flex flex-col justify-center relative overflow-y-auto"}>
+                  <div className="mb-6 max-w-md mx-auto w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl p-4 flex items-start gap-3">
+                    <div className="text-[var(--on-surface-var)] shrink-0 mt-0.5">
+                      <AlertTriangle size={18} />
                     </div>
-                  </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-[var(--on-surface-var)] uppercase ml-1">{lang === 'ru' ? 'Имя устройства' : 'Device Name'}</label>
-                    <input
-                      type="text"
-                      value={deviceName}
-                      onChange={(e) => setDeviceName(e.target.value)}
-                      placeholder={lang === 'ru' ? 'Введите имя...' : 'Enter name...'}
-                      className="w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl px-4 py-3 text-[var(--on-surface)] text-sm font-semibold outline-none focus:border-[var(--accent)] transition-colors"
-                    />
+                    <p className="text-xs font-bold text-[var(--on-surface-var)]">
+                      {lang === 'ru' ? 'Lisyan Connect может не работать в публичных или школьных Wi-Fi сетях (из-за ограничений WebRTC). Рекомендуется использовать мобильную точку доступа или мобильный интернет.' : 'Lisyan Connect may not work on public or school Wi-Fi networks (due to WebRTC restrictions). It is recommended to use a mobile hotspot or cellular data.'}
+                    </p>
                   </div>
 
-                  <div className="pt-4 flex flex-col gap-3">
-                    <button
-                      onClick={handleCreateRoom}
-                      disabled={!deviceName || (!isMobile && !deviceType)}
-                      className="w-full py-4 bg-[var(--accent)] text-white font-black rounded-2xl active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100"
-                    >
-                      {lang === 'ru' ? 'Создать комнату' : 'Create Room'}
-                    </button>
-                    <button
-                      onClick={() => setView('guest')}
-                      className="w-full py-4 bg-[var(--surface-dim)] text-[var(--on-surface)] font-black rounded-2xl border border-[var(--outline)] hover:bg-[var(--container)] active:scale-95 transition-all"
-                    >
-                      {lang === 'ru' ? 'Подключиться к комнату' : 'Join a Room'}
-                    </button>
+                  <div className="space-y-6 max-w-sm mx-auto w-full">
+                    {!isMobile && (
+                    <div className="space-y-3">
+                      <label className="text-xs font-black text-[var(--on-surface-var)] uppercase ml-1">{lang === 'ru' ? 'Тип устройства' : 'Device Type'}</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'pc', icon: Monitor, label: 'PC' },
+                          { id: 'laptop', icon: Laptop, label: 'Laptop' },
+                          { id: 'phone', icon: Smartphone, label: 'Phone' }
+                        ].map((type) => {
+                          const Icon = type.icon;
+                          return (
+                            <button
+                              key={type.id}
+                              onClick={() => setDeviceType(type.id as any)}
+                              className={`flex flex-col items-center justify-center py-4 rounded-2xl border-2 transition-all ${deviceType === type.id ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-md' : 'border-[var(--outline)] bg-[var(--surface-dim)] text-[var(--on-surface-var)] hover:border-[var(--outline-high)]'}`}
+                            >
+                              <Icon size={24} />
+                              <span className="text-xs font-bold mt-2">{type.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    )}
+
+                    <div className="space-y-3">
+                      <label className="text-xs font-black text-[var(--on-surface-var)] uppercase ml-1">{lang === 'ru' ? 'Имя устройства' : 'Device Name'}</label>
+                      <input
+                        type="text"
+                        value={deviceName}
+                        onChange={(e) => setDeviceName(e.target.value)}
+                        placeholder={lang === 'ru' ? 'Введите имя...' : 'Enter name...'}
+                        className="w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl px-4 py-3 text-[var(--on-surface)] text-sm font-semibold outline-none focus:border-[var(--accent)] transition-colors"
+                      />
+                    </div>
+
+                    <div className="pt-4 flex flex-col gap-3">
+                      <button
+                        onClick={handleCreateRoom}
+                        disabled={!deviceName || (!isMobile && !deviceType)}
+                        className="w-full py-4 bg-[var(--accent)] text-white font-black rounded-2xl active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100"
+                      >
+                        {lang === 'ru' ? 'Создать комнату' : 'Create Room'}
+                      </button>
+                      <button
+                        onClick={() => setView('guest')}
+                        className="w-full py-4 bg-[var(--surface-dim)] text-[var(--on-surface)] font-black rounded-2xl border border-[var(--outline)] hover:bg-[var(--container)] active:scale-95 transition-all"
+                      >
+                        {lang === 'ru' ? 'Подключиться к комнату' : 'Join a Room'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -373,25 +382,31 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col w-full h-full max-w-5xl mx-auto"
               >
-                <div className="flex items-center justify-between mb-6 bg-[var(--surface-dim)] p-4 rounded-3xl border border-[var(--outline)]">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[var(--accent)] rounded-full flex items-center justify-center text-white shadow-sm">
-                      <CheckCircle2 size={24} />
+                <div className={`flex items-center justify-between bg-[var(--surface-dim)] border border-[var(--outline)] ${isMobile ? 'mb-4 p-3 rounded-2xl' : 'mb-6 p-4 rounded-3xl'}`}>
+                  <div className={`flex items-center ${isMobile ? 'gap-3' : 'gap-4'}`}>
+                    <div className={`bg-[var(--accent)] rounded-full flex items-center justify-center text-white shadow-sm ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}`}>
+                      <CheckCircle2 size={isMobile ? 20 : 24} />
                     </div>
                     <div>
                       <h4 className="text-lg font-black text-[var(--on-surface)] tracking-tight">
                         {lang === 'ru' ? 'Соединение установлено' : 'Connected'}
                       </h4>
-                      <p className="text-xs text-[var(--on-surface-var)] font-bold mt-0.5">
-                        P2P WebRTC • {deviceType ? deviceType.toUpperCase() : 'GUEST'} {deviceName ? `(${deviceName})` : ''}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-[var(--on-surface-var)] font-bold">P2P WebRTC • </span>
+                        <div className="flex items-center gap-1.5 bg-[var(--surface)] px-2 py-0.5 rounded-full border border-[var(--outline)] shadow-sm">
+                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                           <span className="text-[10px] font-black text-[var(--on-surface)] tracking-wide">
+                             {deviceType ? deviceType.toUpperCase() : 'GUEST'} {deviceName ? `(${deviceName})` : ''}
+                           </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-[400px]">
+                <div className={isMobile ? "flex flex-col gap-4 flex-1 h-full overflow-y-auto pb-6" : "grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-[400px]"}>
                   {/* UPLOAD SECTION */}
-                  <div className="flex flex-col bg-[var(--surface-dim)] border border-[var(--outline)] rounded-3xl p-6 relative overflow-hidden">
+                  <div className={`flex flex-col bg-[var(--surface-dim)] border border-[var(--outline)] relative overflow-hidden shrink-0 ${isMobile ? 'rounded-2xl p-4' : 'rounded-3xl p-6'}`}>
                     <h4 className="font-black text-[var(--on-surface)] mb-4 flex items-center gap-2">
                       <Upload size={18} />
                       {lang === 'ru' ? 'Отправка' : 'Sending'}
@@ -466,7 +481,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
                   </div>
 
                   {/* RECEIVE SECTION */}
-                  <div className="flex flex-col bg-[var(--surface-dim)] border border-[var(--outline)] rounded-3xl p-6">
+                  <div className={`flex flex-col bg-[var(--surface-dim)] border border-[var(--outline)] flex-1 ${isMobile ? 'rounded-2xl p-4' : 'rounded-3xl p-6'}`}>
                     <h4 className="font-black text-[var(--on-surface)] mb-4 flex items-center gap-2">
                       <Download size={18} />
                       {lang === 'ru' ? 'Получение' : 'Receiving'}

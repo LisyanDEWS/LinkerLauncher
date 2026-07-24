@@ -318,11 +318,17 @@ export default function App() {
 
   // --- PIPUN CONFIGS / CROSS-APP THEME SYNC ---
   useEffect(() => {
-    if (isMobileLayout && theme !== 'light') {
-      setTheme('light');
-      localStorage.setItem('linkerru_theme', 'light');
+    if (isMobileLayout) {
+      if (theme !== 'light') {
+        setTheme('light');
+        localStorage.setItem('linkerru_theme', 'light');
+      }
+      if (activePaletteId !== 'monochrome') {
+        setActivePaletteId('monochrome');
+        localStorage.setItem('linkerru_accent', 'monochrome');
+      }
     }
-  }, [isMobileLayout, theme]);
+  }, [isMobileLayout, theme, activePaletteId]);
 
   useEffect(() => {
     // Stringified theme config for 'pipun' to read
@@ -1742,7 +1748,7 @@ export default function App() {
 
       {/* Floating Weather App Window */}
       <AnimatePresence>
-        <LisyanConnectModal isOpen={isLisyanConnectOpen} onClose={() => setIsLisyanConnectOpen(false)} lang={lang} isMobileLayout={isMobileLayout} />
+        {isLisyanConnectOpen && <LisyanConnectModal isOpen={isLisyanConnectOpen} onClose={() => setIsLisyanConnectOpen(false)} lang={lang} isMobileLayout={isMobileLayout} />}
       {isWeatherAppOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1925,6 +1931,7 @@ export default function App() {
           setPanicUrl(url);
           localStorage.setItem('linkerru_panic_url', url);
         }}
+        isMobileLayout={isMobileLayout}
         standbyBg={standbyBg}
         onStandbyBgChange={handleStandbyBgSave}
         fontFamily={fontFamily}
