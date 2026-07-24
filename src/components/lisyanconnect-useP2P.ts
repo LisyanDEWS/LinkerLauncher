@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
 
 export function useP2P() {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
@@ -18,6 +18,8 @@ export function useP2P() {
   const receivedChunks = useRef<ArrayBuffer[]>([]);
   const receivingMeta = useRef<{name: string, size: number} | null>(null);
   const unsubscribe = useRef<() => void | null>(null);
+  const appliedHostCandidates = useRef<Set<string>>(new Set());
+  const appliedGuestCandidates = useRef<Set<string>>(new Set());
 
   const initWebRTC = useCallback(() => {
     pc.current = new RTCPeerConnection({
@@ -59,6 +61,8 @@ export function useP2P() {
     initWebRTC();
     setStatus('connecting');
     isHost.current = true;
+    appliedHostCandidates.current.clear();
+    appliedGuestCandidates.current.clear();
     
     if (pc.current) {
       ch.current = pc.current.createDataChannel('tx', { ordered: true });
@@ -81,13 +85,9 @@ export function useP2P() {
     // Collect ICE candidates
     pc.current.onicecandidate = (event) => {
       if (event.candidate) {
-        getDoc(roomRef).then((snap) => {
-          if (!snap.exists()) return;
-          const currentCandidates = snap.data().hostCandidates || [];
-          updateDoc(roomRef, {
-            hostCandidates: [...currentCandidates, event.candidate.toJSON()]
-          });
-        });
+        updateDoc(roomRef, {
+          hostCandidates: arrayUnion(event.candidate.toJSON())
+        }).catch(() => {});
       }
     };
 
@@ -119,6 +119,9 @@ export function useP2P() {
 
       if (data.guestCandidates) {
         data.guestCandidates.forEach((candidate: any) => {
+          const key = JSON.stringify(candidate);
+          if (appliedGuestCandidates.current.has(key)) return;
+          appliedGuestCandidates.current.add(key);
           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
         });
       }
@@ -132,6 +135,8 @@ export function useP2P() {
     initWebRTC();
     setStatus('connecting');
     isHost.current = false;
+    appliedHostCandidates.current.clear();
+    appliedGuestCandidates.current.clear();
 
     const roomRef = doc(db, 'connectRooms', roomId);
     const roomSnapshot = await getDoc(roomRef);
@@ -146,13 +151,9 @@ export function useP2P() {
     // Collect ICE candidates
     pc.current.onicecandidate = (event) => {
       if (event.candidate) {
-        getDoc(roomRef).then((snap) => {
-          if (!snap.exists()) return;
-          const currentCandidates = snap.data().guestCandidates || [];
-          updateDoc(roomRef, {
-            guestCandidates: [...currentCandidates, event.candidate.toJSON()]
-          });
-        });
+        updateDoc(roomRef, {
+          guestCandidates: arrayUnion(event.candidate.toJSON())
+        }).catch(() => {});
       }
     };
 
@@ -176,6 +177,9 @@ export function useP2P() {
 
       if (data.hostCandidates) {
         data.hostCandidates.forEach((candidate: any) => {
+          const key = JSON.stringify(candidate);
+          if (appliedHostCandidates.current.has(key)) return;
+          appliedHostCandidates.current.add(key);
           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
         });
       }
