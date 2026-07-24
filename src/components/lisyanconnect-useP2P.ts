@@ -1,59 +1,32 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
-// Custom React Hook for Lisyan Connect P2P functionality
 export function useP2P() {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
   const [receivedFiles, setReceivedFiles] = useState<{name: string, url: string, size: number}[]>([]);
   const [progress, setProgress] = useState<{percent: number, name: string} | null>(null);
-
+  
   const pc = useRef<RTCPeerConnection | null>(null);
-  const ws = useRef<WebSocket | null>(null);
   const ch = useRef<RTCDataChannel | null>(null);
   const isHost = useRef(false);
-
+  
   const fileQueue = useRef<File[]>([]);
   const isSending = useRef(false);
+  
   const receivedChunks = useRef<ArrayBuffer[]>([]);
   const receivingMeta = useRef<{name: string, size: number} | null>(null);
+  const unsubscribe = useRef<() => void | null>(null);
 
   const initWebRTC = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws.current = new WebSocket(`${protocol}//${window.location.host}`);
     pc.current = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun.l.google.com:19302' }
       ]
     });
-
-    ws.current.onmessage = async (e) => {
-      const data = JSON.parse(e.data);
-      if (!pc.current) return;
-
-      if (data.type === 'offer') {
-        pc.current.ondatachannel = (ev) => setupChannel(ev.channel);
-        await pc.current.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const ans = await pc.current.createAnswer();
-        await pc.current.setLocalDescription(ans);
-        ws.current?.send(JSON.stringify({ type: 'answer', answer: ans }));
-      } else if (data.type === 'answer') {
-        if (!pc.current.currentRemoteDescription) {
-          await pc.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-        }
-      } else if (data.type === 'candidate') {
-        await pc.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-      } else if (data.type === 'peer_joined' && isHost.current) {
-        const off = await pc.current.createOffer();
-        await pc.current.setLocalDescription(off);
-        ws.current?.send(JSON.stringify({ type: 'offer', offer: off }));
-      }
-    };
-
-    pc.current.onicecandidate = (e) => {
-      if (e.candidate && ws.current?.readyState === WebSocket.OPEN) {
-        ws.current.send(JSON.stringify({ type: 'candidate', candidate: e.candidate }));
-      }
-    };
+    
+    pc.current.ondatachannel = (ev) => setupChannel(ev.channel);
   }, []);
 
   const setupChannel = useCallback((channel: RTCDataChannel) => {
@@ -90,16 +63,59 @@ export function useP2P() {
       ch.current = pc.current.createDataChannel('tx', { ordered: true });
       setupChannel(ch.current);
     }
+    
+    const roomRef = doc(collection(db, 'connectRooms'));
+    const roomId = roomRef.id;
 
-    const roomId = Math.floor(10000 + Math.random() * 90000).toString();
-    const joinMsg = JSON.stringify({ type: 'join', roomId, isHost: true });
+    if (!pc.current) return roomId;
     
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(joinMsg);
-    } else if (ws.current) {
-      ws.current.onopen = () => ws.current?.send(joinMsg);
-    }
+    // Collect ICE candidates
+    pc.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        getDoc(roomRef).then((snap) => {
+          if (!snap.exists()) return;
+          const currentCandidates = snap.data().hostCandidates || [];
+          updateDoc(roomRef, {
+            hostCandidates: [...currentCandidates, event.candidate.toJSON()]
+          });
+        });
+      }
+    };
+
+    const offer = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offer);
+
+    const roomWithOffer = {
+      offer: {
+        type: offer.type,
+        sdp: offer.sdp,
+      },
+      hostCandidates: [],
+      guestCandidates: [],
+      timestamp: Date.now(),
+      connected: false
+    };
+
+    await setDoc(roomRef, roomWithOffer);
+
+    // Listen for answer and guest candidates
+    const unsub = onSnapshot(roomRef, (snapshot) => {
+      const data = snapshot.data();
+      if (!data) return;
+
+      if (!pc.current?.currentRemoteDescription && data.answer) {
+        const answer = new RTCSessionDescription(data.answer);
+        pc.current?.setRemoteDescription(answer).catch(console.error);
+      }
+
+      if (data.guestCandidates) {
+        data.guestCandidates.forEach((candidate: any) => {
+          pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+        });
+      }
+    });
     
+    unsubscribe.current = unsub;
     return roomId;
   }, [initWebRTC, setupChannel]);
 
@@ -108,18 +124,55 @@ export function useP2P() {
     setStatus('connecting');
     isHost.current = false;
 
-    const joinMsg = JSON.stringify({ type: 'join', roomId });
-    const peerMsg = JSON.stringify({ type: 'peer_joined' });
+    const roomRef = doc(db, 'connectRooms', roomId);
+    const roomSnapshot = await getDoc(roomRef);
 
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(joinMsg);
-      ws.current.send(peerMsg);
-    } else if (ws.current) {
-      ws.current.onopen = () => {
-        ws.current?.send(joinMsg);
-        ws.current?.send(peerMsg);
-      };
+    if (!roomSnapshot.exists()) {
+      setStatus('idle');
+      throw new Error('Room not found');
     }
+
+    if (!pc.current) return;
+
+    // Collect ICE candidates
+    pc.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        getDoc(roomRef).then((snap) => {
+          if (!snap.exists()) return;
+          const currentCandidates = snap.data().guestCandidates || [];
+          updateDoc(roomRef, {
+            guestCandidates: [...currentCandidates, event.candidate.toJSON()]
+          });
+        });
+      }
+    };
+
+    const offer = roomSnapshot.data().offer;
+    await pc.current.setRemoteDescription(new RTCSessionDescription(offer));
+
+    const answer = await pc.current.createAnswer();
+    await pc.current.setLocalDescription(answer);
+
+    await updateDoc(roomRef, {
+      answer: {
+        type: answer.type,
+        sdp: answer.sdp,
+      }
+    });
+
+    // Listen for host ICE candidates
+    const unsub = onSnapshot(roomRef, (snapshot) => {
+      const data = snapshot.data();
+      if (!data) return;
+
+      if (data.hostCandidates) {
+        data.hostCandidates.forEach((candidate: any) => {
+          pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+        });
+      }
+    });
+
+    unsubscribe.current = unsub;
   }, [initWebRTC]);
 
   const processQueue = useCallback(() => {
@@ -130,7 +183,7 @@ export function useP2P() {
     ch.current.send(`NAME:${file.name}`);
     
     const reader = new FileReader();
-    const chunkSize = 16384;
+    const chunkSize = 16384; // 16KB
     let offset = 0;
     
     reader.onload = (e) => {
@@ -164,6 +217,13 @@ export function useP2P() {
     }
     processQueue();
   }, [processQueue]);
+
+  useEffect(() => {
+    return () => {
+      if (unsubscribe.current) unsubscribe.current();
+      pc.current?.close();
+    };
+  }, []);
 
   return { status, createRoom, joinRoom, sendFiles, receivedFiles, progress };
 }
