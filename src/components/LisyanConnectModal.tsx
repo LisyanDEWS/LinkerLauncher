@@ -1,370 +1,414 @@
-import React, { useEffect, useState } from 'react';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Download,
-  File,
-  Laptop,
-  Loader2,
-  Monitor,
-  QrCode,
-  Smartphone,
-  Upload,
-  X,
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Maximize, Minimize, CheckCircle2, Loader2, Upload, Download, Info, File, Monitor, Smartphone, Laptop, Lock, QrCode, AlertTriangle } from 'lucide-react';
 import { useP2P } from './lisyanconnect-useP2P';
 import QRCode from 'react-qr-code';
 import { AnimatePresence, motion } from 'motion/react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface LisyanConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
   lang: 'ru' | 'en';
+  isMobileLayout?: boolean;
 }
 
-type ConnectView = 'setup' | 'actions' | 'create' | 'connect' | 'connected';
-type DeviceType = 'pc' | 'laptop' | 'phone';
+const QrScanner = ({ onScan }: { onScan: (text: string) => void }) => {
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner('qr-reader', { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+    scanner.render((text) => {
+      scanner.clear().catch(()=>{});
+      onScan(text);
+    }, () => {});
+    return () => {
+      scanner.clear().catch(()=>{});
+    };
+  }, [onScan]);
+  return <div id="qr-reader" className="w-full bg-white rounded-2xl overflow-hidden text-black" />;
+};
 
-const DEVICE_TYPES: { key: DeviceType; icon: React.ReactNode; ru: string; en: string }[] = [
-  { key: 'pc', icon: <Monitor size={18} />, ru: 'ПК', en: 'PC' },
-  { key: 'laptop', icon: <Laptop size={18} />, ru: 'Ноутбук', en: 'Laptop' },
-  { key: 'phone', icon: <Smartphone size={18} />, ru: 'Телефон', en: 'Phone' },
-];
+export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: LisyanConnectModalProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [view, setView] = useState<'landing' | 'host' | 'guest' | 'connected'>('landing');
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [deviceName, setDeviceName] = useState('');
+  const [deviceType, setDeviceType] = useState<'pc' | 'laptop' | 'phone' | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [isMobile, setIsMobile] = useState(isMobileLayout !== undefined ? isMobileLayout : window.innerWidth < 768);
 
-export function LisyanConnectModal({ isOpen, onClose, lang }: LisyanConnectModalProps) {
-  const [view, setView] = useState<ConnectView>('setup');
-  const [roomId, setRoomId] = useState<string>('');
-  const [joinCode, setJoinCode] = useState<string>('');
-  const [deviceName, setDeviceName] = useState<string>('');
-  const [deviceType, setDeviceType] = useState<DeviceType | null>(null);
-  const [joinError, setJoinError] = useState<string>('');
+  const [artificialProgress, setArtificialProgress] = useState<{percent: number, name: string} | null>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const transferStartTime = useRef<number>(0);
+  const transferTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const { status, createRoom, joinRoom, sendFiles, receivedFiles, progress } = useP2P();
+  const { status, createRoom, joinRoom, sendFiles, receivedFiles, sentFiles, progress } = useP2P();
 
-  const isConnectedView = view === 'connected';
-
-  const resetState = () => {
-    setView('setup');
-    setRoomId('');
-    setJoinCode('');
-    setJoinError('');
-    setDeviceName('');
-    setDeviceType(null);
-  };
+  useEffect(() => {
+    if (isMobileLayout !== undefined) {
+      setIsMobile(isMobileLayout);
+      return;
+    }
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [isMobileLayout]);
 
   useEffect(() => {
     if (!isOpen) {
       resetState();
+    } else {
+      if (isMobile) {
+        setIsFullscreen(true);
+        setDeviceType('phone');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   useEffect(() => {
-    if (status === 'connected') {
+    if (status === 'connected' && view !== 'connected') {
       setView('connected');
+      setIsFullscreen(true);
     } else if (status === 'idle' && view === 'connected') {
-      setView('actions');
+      setView('landing');
+      setIsFullscreen(false);
     }
   }, [status, view]);
 
-  const handleCreateRoom = async () => {
-    setView('create');
-    setRoomId('');
-    try {
-      const id = await createRoom();
-      setRoomId(id);
-    } catch (e) {
-      console.error(e);
-      setView('actions');
+  useEffect(() => {
+    if (progress) {
+      if (!isTransferring) {
+        setIsTransferring(true);
+        transferStartTime.current = Date.now();
+      }
+      setArtificialProgress(progress);
+    } else if (isTransferring) {
+      const elapsed = Date.now() - transferStartTime.current;
+      if (elapsed < 3000) {
+        const remaining = 3000 - elapsed;
+        let p = 100;
+        if (artificialProgress) {
+            p = Math.max(artificialProgress.percent, 99);
+        }
+        setArtificialProgress({ percent: p, name: artificialProgress?.name || 'File' });
+        
+        transferTimer.current = setTimeout(() => {
+          setIsTransferring(false);
+          setArtificialProgress(null);
+        }, remaining);
+      } else {
+        setIsTransferring(false);
+        setArtificialProgress(null);
+      }
     }
+    return () => {
+      if (transferTimer.current) clearTimeout(transferTimer.current);
+    };
+  }, [progress, isTransferring, artificialProgress]);
+
+  const resetState = () => {
+    setView('landing');
+    setRoomId(null);
+    setDeviceName('');
+    setDeviceType(null);
+    setShowScanner(false);
   };
 
-  const handleJoinRoom = async () => {
-    const code = joinCode.trim();
-    if (!code) {
-      setJoinError(lang === 'ru' ? 'Введите код комнаты' : 'Enter room code');
+  const handleCreateRoom = async () => {
+    if (!deviceName || !deviceType) {
+      alert(lang === 'ru' ? 'Выберите устройство и введите имя' : 'Select device and enter name');
       return;
     }
+    const id = await createRoom();
+    setRoomId(id);
+    setView('host');
+  };
 
-    setJoinError('');
+  const handleJoinSubmit = async () => {
+    if (!roomId) return;
     try {
-      await joinRoom(code);
-      setRoomId(code);
+      await joinRoom(roomId.toUpperCase());
     } catch (e) {
-      console.error(e);
-      setJoinError(lang === 'ru' ? 'Комната не найдена или недоступна' : 'Room not found or unavailable');
+      alert(lang === 'ru' ? 'Ошибка: Комната не найдена' : 'Error: Room not found');
+      setRoomId('');
     }
   };
-
-  const handleBack = () => {
-    if (view === 'actions') {
-      setView('setup');
-    } else if (view === 'create' || view === 'connect') {
-      setView('actions');
-    }
-  };
-
-  const canContinueFromSetup = deviceName.trim().length > 0 && deviceType !== null;
 
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-[100] flex ${isConnectedView ? 'p-0' : 'items-center justify-center p-4'} bg-black/60 backdrop-blur-sm`}>
-      <div
-        className={`w-full overflow-hidden flex flex-col border border-[var(--outline-var)] shadow-2xl ${isConnectedView ? 'h-full rounded-none bg-[var(--surface)]' : 'max-w-3xl h-[88vh] rounded-[32px] bg-[var(--surface)]'}`}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[var(--outline-var)] bg-[var(--surface-dim)]">
-          <div className="flex items-center gap-3 min-w-0">
-            {(view === 'actions' || view === 'create' || view === 'connect') && (
-              <button
-                onClick={handleBack}
-                className="w-9 h-9 rounded-full border border-[var(--outline-var)] bg-[var(--surface)] flex items-center justify-center text-[var(--on-surface-var)] hover:text-[var(--on-surface)]"
-              >
-                <ArrowLeft size={18} />
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      className={`fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 ${isFullscreen ? 'bg-[var(--bg)]' : 'bg-black/40 backdrop-blur-md'}`}
+    >
+      <div className={`flex flex-col bg-[var(--surface)] border border-[var(--outline)] shadow-2xl transition-all duration-500 overflow-hidden ${isFullscreen ? 'w-full h-full rounded-none border-none' : 'w-full max-w-xl rounded-3xl h-[85vh] max-h-[800px]'}`}>
+        
+        {/* HEADER */}
+        <div className="flex items-center justify-between p-4 border-b border-[var(--outline-var)] bg-[var(--surface-dim)] shrink-0">
+          <div className="flex flex-col">
+            <span className="text-sm font-black text-[var(--on-surface)] uppercase tracking-widest flex items-center gap-2">
+              <Monitor size={16} /> LISYAN CONNECT
+            </span>
+            <span className="text-[10px] font-bold text-[var(--on-surface-var)]">
+              {lang === 'ru' ? 'P2P ПЕРЕДАЧА ФАЙЛОВ' : 'P2P FILE TRANSFER'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {!isMobile && (
+              <button onClick={() => setIsFullscreen(!isFullscreen)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--container)] transition-colors text-[var(--on-surface-var)]">
+                {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
               </button>
             )}
-            <div>
-              <h2 className="text-lg md:text-xl font-black text-[var(--on-surface)] tracking-tight">Lisyan Connect</h2>
-              <p className="text-xs text-[var(--on-surface-var)]">
-                {isConnectedView
-                  ? (lang === 'ru' ? 'Полноэкранный режим комнаты' : 'Fullscreen room mode')
-                  : (lang === 'ru' ? 'Передача файлов между устройствами' : 'File transfer between devices')}
-              </p>
-            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--container)] transition-colors text-[var(--on-surface)] bg-[var(--container-high)]">
+              <X size={14} />
+            </button>
           </div>
-
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full border border-[var(--outline-var)] bg-[var(--surface)] flex items-center justify-center text-[var(--on-surface-var)] hover:text-[var(--on-surface)]"
-            aria-label="Close Lisyan Connect"
-          >
-            <X size={18} />
-          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        {/* CONTENT */}
+        <div className="flex-1 p-6 flex flex-col relative overflow-hidden">
           <AnimatePresence mode="wait">
-            {view === 'setup' && (
+            
+            {view === 'landing' && (
               <motion.div
-                key="setup"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="max-w-xl mx-auto flex flex-col gap-6"
+                key="landing"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex flex-col h-full"
               >
-                <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-6">
-                  <h3 className="text-xl font-bold text-[var(--on-surface)] mb-2">
-                    {lang === 'ru' ? 'Настройте устройство' : 'Set up your device'}
-                  </h3>
-                  <p className="text-sm text-[var(--on-surface-var)] mb-5">
-                    {lang === 'ru'
-                      ? 'Введите имя устройства и выберите тип, чтобы продолжить.'
-                      : 'Enter a device name and choose a type to continue.'}
-                  </p>
-
-                  <label className="text-sm font-semibold text-[var(--on-surface)] block mb-2">
-                    {lang === 'ru' ? 'Имя устройства' : 'Device name'}
-                  </label>
-                  <input
-                    type="text"
-                    value={deviceName}
-                    onChange={(e) => setDeviceName(e.target.value)}
-                    placeholder={lang === 'ru' ? 'Например: Рабочий ПК' : 'For example: Work PC'}
-                    className="w-full bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl px-4 py-3 text-[var(--on-surface)] outline-none focus:border-[var(--accent)]"
-                  />
-
-                  <div className="mt-5">
-                    <p className="text-sm font-semibold text-[var(--on-surface)] mb-2">{lang === 'ru' ? 'Тип устройства' : 'Device type'}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {DEVICE_TYPES.map((typeOption) => (
-                        <button
-                          key={typeOption.key}
-                          onClick={() => setDeviceType(typeOption.key)}
-                          className={`rounded-2xl border px-4 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${deviceType === typeOption.key ? 'border-[var(--accent)] text-[var(--on-surface)] bg-[var(--container)]' : 'border-[var(--outline-var)] text-[var(--on-surface-var)] bg-[var(--surface)] hover:text-[var(--on-surface)]'}`}
-                        >
-                          {typeOption.icon}
-                          <span>{lang === 'ru' ? typeOption.ru : typeOption.en}</span>
-                        </button>
-                      ))}
+                {!isMobile && (
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-black text-[var(--on-surface)] mb-2 tracking-tight">
+                      {lang === 'ru' ? 'Откройте LinkerRu везде' : 'Open LinkerRu anywhere'}
+                    </h2>
+                    <p className="text-xs font-bold text-[var(--on-surface-var)] max-w-md mx-auto mb-4">
+                      {lang === 'ru' 
+                        ? 'Lisyan Connect позволяет передавать файлы напрямую между устройствами. Чтобы открыть на телефоне, отсканируйте код или введите адрес:' 
+                        : 'Lisyan Connect allows direct file transfer between devices. To open on phone, scan the code or enter this address:'}
+                    </p>
+                    <div className="mt-4 flex flex-col items-center">
+                      <div className="bg-white p-2 rounded-2xl mb-2">
+                        <QRCode value={'https://linkerrulauncher.netlify.app/'} size={80} />
+                      </div>
+                      <code className="text-[10px] font-mono font-bold bg-[var(--surface-dim)] px-2 py-1 rounded text-[var(--on-surface-var)] break-all max-w-[250px]">
+                        https://linkerrulauncher.netlify.app/
+                      </code>
                     </div>
                   </div>
+                )}
 
-                  <button
-                    onClick={() => setView('actions')}
-                    disabled={!canContinueFromSetup}
-                    className="w-full mt-6 py-3 rounded-2xl font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: 'var(--accent)' }}
-                  >
-                    {lang === 'ru' ? 'Продолжить' : 'Continue'}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {view === 'actions' && (
-              <motion.div
-                key="actions"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="max-w-xl mx-auto flex flex-col gap-4"
-              >
-                <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-6">
-                  <h3 className="text-xl font-bold text-[var(--on-surface)]">
-                    {lang === 'ru' ? 'Выберите действие' : 'Choose an action'}
-                  </h3>
-                  <p className="text-sm text-[var(--on-surface-var)] mt-2 mb-5">
-                    {lang === 'ru'
-                      ? `Устройство: ${deviceName} · ${DEVICE_TYPES.find((d) => d.key === deviceType)?.ru ?? ''}`
-                      : `Device: ${deviceName} · ${DEVICE_TYPES.find((d) => d.key === deviceType)?.en ?? ''}`}
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      onClick={handleCreateRoom}
-                      className="rounded-2xl border border-[var(--outline-var)] bg-[var(--surface-dim)] p-4 text-left hover:border-[var(--accent)] transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center text-white" style={{ backgroundColor: 'var(--accent)' }}>
-                        <QrCode size={18} />
-                      </div>
-                      <p className="font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Создать комнату' : 'Create room'}</p>
-                      <p className="text-xs text-[var(--on-surface-var)] mt-1">
-                        {lang === 'ru' ? 'Показать QR и код комнаты' : 'Show QR and room code'}
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setView('connect')}
-                      className="rounded-2xl border border-[var(--outline-var)] bg-[var(--surface-dim)] p-4 text-left hover:border-[var(--accent)] transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center text-white" style={{ backgroundColor: 'var(--accent)' }}>
-                        <ArrowLeft size={18} />
-                      </div>
-                      <p className="font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Подключиться к комнате' : 'Connect to room'}</p>
-                      <p className="text-xs text-[var(--on-surface-var)] mt-1">
-                        {lang === 'ru' ? 'Ввод кода комнаты вручную' : 'Join by typing room code'}
-                      </p>
-                    </button>
+                <div className="mb-6 max-w-md mx-auto w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl p-4 flex items-start gap-3">
+                  <div className="text-[var(--on-surface-var)] shrink-0 mt-0.5">
+                    <AlertTriangle size={18} />
                   </div>
-                </div>
-              </motion.div>
-            )}
-
-            {view === 'create' && (
-              <motion.div
-                key="create"
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                className="max-w-xl mx-auto"
-              >
-                <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-6 flex flex-col items-center">
-                  <h3 className="text-xl font-bold text-[var(--on-surface)] mb-2">
-                    {lang === 'ru' ? 'Создана новая комната' : 'New room created'}
-                  </h3>
-                  <p className="text-sm text-[var(--on-surface-var)] mb-6 text-center">
-                    {lang === 'ru'
-                      ? 'Покажите QR-код или сообщите код комнаты другому участнику.'
-                      : 'Share this QR code or room code with the other participant.'}
+                  <p className="text-xs font-bold text-[var(--on-surface-var)]">
+                    {lang === 'ru' ? 'Lisyan Connect может не работать в публичных или школьных Wi-Fi сетях (из-за ограничений WebRTC). Рекомендуется использовать мобильную точку доступа или мобильный интернет.' : 'Lisyan Connect may not work on public or school Wi-Fi networks (due to WebRTC restrictions). It is recommended to use a mobile hotspot or cellular data.'}
                   </p>
+                </div>
 
-                  {roomId ? (
-                    <div className="p-4 rounded-2xl bg-white border border-[var(--outline-var)] mb-4">
-                      <QRCode value={roomId} size={210} fgColor="#2D4A22" />
+                <div className="space-y-6 max-w-sm mx-auto w-full">
+                  {!isMobile && (
+                  <div className="space-y-3">
+                    <label className="text-xs font-black text-[var(--on-surface-var)] uppercase ml-1">{lang === 'ru' ? 'Тип устройства' : 'Device Type'}</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'pc', icon: Monitor, label: 'PC' },
+                        { id: 'laptop', icon: Laptop, label: 'Laptop' },
+                        { id: 'phone', icon: Smartphone, label: 'Phone' }
+                      ].map((type) => {
+                        const Icon = type.icon;
+                        return (
+                          <button
+                            key={type.id}
+                            onClick={() => setDeviceType(type.id as any)}
+                            className={`flex flex-col items-center justify-center py-4 rounded-2xl border-2 transition-all ${deviceType === type.id ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-md' : 'border-[var(--outline)] bg-[var(--surface-dim)] text-[var(--on-surface-var)] hover:border-[var(--outline-high)]'}`}
+                          >
+                            <Icon size={24} />
+                            <span className="text-xs font-bold mt-2">{type.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <div className="w-[242px] h-[242px] rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex items-center justify-center mb-4">
-                      <Loader2 size={28} className="animate-spin text-[var(--on-surface-var)]" />
-                    </div>
+                  </div>
                   )}
 
-                  <div className="w-full max-w-sm rounded-2xl border border-[var(--outline-var)] bg-[var(--surface-dim)] px-4 py-3 text-center">
-                    <p className="text-xs text-[var(--on-surface-var)] mb-1">{lang === 'ru' ? 'Код комнаты' : 'Room code'}</p>
-                    <p className="font-mono text-base font-bold text-[var(--on-surface)] break-all">{roomId || '...'}</p>
+                  <div className="space-y-3">
+                    <label className="text-xs font-black text-[var(--on-surface-var)] uppercase ml-1">{lang === 'ru' ? 'Имя устройства' : 'Device Name'}</label>
+                    <input
+                      type="text"
+                      value={deviceName}
+                      onChange={(e) => setDeviceName(e.target.value)}
+                      placeholder={lang === 'ru' ? 'Введите имя...' : 'Enter name...'}
+                      className="w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl px-4 py-3 text-[var(--on-surface)] text-sm font-semibold outline-none focus:border-[var(--accent)] transition-colors"
+                    />
                   </div>
 
-                  <p className="text-xs text-[var(--on-surface-var)] mt-4">
-                    {lang === 'ru' ? 'Ожидание подключения…' : 'Waiting for connection…'}
-                  </p>
+                  <div className="pt-4 flex flex-col gap-3">
+                    <button
+                      onClick={handleCreateRoom}
+                      disabled={!deviceName || (!isMobile && !deviceType)}
+                      className="w-full py-4 bg-[var(--accent)] text-white font-black rounded-2xl active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:active:scale-100"
+                    >
+                      {lang === 'ru' ? 'Создать комнату' : 'Create Room'}
+                    </button>
+                    <button
+                      onClick={() => setView('guest')}
+                      className="w-full py-4 bg-[var(--surface-dim)] text-[var(--on-surface)] font-black rounded-2xl border border-[var(--outline)] hover:bg-[var(--container)] active:scale-95 transition-all"
+                    >
+                      {lang === 'ru' ? 'Подключиться к комнату' : 'Join a Room'}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
 
-            {view === 'connect' && (
+            {view === 'host' && (
               <motion.div
-                key="connect"
-                initial={{ opacity: 0, scale: 0.97 }}
+                key="host"
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                className="max-w-xl mx-auto"
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center justify-center h-full text-center"
               >
-                <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-6">
-                  <h3 className="text-xl font-bold text-[var(--on-surface)] mb-2">
-                    {lang === 'ru' ? 'Подключиться к комнате' : 'Connect to room'}
-                  </h3>
-                  <p className="text-sm text-[var(--on-surface-var)] mb-4">
-                    {lang === 'ru' ? 'Введите код комнаты для подключения.' : 'Type the room code to join.'}
-                  </p>
-
-                  <input
-                    type="text"
-                    placeholder={lang === 'ru' ? 'Код комнаты' : 'Room code'}
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    className="w-full bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl px-4 py-3 text-[var(--on-surface)] outline-none focus:border-[var(--accent)]"
-                  />
-
-                  {joinError && <p className="text-xs text-red-500 mt-2">{joinError}</p>}
-
-                  <button
-                    onClick={handleJoinRoom}
-                    className="w-full mt-4 py-3 rounded-2xl font-extrabold text-white"
-                    style={{ backgroundColor: 'var(--accent)' }}
-                  >
-                    {lang === 'ru' ? 'Подключиться' : 'Connect'}
-                  </button>
+                <div className="w-16 h-16 bg-[var(--accent)] rounded-full flex items-center justify-center text-white mb-6 animate-pulse shadow-lg shadow-[var(--accent)]/20">
+                  <Monitor size={32} />
                 </div>
+                <h3 className="text-2xl font-black text-[var(--on-surface)] mb-2">
+                  {lang === 'ru' ? 'Ожидание подключения' : 'Waiting for connection'}
+                </h3>
+                <p className="text-xs font-bold text-[var(--on-surface-var)] max-w-xs mx-auto mb-8">
+                  {lang === 'ru' ? 'Введите этот ID на другом устройстве для подключения' : 'Enter this ID on another device to connect'}
+                </p>
+
+                <div className="bg-[var(--surface-dim)] border border-[var(--outline)] rounded-3xl p-8 mb-8 relative group">
+                  <div className="text-5xl font-mono font-black text-[var(--on-surface)] tracking-widest uppercase">
+                    {roomId}
+                  </div>
+                </div>
+
+                <button
+                  onClick={resetState}
+                  className="px-6 py-2 rounded-full border border-[var(--outline)] text-[var(--on-surface-var)] text-xs font-bold hover:bg-[var(--surface-dim)] transition-colors"
+                >
+                  {lang === 'ru' ? 'Отмена' : 'Cancel'}
+                </button>
+              </motion.div>
+            )}
+
+            {view === 'guest' && (
+              <motion.div
+                key="guest"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="flex flex-col items-center justify-center h-full max-w-sm mx-auto w-full"
+              >
+                <div className="w-16 h-16 bg-[var(--surface-dim)] border border-[var(--outline)] rounded-full flex items-center justify-center text-[var(--on-surface)] mb-6">
+                  <Lock size={32} />
+                </div>
+                
+                <h3 className="text-2xl font-black text-[var(--on-surface)] mb-2">
+                  {lang === 'ru' ? 'Подключение' : 'Connect'}
+                </h3>
+                <p className="text-xs font-bold text-[var(--on-surface-var)] max-w-xs mx-auto mb-8 text-center">
+                  {lang === 'ru' ? 'Введите ID комнаты для подключения' : 'Enter Room ID to connect'}
+                </p>
+
+                {showScanner ? (
+                  <div className="w-full mb-4">
+                    <QrScanner onScan={(text) => {
+                      setRoomId(text);
+                      setShowScanner(false);
+                      joinRoom(text).catch(() => alert('Room not found'));
+                    }} />
+                    <button onClick={() => setShowScanner(false)} className="w-full mt-4 py-3 bg-[var(--surface-dim)] text-[var(--on-surface)] font-bold rounded-2xl">
+                      {lang === 'ru' ? 'Отмена сканирования' : 'Cancel Scan'}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Room ID"
+                      value={roomId || ''}
+                      onChange={e => setRoomId(e.target.value.toUpperCase())}
+                      className="w-full bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl px-4 py-4 text-center font-mono text-2xl font-black text-[var(--on-surface)] outline-none focus:border-[var(--accent)] transition-colors mb-4 uppercase tracking-widest"
+                      maxLength={6}
+                    />
+                    <button
+                      onClick={handleJoinSubmit}
+                      disabled={!roomId}
+                      className="w-full py-4 bg-[var(--on-surface)] text-[var(--surface)] font-black rounded-2xl active:scale-95 transition-all shadow-md disabled:opacity-50"
+                    >
+                      {lang === 'ru' ? 'Подключиться' : 'Join Room'}
+                    </button>
+                    {isMobile && (
+                      <button
+                        onClick={() => setShowScanner(true)}
+                        className="w-full py-4 mt-3 bg-[var(--surface-dim)] border border-[var(--outline)] text-[var(--on-surface)] font-black rounded-2xl active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <QrCode size={18} /> {lang === 'ru' ? 'Сканировать QR' : 'Scan QR'}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {!showScanner && (
+                  <button
+                    onClick={resetState}
+                    className="mt-6 text-[var(--on-surface-var)] text-xs font-bold hover:text-[var(--on-surface)] transition-colors"
+                  >
+                    {lang === 'ru' ? 'Назад' : 'Back'}
+                  </button>
+                )}
               </motion.div>
             )}
 
             {view === 'connected' && (
               <motion.div
                 key="connected"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-full flex flex-col"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col w-full h-full max-w-5xl mx-auto"
               >
-                <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface-dim)] p-4 md:p-5 mb-4">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: 'var(--accent)' }}>
-                        <CheckCircle2 size={18} />
-                      </div>
-                      <div>
-                        <p className="text-base font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Вы в комнате' : 'You are in room'}</p>
-                        <p className="text-xs text-[var(--on-surface-var)]">
-                          {lang === 'ru' ? `${deviceName} (${DEVICE_TYPES.find((d) => d.key === deviceType)?.ru ?? ''})` : `${deviceName} (${DEVICE_TYPES.find((d) => d.key === deviceType)?.en ?? ''})`}
-                        </p>
-                      </div>
+                <div className="flex items-center justify-between mb-6 bg-[var(--surface-dim)] p-4 rounded-3xl border border-[var(--outline)]">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[var(--accent)] rounded-full flex items-center justify-center text-white shadow-sm">
+                      <CheckCircle2 size={24} />
                     </div>
-                    <p className="text-xs md:text-sm font-mono text-[var(--on-surface)] rounded-full border border-[var(--outline-var)] px-3 py-1 bg-[var(--surface)]">
-                      {lang === 'ru' ? 'Комната' : 'Room'}: {roomId || '—'}
-                    </p>
+                    <div>
+                      <h4 className="text-lg font-black text-[var(--on-surface)] tracking-tight">
+                        {lang === 'ru' ? 'Соединение установлено' : 'Connected'}
+                      </h4>
+                      <p className="text-xs text-[var(--on-surface-var)] font-bold mt-0.5">
+                        P2P WebRTC • {deviceType ? deviceType.toUpperCase() : 'GUEST'} {deviceName ? `(${deviceName})` : ''}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
-                  <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-5 flex flex-col">
-                    <h4 className="font-bold text-[var(--on-surface)] mb-3">{lang === 'ru' ? 'Отправка файлов' : 'Send files'}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-[400px]">
+                  {/* UPLOAD SECTION */}
+                  <div className="flex flex-col bg-[var(--surface-dim)] border border-[var(--outline)] rounded-3xl p-6 relative overflow-hidden">
+                    <h4 className="font-black text-[var(--on-surface)] mb-4 flex items-center gap-2">
+                      <Upload size={18} />
+                      {lang === 'ru' ? 'Отправка' : 'Sending'}
+                    </h4>
+                    
                     <label
                       htmlFor="file-upload"
-                      className={`border-2 border-dashed rounded-2xl p-8 flex-1 min-h-[220px] bg-[var(--surface-dim)] flex flex-col items-center justify-center cursor-pointer transition-colors border-[var(--outline-var)] hover:border-[var(--accent)] ${progress ? 'opacity-50 pointer-events-none' : ''}`}
+                      className={`flex-1 border-2 border-dashed border-[var(--outline-var)] rounded-2xl bg-[var(--surface)] flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--container)] transition-colors ${artificialProgress ? 'opacity-50 pointer-events-none' : ''}`}
                     >
-                      <div className="w-14 h-14 rounded-full bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center mb-3 text-[var(--on-surface)]">
-                        <Upload size={24} />
+                      <div className="w-16 h-16 bg-[var(--container)] rounded-full flex items-center justify-center mb-4 text-[var(--on-surface)]">
+                        <Upload size={28} />
                       </div>
-                      <p className="font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Выбрать файл' : 'Select files'}</p>
-                      <p className="text-xs text-[var(--on-surface-var)] mt-1 text-center">
-                        {lang === 'ru' ? 'Нажмите, чтобы отправить файлы участникам комнаты.' : 'Click to send files to room members.'}
+                      <h4 className="font-black text-[var(--on-surface)] mb-1">
+                        {lang === 'ru' ? 'Выберите файл' : 'Select a file'}
+                      </h4>
+                      <p className="text-xs font-bold text-[var(--on-surface-var)]">
+                        {lang === 'ru' ? 'Нажмите чтобы выбрать файл' : 'Click to select a file'}
                       </p>
                       <input
                         type="file"
@@ -379,47 +423,77 @@ export function LisyanConnectModal({ isOpen, onClose, lang }: LisyanConnectModal
                       />
                     </label>
 
-                    {progress && (
-                      <div className="mt-4 rounded-2xl border border-[var(--outline-var)] bg-[var(--surface-dim)] p-3">
-                        <div className="flex justify-between text-xs text-[var(--on-surface-var)] mb-2">
-                          <span className="truncate mr-2">{progress.name}</span>
-                          <span className="font-bold text-[var(--on-surface)]">{Math.round(progress.percent)}%</span>
-                        </div>
-                        <div className="w-full h-2 rounded-full bg-[var(--surface)] overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${progress.percent}%`, backgroundColor: 'var(--accent)' }} />
-                        </div>
+                    {/* Transferring Progress */}
+                    <AnimatePresence>
+                      {artificialProgress && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute bottom-6 left-6 right-6 bg-[var(--surface)] rounded-2xl p-4 border border-[var(--outline)] shadow-lg"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-[var(--on-surface)] truncate max-w-[200px]">{artificialProgress.name}</span>
+                            <span className="text-xs font-black text-[var(--accent)]">{Math.round(artificialProgress.percent || 0)}%</span>
+                          </div>
+                          <div className="w-full bg-[var(--surface-dim)] rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-[var(--accent)] h-full transition-all duration-300 rounded-full"
+                              style={{ width: `${artificialProgress.percent || 0}%` }}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Sent Files */}
+                    {sentFiles.length > 0 && (
+                      <div className="mt-6 flex-1 max-h-[30vh] overflow-y-auto space-y-2 pr-2">
+                        <h5 className="text-xs font-bold text-[var(--on-surface-var)] mb-3">{lang === 'ru' ? 'Отправленные файлы' : 'Sent Files'}</h5>
+                        {sentFiles.map((f, i) => (
+                          <div key={i} className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--outline)] p-3 rounded-2xl">
+                            <div className="w-10 h-10 bg-[var(--surface-dim)] text-[var(--on-surface)] rounded-xl flex items-center justify-center shrink-0">
+                              <CheckCircle2 size={18} className="text-green-500" />
+                            </div>
+                            <div className="truncate">
+                              <p className="text-sm font-bold text-[var(--on-surface)] truncate">{f.name}</p>
+                              <p className="text-[10px] font-bold text-[var(--on-surface-var)]">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
 
-                  <div className="rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-5 flex flex-col min-h-0">
-                    <h4 className="font-bold text-[var(--on-surface)] mb-3 flex items-center gap-2">
-                      <Download size={16} />
-                      {lang === 'ru' ? 'Полученные файлы' : 'Received files'}
+                  {/* RECEIVE SECTION */}
+                  <div className="flex flex-col bg-[var(--surface-dim)] border border-[var(--outline)] rounded-3xl p-6">
+                    <h4 className="font-black text-[var(--on-surface)] mb-4 flex items-center gap-2">
+                      <Download size={18} />
+                      {lang === 'ru' ? 'Получение' : 'Receiving'}
                     </h4>
-
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                    
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                       {receivedFiles.length === 0 ? (
-                        <div className="h-full min-h-[220px] rounded-2xl border border-[var(--outline-var)] bg-[var(--surface-dim)] flex items-center justify-center text-sm text-[var(--on-surface-var)]">
-                          {lang === 'ru' ? 'Файлы пока не получены' : 'No files received yet'}
+                        <div className="flex flex-col items-center justify-center h-full text-[var(--on-surface-var)] min-h-[200px]">
+                          <Info size={24} className="mb-2 opacity-50" />
+                          <span className="text-xs font-bold">{lang === 'ru' ? 'Ожидание файлов...' : 'Waiting for files...'}</span>
                         </div>
                       ) : (
                         receivedFiles.map((f, i) => (
-                          <div key={i} className="rounded-2xl border border-[var(--outline-var)] bg-[var(--surface-dim)] p-3 flex items-center justify-between gap-3">
-                            <div className="min-w-0 flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-lg bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface)]">
-                                <File size={16} />
+                          <div key={i} className="flex items-center justify-between bg-[var(--surface)] border border-[var(--outline)] p-3 rounded-2xl shadow-sm">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-10 h-10 bg-[var(--surface-dim)] text-[var(--on-surface)] rounded-xl flex items-center justify-center shrink-0">
+                                <File size={18} />
                               </div>
-                              <div className="min-w-0">
+                              <div className="truncate pr-4">
                                 <p className="text-sm font-bold text-[var(--on-surface)] truncate">{f.name}</p>
-                                <p className="text-xs text-[var(--on-surface-var)]">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
+                                <p className="text-[10px] font-bold text-[var(--on-surface-var)]">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
                               </div>
                             </div>
                             <a
                               href={f.url}
                               download={f.name}
-                              className="px-3 py-2 rounded-xl text-xs font-bold text-white whitespace-nowrap"
-                              style={{ backgroundColor: 'var(--accent)' }}
+                              className="bg-[var(--on-surface)] text-[var(--surface)] px-4 py-2 rounded-full text-xs font-black hover:scale-105 active:scale-95 transition-transform shrink-0"
                             >
                               {lang === 'ru' ? 'Сохранить' : 'Save'}
                             </a>
@@ -434,6 +508,6 @@ export function LisyanConnectModal({ isOpen, onClose, lang }: LisyanConnectModal
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

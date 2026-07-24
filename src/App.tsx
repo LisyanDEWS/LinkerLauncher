@@ -42,7 +42,8 @@ import {
   Monitor,
   LogOut,
   Languages,
-  Edit2
+  Edit2,
+  ExternalLink
 } from 'lucide-react';
 
 import { Language, ThemeMode } from './types';
@@ -68,7 +69,9 @@ export default function App() {
 
   // --- Persistent States (localStorage) ---
   const [lang, setLang] = useState<Language>(() => {
-    return (localStorage.getItem('linkerru_lang') as Language) || 'ru';
+    const stored = localStorage.getItem('linkerru_lang') as Language;
+    if (stored) return stored;
+    return (navigator.language || navigator.languages?.[0] || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en';
   });
 
   const [standbyBg, setStandbyBg] = useState<string>(() => {
@@ -129,6 +132,34 @@ export default function App() {
   const [selectedServer, setSelectedServer] = useState<string>(() => {
     return localStorage.getItem('linkerru_server') || 'Server 1';
   });
+
+  const [tabletChoice, setTabletChoice] = useState<'desktop' | 'mobile' | null>(() => {
+    return localStorage.getItem('linkerru_tablet_choice') as 'desktop' | 'mobile' | null;
+  });
+  const [isMobileLayout, setIsMobileLayout] = useState(() => {
+    const isMobile = window.innerWidth < 768;
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+    return isMobile || (isTablet && tabletChoice === 'mobile');
+  });
+  const [showTabletPrompt, setShowTabletPrompt] = useState(() => {
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+    return isTablet && !tabletChoice;
+  });
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobile = window.innerWidth < 768;
+      const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+      setIsMobileLayout(isMobile || (isTablet && tabletChoice === 'mobile'));
+      if (isTablet && !tabletChoice) {
+        setShowTabletPrompt(true);
+      } else {
+        setShowTabletPrompt(false);
+      }
+    };
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [tabletChoice]);
 
   const [isAgnoOpen, setIsAgnoOpen] = useState(false);
   const [isLisyanConnectOpen, setIsLisyanConnectOpen] = useState(false);
@@ -286,6 +317,13 @@ export default function App() {
   };
 
   // --- PIPUN CONFIGS / CROSS-APP THEME SYNC ---
+  useEffect(() => {
+    if (isMobileLayout && theme !== 'light') {
+      setTheme('light');
+      localStorage.setItem('linkerru_theme', 'light');
+    }
+  }, [isMobileLayout, theme]);
+
   useEffect(() => {
     // Stringified theme config for 'pipun' to read
     const themeStr = `LINKER-THEME=${theme.toUpperCase()}`;
@@ -564,6 +602,7 @@ export default function App() {
     
     const resetIdleTimer = () => {
       clearTimeout(idleTimeout);
+      if (isMobileLayout) return; // Disable standby on mobile
       // 5 minutes = 300,000 ms
       idleTimeout = setTimeout(() => {
         if (!isStandbyOpen) {
@@ -589,7 +628,7 @@ export default function App() {
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, [isStandbyOpen]);
+  }, [isStandbyOpen, isMobileLayout]);
 
   // --- Real-time clock update loops ---
   useEffect(() => {
@@ -858,6 +897,7 @@ export default function App() {
   };
 
   const getWallpaperStyle = () => {
+    if (isMobileLayout) return 'var(--bg)';
     if (mainWallpaper === 'none') return 'var(--bg)';
     
     // We will use standard Hex/RGB colors of the current palette
@@ -882,7 +922,7 @@ export default function App() {
     >
       <div className="fixed top-6 right-6 z-[100] pointer-events-auto flex flex-col items-end">
         <AnimatePresence mode="popLayout">
-          {toasts.map(toast => (
+          {!isMobileLayout && toasts.map(toast => (
             <motion.div
               layout
               key={toast.id}
@@ -941,6 +981,72 @@ export default function App() {
       </div>
 
 
+      {showTabletPrompt ? (
+        <div className="flex flex-col flex-1 w-full max-w-sm mx-auto justify-center gap-6 p-4">
+           <div className="text-center mb-8">
+            <h1 className="text-3xl font-black text-[var(--on-surface)]">LinkerRu</h1>
+            <p className="text-sm font-bold text-[var(--on-surface-var)] mt-1">{lang === 'ru' ? 'Выберите версию для планшета' : 'Select version for tablet'}</p>
+          </div>
+          <button onClick={() => {
+            setTabletChoice('desktop');
+            localStorage.setItem('linkerru_tablet_choice', 'desktop');
+            setShowTabletPrompt(false);
+            setIsMobileLayout(false);
+          }} className="py-4 bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl text-[var(--on-surface)] font-bold text-lg hover:bg-[var(--container)] transition-colors">
+            {lang === 'ru' ? 'Настольная версия' : 'Desktop Version'}
+          </button>
+          <button onClick={() => {
+            setTabletChoice('mobile');
+            localStorage.setItem('linkerru_tablet_choice', 'mobile');
+            setShowTabletPrompt(false);
+            setIsMobileLayout(true);
+          }} className="py-4 bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl text-[var(--on-surface)] font-bold text-lg hover:bg-[var(--container)] transition-colors">
+            {lang === 'ru' ? 'Мобильная версия' : 'Mobile Version'}
+          </button>
+        </div>
+      ) : isMobileLayout ? (
+        <div className="flex flex-col flex-1 w-full max-w-md mx-auto justify-center gap-8 p-6 font-sans">
+          
+          <div className="flex justify-between items-start mb-6">
+             <div className="flex flex-col">
+               <h1 className="text-4xl font-black text-[var(--on-surface)] tracking-tight">LinkerRu<span className="text-[var(--outline-high)]">:Mobile</span></h1>
+               <div className="flex items-center gap-2 mt-2">
+                 <span className="text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider bg-[var(--surface-dim)] px-2 py-1 rounded-md border border-[var(--outline)]">
+                   v.1.1m
+                 </span>
+                 <span className="text-[10px] font-bold text-[var(--outline-high)]">LISYAN X LINKERRU</span>
+               </div>
+             </div>
+             
+          </div>
+          
+          <div 
+            className="group relative overflow-hidden rounded-[2rem] p-8 cursor-pointer active:scale-[0.98] transition-all shadow-xl bg-[var(--surface-dim)] border border-[var(--outline)]"
+            onClick={() => setIsLisyanConnectOpen(true)}
+          >
+            <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
+            
+            <div className="flex flex-col h-full relative z-10">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md bg-[var(--on-surface)] text-[var(--surface)]">
+                <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect Logo" className="w-10 h-10 object-contain invert-0 dark:invert" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                <Monitor size={32} className="hidden" />
+              </div>
+              
+              <h3 className="text-3xl font-black text-[var(--on-surface)] mb-2 tracking-tight">Lisyan Connect</h3>
+              <p className="text-sm font-semibold text-[var(--on-surface-var)] leading-relaxed">
+                {lang === 'ru' ? 'Быстрая P2P передача файлов между устройствами без ограничений.' : 'Fast P2P file transfer between devices without limits.'}
+              </p>
+              
+              <div className="mt-8 flex items-center gap-2 text-[var(--surface)] font-bold text-sm bg-[var(--on-surface)] self-start px-4 py-2 rounded-full border border-[var(--outline-var)] shadow-sm group-hover:opacity-90 transition-opacity">
+                {lang === 'ru' ? 'Открыть приложение' : 'Open Application'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      ) : (
+        <>
       {/* --- TOP HEADER NAVIGATION BAR --- */}
       <header className="flex justify-between items-center max-w-7xl mx-auto w-full mb-8 flex-wrap gap-4" id="app-topbar">
         <div className="flex gap-2.5 flex-wrap items-center">
@@ -1571,6 +1677,8 @@ export default function App() {
       <footer className="w-full flex justify-center mt-12" id="app-bottombar">
         <div className="w-24 h-1 bg-[var(--outline)] rounded-full opacity-50 select-none pointer-events-none" />
       </footer>
+      </>
+      )}
 
       {/* --- ALL REGISTERED APPLICATION OVERLAYS --- */}
       
@@ -1594,6 +1702,25 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    const win = window.open('about:blank', '_blank');
+                    if (win) {
+                      win.document.write(`
+                        <html>
+                        <head><title>Agno GPT</title></head>
+                        <body style="margin:0;padding:0;overflow:hidden;background:#000;">
+                          <iframe src="https://agno-agent-ui.vercel.app/" style="width:100vw;height:100vh;border:none;"></iframe>
+                        </body>
+                        </html>
+                      `);
+                    }
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
+                  title="Open in about:blank"
+                >
+                  <ExternalLink size={14} />
+                </button>
+                <button
                   onClick={() => setIsAgnoFullscreen(!isAgnoFullscreen)}
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
                   title={isAgnoFullscreen ? "Minimize" : "Maximize"}
@@ -1615,7 +1742,7 @@ export default function App() {
 
       {/* Floating Weather App Window */}
       <AnimatePresence>
-        <LisyanConnectModal isOpen={isLisyanConnectOpen} onClose={() => setIsLisyanConnectOpen(false)} lang={lang} />
+        <LisyanConnectModal isOpen={isLisyanConnectOpen} onClose={() => setIsLisyanConnectOpen(false)} lang={lang} isMobileLayout={isMobileLayout} />
       {isWeatherAppOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1839,17 +1966,19 @@ export default function App() {
         onVolumeChange={setSoundVolume}
       />
 
-      <NotificationsModal
-        isOpen={isNotificationsOpen}
-        onClose={() => {
-          playChime('click');
-          setIsNotificationsOpen(false);
-        }}
-        lang={lang}
-        notifications={notifications}
-        onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
-        onClearAll={() => setNotifications([])}
-      />
+      {!isMobileLayout && (
+        <NotificationsModal
+          isOpen={isNotificationsOpen}
+          onClose={() => {
+            playChime('click');
+            setIsNotificationsOpen(false);
+          }}
+          lang={lang}
+          notifications={notifications}
+          onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+          onClearAll={() => setNotifications([])}
+        />
+      )}
 
       <ServerModal
         isOpen={isServerOpen}

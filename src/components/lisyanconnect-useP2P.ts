@@ -5,6 +5,7 @@ import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc } from 'firebase
 export function useP2P() {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
   const [receivedFiles, setReceivedFiles] = useState<{name: string, url: string, size: number}[]>([]);
+  const [sentFiles, setSentFiles] = useState<{name: string, size: number}[]>([]);
   const [progress, setProgress] = useState<{percent: number, name: string} | null>(null);
   
   const pc = useRef<RTCPeerConnection | null>(null);
@@ -64,8 +65,16 @@ export function useP2P() {
       setupChannel(ch.current);
     }
     
-    const roomRef = doc(collection(db, 'connectRooms'));
-    const roomId = roomRef.id;
+    const generateShortId = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
+    const roomId = generateShortId();
+    const roomRef = doc(db, 'connectRooms', roomId);
 
     if (!pc.current) return roomId;
     
@@ -202,6 +211,7 @@ export function useP2P() {
       } else {
         ch.current.send("EOF");
         isSending.current = false;
+        setSentFiles(prev => [{ name: file.name, size: file.size }, ...prev]);
         setProgress(null);
         setTimeout(() => processQueue(), 200);
       }
@@ -225,5 +235,5 @@ export function useP2P() {
     };
   }, []);
 
-  return { status, createRoom, joinRoom, sendFiles, receivedFiles, progress };
+  return { status, createRoom, joinRoom, sendFiles, receivedFiles, sentFiles, progress };
 }
