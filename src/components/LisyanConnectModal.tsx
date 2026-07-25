@@ -414,7 +414,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
                     
                     <label
                       htmlFor="file-upload"
-                      className={`flex-1 border-2 border-dashed border-[var(--outline-var)] rounded-2xl bg-[var(--surface)] flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--container)] transition-colors ${artificialProgress ? 'opacity-50 pointer-events-none' : ''}`}
+                      className={`flex-1 min-h-[160px] sm:min-h-[200px] border-2 border-dashed border-[var(--outline-var)] rounded-2xl bg-[var(--surface)] flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--container)] transition-colors ${artificialProgress ? 'opacity-50 pointer-events-none' : ''}`}
                     >
                       <div className="w-16 h-16 bg-[var(--container)] rounded-full flex items-center justify-center mb-4 text-[var(--on-surface)]">
                         <Upload size={28} />

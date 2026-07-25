@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield } from 'lucide-react';
+import { userAuth, userDb } from '../lib/userFirebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface LoginScreenProps {
   onLogin: (nickname: string) => void;
@@ -105,13 +108,38 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   }[lang];
 
   // Actions
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail.trim()) { triggerErr('login-email'); showToast(t.errReq); return; }
     if (!loginPass.trim()) { triggerErr('login-pass'); showToast(t.errReq); return; }
     
-    const nick = loginEmail.split('@')[0] || 'User';
-    triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick);
+    try {
+      const userCredential = await signInWithEmailAndPassword(userAuth, loginEmail.trim(), loginPass);
+      const user = userCredential.user;
+      
+      // Fetch nickname from Firestore
+      const userDocRef = doc(userDb, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      let nick = loginEmail.split('@')[0] || 'User';
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.nickname) {
+          nick = userData.nickname;
+        }
+      }
+      
+      triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick);
+    } catch (err: any) {
+      console.error(err);
+      let errMsg = lang === 'ru' ? 'Ошибка входа: Неверный email или пароль' : 'Login failed: Invalid email or password';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        errMsg = lang === 'ru' ? 'Неверный email или пароль' : 'Invalid email or password';
+      } else if (err.code === 'auth/invalid-credential') {
+        errMsg = lang === 'ru' ? 'Неверные данные для входа' : 'Invalid credentials';
+      }
+      showToast(errMsg);
+    }
   };
 
   const handleSignupNext = (e: React.FormEvent) => {
@@ -124,13 +152,38 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     setSignupStep(2);
   };
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const userRegex = /^[a-zA-Z0-9]{6,}$/;
     if (!userRegex.test(signupUser)) { triggerErr('signup-user'); showToast(t.errUser); return; }
     if (!accepted) { triggerErr('signup-cb'); showToast(t.errCheck); return; }
 
-    triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(userAuth, signupEmail.trim(), signupPass);
+      const user = userCredential.user;
+      
+      // Save profile to Firestore under users/{uid}
+      const userDocRef = doc(userDb, 'users', user.uid);
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        nickname: signupUser,
+        email: user.email || signupEmail.trim(),
+        updatedAt: Date.now()
+      });
+      
+      triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser);
+    } catch (err: any) {
+      console.error(err);
+      let errMsg = lang === 'ru' ? 'Ошибка регистрации' : 'Registration failed';
+      if (err.code === 'auth/email-already-in-use') {
+        errMsg = lang === 'ru' ? 'Этот адрес электронной почты уже используется' : 'This email address is already in use';
+      } else if (err.code === 'auth/invalid-email') {
+        errMsg = lang === 'ru' ? 'Некорректный адрес электронной почты' : 'Invalid email address';
+      } else if (err.code === 'auth/weak-password') {
+        errMsg = lang === 'ru' ? 'Слишком слабый пароль' : 'Weak password';
+      }
+      showToast(errMsg);
+    }
   };
 
   const triggerSuccess = (title: string, subtitle: string, letter: string, finalNick: string) => {

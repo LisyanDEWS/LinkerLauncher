@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account details and synced OS settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "nickname": { "type": "string" },
+        "email": { "type": "string" },
+        "settings": { "type": "object" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["uid", "nickname", "email"]
+    },
+    "ConnectRoom": {
+      "title": "Connect Room",
+      "description": "P2P WebRTC connection handshake room details",
+      "type": "object",
+      "properties": {
+        "offer": { "type": "object" },
+        "answer": { "type": "object" },
+        "hostCandidates": { "type": "array" },
+        "guestCandidates": { "type": "array" },
+        "timestamp": { "type": "number" },
+        "connected": { "type": "boolean" }
+      },
+      "required": ["offer", "timestamp", "connected"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Primary user profile and synchronized settings documents"
+    },
+    "/connectRooms/{roomId}": {
+      "schema": "ConnectRoom",
+      "description": "Lisyan Connect direct peer-to-peer signalling rooms"
+    }
+  }
+}

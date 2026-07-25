@@ -2,6 +2,9 @@ import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { userAuth, userDb } from './lib/userFirebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
   Sun,
   Moon,
@@ -255,6 +258,164 @@ export default function App() {
   const baseEmojis = ['🌞', '🪐', '🚀', '🛸', '⭐', '☄️'];
 
   const t = translations[lang];
+
+  // --- Firebase User Settings Sync Engine ---
+  const isSyncingFromCloud = useRef(false);
+
+  const saveUserDataToFirebase = async (uid?: string, email?: string, nickNameOverride?: string) => {
+    const currentUid = uid || userAuth.currentUser?.uid;
+    if (!currentUid || isSyncingFromCloud.current) return;
+    
+    try {
+      const userDocRef = doc(userDb, 'users', currentUid);
+      
+      const payload: any = {
+        uid: currentUid,
+        nickname: nickNameOverride || nickname,
+        email: email || userAuth.currentUser?.email || '',
+        settings: {
+          lang,
+          standby_bg: standbyBg,
+          wallpaper: mainWallpaper,
+          font: fontFamily,
+          theme,
+          accent: activePaletteId,
+          contrast: isContrast,
+          toast: isToastEnabled,
+          sound: isSoundEnabled,
+          sound_volume: soundVolume,
+          brightness,
+          click_sound: clickSound,
+          notify_sound: notifySound,
+          panic_key: panicKey,
+          panic_url: panicUrl,
+          server: selectedServer,
+          tablet_choice: tabletChoice,
+          clock_type: clockType,
+          clock_variation: clockVariation,
+          links: customLinks,
+          toggles: activeToggles
+        },
+        updatedAt: Date.now()
+      };
+      
+      await setDoc(userDocRef, payload, { merge: true });
+    } catch (err) {
+      console.error("Error saving user settings to Firebase:", err);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(userAuth, async (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+        localStorage.setItem('linkerru_auth', 'true');
+        
+        try {
+          // Fetch user data from Firestore
+          const userDocRef = doc(userDb, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.nickname) {
+              setNickname(data.nickname);
+              localStorage.setItem('linkerru_nickname', data.nickname);
+            }
+            
+            if (data.settings) {
+              isSyncingFromCloud.current = true;
+              const s = data.settings;
+              
+              if (s.lang) { setLang(s.lang); localStorage.setItem('linkerru_lang', s.lang); }
+              if (s.standby_bg) { setStandbyBg(s.standby_bg); localStorage.setItem('linkerru_standby_bg', s.standby_bg); }
+              if (s.wallpaper) { setMainWallpaper(s.wallpaper); localStorage.setItem('linkerru_wallpaper', s.wallpaper); }
+              if (s.font) { setFontFamily(s.font); localStorage.setItem('linkerru_font', s.font); }
+              if (s.theme) { setTheme(s.theme); localStorage.setItem('linkerru_theme', s.theme); }
+              if (s.accent) { setActivePaletteId(s.accent); localStorage.setItem('linkerru_accent', s.accent); }
+              if (s.contrast !== undefined) { setIsContrast(s.contrast); localStorage.setItem('linkerru_contrast', String(s.contrast)); }
+              if (s.toast !== undefined) { setIsToastEnabled(s.toast); localStorage.setItem('linkerru_toast', String(s.toast)); }
+              if (s.sound !== undefined) { setIsSoundEnabled(s.sound); localStorage.setItem('linkerru_sound', String(s.sound)); }
+              if (s.sound_volume !== undefined) { setSoundVolume(s.sound_volume); localStorage.setItem('linkerru_sound_volume', String(s.sound_volume)); }
+              if (s.brightness !== undefined) { setBrightness(s.brightness); localStorage.setItem('linkerru_brightness', String(s.brightness)); }
+              if (s.click_sound) { setClickSound(s.click_sound); localStorage.setItem('linkerru_click_sound', s.click_sound); }
+              if (s.notify_sound) { setNotifySound(s.notify_sound); localStorage.setItem('linkerru_notify_sound', s.notify_sound); }
+              if (s.panic_key !== undefined) { setPanicKey(s.panic_key); localStorage.setItem('linkerru_panic_key', s.panic_key); }
+              if (s.panic_url) { setPanicUrl(s.panic_url); localStorage.setItem('linkerru_panic_url', s.panic_url); }
+              if (s.server) { setSelectedServer(s.server); localStorage.setItem('linkerru_server', s.server); }
+              if (s.tablet_choice !== undefined) { setTabletChoice(s.tablet_choice); if(s.tablet_choice) localStorage.setItem('linkerru_tablet_choice', s.tablet_choice); else localStorage.removeItem('linkerru_tablet_choice'); }
+              if (s.clock_type) { setClockType(s.clock_type); localStorage.setItem('linkerru_clock_type', s.clock_type); }
+              if (s.clock_variation) { setClockVariation(s.clock_variation); localStorage.setItem('linkerru_clock_variation', String(s.clock_variation)); }
+              if (s.links) {
+                const parsedLinks = typeof s.links === 'string' ? JSON.parse(s.links) : s.links;
+                setCustomLinks(parsedLinks);
+                localStorage.setItem('linkerru_links', JSON.stringify(parsedLinks));
+              }
+              if (s.toggles) {
+                const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
+                setActiveToggles(parsedToggles);
+                localStorage.setItem('linkerru_toggles', JSON.stringify(parsedToggles));
+              }
+              
+              isSyncingFromCloud.current = false;
+            } else {
+              // No settings in cloud, push local ones
+              saveUserDataToFirebase(user.uid, user.email || '', data.nickname || nickname);
+            }
+          } else {
+            // New user, create user record & save current local settings
+            await setDoc(userDocRef, {
+              uid: user.uid,
+              nickname: nickname || 'Guest',
+              email: user.email || '',
+              updatedAt: Date.now()
+            });
+            saveUserDataToFirebase(user.uid, user.email || '', nickname || 'Guest');
+          }
+        } catch (err) {
+          console.error("Error loading user profile from Firebase:", err);
+        }
+      } else {
+        setIsAuthenticated(false);
+        localStorage.setItem('linkerru_auth', 'false');
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && !isSyncingFromCloud.current) {
+      const timeoutId = setTimeout(() => {
+        saveUserDataToFirebase();
+      }, 1000); // Debounce saves by 1 second so we don't spam writes
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    isAuthenticated,
+    lang,
+    standbyBg,
+    mainWallpaper,
+    fontFamily,
+    theme,
+    activePaletteId,
+    isContrast,
+    isToastEnabled,
+    isSoundEnabled,
+    soundVolume,
+    brightness,
+    clickSound,
+    notifySound,
+    panicKey,
+    panicUrl,
+    selectedServer,
+    tabletChoice,
+    clockType,
+    clockVariation,
+    customLinks,
+    activeToggles,
+    nickname
+  ]);
 
   useEffect(() => {
     const custom = localStorage.getItem('linkerru_custom_palette');
@@ -766,6 +927,8 @@ export default function App() {
       setIsAuthenticated(false);
       setNickname('Guest');
 
+      signOut(userAuth).catch(console.error);
+
       playChime('reset');
       setTimeout(() => {
         triggerToast('сессия очищена / session destroyed');
@@ -945,7 +1108,7 @@ export default function App() {
     }
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isMobileLayout) {
     return (
       <LoginScreen
         onLogin={(nick) => {
