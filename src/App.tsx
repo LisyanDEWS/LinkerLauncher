@@ -753,6 +753,8 @@ export default function App() {
       setGameVictory(false);
       setGameCards(baseEmojis.map((emoji, idx) => ({ id: idx, emoji, flipped: false, matched: false })));
       setSelectedCards([]);
+      setIsAuthenticated(false);
+      setNickname('Guest');
 
       playChime('reset');
       setTimeout(() => {
@@ -932,6 +934,22 @@ export default function App() {
       default: return 'var(--bg)';
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onLogin={(nick) => {
+          setIsAuthenticated(true);
+          localStorage.setItem('linkerru_auth', 'true');
+          setNickname(nick);
+          localStorage.setItem('linkerru_nickname', nick);
+          playChime('click');
+        }}
+        lang={lang}
+        onLangChange={setLang}
+      />
+    );
+  }
 
   return (
     <div

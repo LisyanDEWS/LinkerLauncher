@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, Info, CheckCircle2, ChevronRight, X, User } from 'lucide-react';
+import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: (nickname: string) => void;
@@ -10,540 +10,597 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const [selection, setSelection] = useState<'login' | 'signup' | null>(null);
-  const [signupStep, setSignupStep] = useState<1 | 2>(1);
-  const [accepted, setAccepted] = useState(false);
+  const [signupStep, setSignupStep] = useState<number>(1);
+  const [accepted, setAccepted] = useState<boolean>(false);
   
+  // Form states
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
-  
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPass, setSignupPass] = useState('');
   const [signupUser, setSignupUser] = useState('');
-  
-  const [errorField, setErrorField] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
+  // Success states
   const [isSuccess, setIsSuccess] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [nickname, setNickname] = useState('');
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [loadingDone, setLoadingDone] = useState(false);
+  const [successData, setSuccessData] = useState({ title: '', subtitle: '', letter: '' });
+
+  // Toast state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isToastShow, setIsToastShow] = useState(false);
+
+  // Privacy modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Error shake triggers
+  const [errorField, setErrorField] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
-    setToastMsg(msg);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToastMsg(null), 3000);
+    setToastMessage(msg);
+    setIsToastShow(true);
+    setTimeout(() => setIsToastShow(false), 3000);
   };
 
-  const triggerError = (id: string) => {
-    setErrorField(id);
+  const triggerErr = (fieldId: string) => {
+    setErrorField(fieldId);
     setTimeout(() => setErrorField(null), 400);
   };
 
-  const submitLogin = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!loginEmail) { triggerError('login-email'); showToast(lang === 'ru' ? 'Заполните все поля' : 'Please fill out all fields'); return; }
-    if (!loginPass) { triggerError('login-pass'); showToast(lang === 'ru' ? 'Заполните все поля' : 'Please fill out all fields'); return; }
-    
-    // Preview mode: assume success
-    const nick = loginEmail.split('@')[0] || 'user228';
-    setNickname(nick);
-    handleSuccessFlow();
-  };
-
-  const goToSignupStep2 = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!signupEmail) { triggerError('signup-email'); showToast(lang === 'ru' ? 'Заполните все поля' : 'Please fill out all fields'); return; }
-    if (!emailRegex.test(signupEmail)) { triggerError('signup-email'); showToast(lang === 'ru' ? 'Неверный формат email' : 'Invalid email format'); return; }
-    if (signupPass.length < 7) { triggerError('signup-pass'); showToast(lang === 'ru' ? 'Пароль: мин. 7 символов' : 'Password: min 7 chars'); return; }
-    
-    setSignupStep(2);
-  };
-
-  const submitSignup = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const userRegex = /^[a-zA-Z0-9]{6,}$/;
-    if (!userRegex.test(signupUser)) { triggerError('signup-user'); showToast(lang === 'ru' ? 'Логин: мин. 6 символов, только латиница и цифры' : 'Username: min 6 chars, Latin/digits only'); return; }
-    if (!accepted) { triggerError('signup-cb'); showToast(lang === 'ru' ? 'Примите условия, чтобы продолжить' : 'Accept the terms to continue'); return; }
-    
-    // Preview mode: assume success
-    setNickname(signupUser || 'user228');
-    handleSuccessFlow();
-  };
-
-  const handleSuccessFlow = () => {
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsReady(true);
-    }, 2000);
-  };
-
-  const clearSelection = () => {
-    setSelection(null);
-    setSignupStep(1);
-    setLoginEmail(''); setLoginPass('');
-    setSignupEmail(''); setSignupPass(''); setSignupUser('');
-    setAccepted(false);
-  };
-
+  // Translations
   const t = {
     ru: {
       infoText: 'Выберите действие',
-      backBtn: '← Вернуться к выбору',
-      loginTitle: 'Вход',
-      loginSubtitle: 'С возвращением',
-      lblEmail: 'EMAIL',
-      plEmail: 'Введите email...',
-      lblPass: 'ПАРОЛЬ',
-      plPass: 'Введите пароль...',
-      txtLoginSubmit: 'ВОЙТИ',
+      backBtn: 'Вернуться',
+      loginTitle: 'Вход в аккаунт',
+      loginSubtitle: 'Добро пожаловать в LinkerRu',
+      lblEmail: 'Электронная почта',
+      plEmail: 'name@domain.com',
+      lblPass: 'Пароль',
+      plPass: 'Введите ваш пароль',
+      txtLogin: 'Войти',
       signupTitle: 'Регистрация',
       signupSubtitle: 'Создать новый аккаунт',
-      hintStep2: 'Создайте логин и примите условия',
-      plSignupPass: '> 6 любых символов',
-      lblUser: 'ЛОГИН',
-      plUser: '> 5 букв/цифр',
-      txtNext: 'ДАЛЕЕ',
-      txtBack: 'НАЗАД',
-      txtSubmit: 'СОЗДАТЬ АККАУНТ',
-      checkboxMain: 'Я принимаю условия',
-      checkboxLink: 'Политика конфиденциальности'
+      hintStep2: 'Имя профиля и соглашение',
+      lblUser: 'Имя пользователя',
+      plUser: 'латиница и цифры, от 6 симв.',
+      txtNext: 'Далее',
+      txtBack: 'Назад',
+      txtSignup: 'Зарегистрироваться',
+      acceptTerms: 'Я согласен с условиями',
+      privacyPolicy: 'Политикой конфиденциальности',
+      errReq: 'Пожалуйста, заполните все поля',
+      errEmail: 'Неверный формат электронной почты',
+      errPass: 'Пароль должен содержать минимум 7 символов',
+      errUser: 'Имя пользователя: мин. 6 символов (только буквы и цифры)',
+      errCheck: 'Необходимо согласиться с политикой конфиденциальности',
+      redirecting: 'Успешный вход! Загрузка платформы...'
     },
     en: {
-      infoText: 'Choose an action',
-      backBtn: '← Go back to choosing',
-      loginTitle: 'Log In',
-      loginSubtitle: 'Welcome back',
-      lblEmail: 'EMAIL',
-      plEmail: 'Enter email...',
-      lblPass: 'PASSWORD',
-      plPass: 'Enter password...',
-      txtLoginSubmit: 'LOG IN',
-      signupTitle: 'Sign Up',
-      signupSubtitle: 'Create a new account',
-      hintStep2: 'Create a nickname & accept terms',
-      plSignupPass: '> 6 any chars',
-      lblUser: 'USERNAME',
-      plUser: '> 5 letters/digits',
-      txtNext: 'NEXT',
-      txtBack: 'BACK',
-      txtSubmit: 'CREATE ACCOUNT',
-      checkboxMain: 'I accept the terms',
-      checkboxLink: 'Privacy Policy'
+      infoText: 'Select action',
+      backBtn: 'Go back',
+      loginTitle: 'Sign In',
+      loginSubtitle: 'Welcome to LinkerRu',
+      lblEmail: 'Email Address',
+      plEmail: 'name@domain.com',
+      lblPass: 'Password',
+      plPass: 'Enter your password',
+      txtLogin: 'Sign In',
+      signupTitle: 'Create Account',
+      signupSubtitle: 'Get started with LinkerRu',
+      hintStep2: 'Choose profile name & terms',
+      lblUser: 'Username',
+      plUser: 'alphanumeric, min 6 chars',
+      txtNext: 'Continue',
+      txtBack: 'Back',
+      txtSignup: 'Create Account',
+      acceptTerms: 'I accept the terms and',
+      privacyPolicy: 'Privacy Policy',
+      errReq: 'Please fill out all required fields',
+      errEmail: 'Invalid email address format',
+      errPass: 'Password must be at least 7 characters long',
+      errUser: 'Username must be at least 6 alphanumeric characters',
+      errCheck: 'Please accept the privacy policy to proceed',
+      redirecting: 'Welcome back! Loading platform...'
     }
   }[lang];
 
+  // Actions
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail.trim()) { triggerErr('login-email'); showToast(t.errReq); return; }
+    if (!loginPass.trim()) { triggerErr('login-pass'); showToast(t.errReq); return; }
+    
+    const nick = loginEmail.split('@')[0] || 'User';
+    triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick);
+  };
+
+  const handleSignupNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!signupEmail.trim()) { triggerErr('signup-email'); showToast(t.errReq); return; }
+    if (!emailRegex.test(signupEmail)) { triggerErr('signup-email'); showToast(t.errEmail); return; }
+    if (signupPass.length < 7) { triggerErr('signup-pass'); showToast(t.errPass); return; }
+
+    setSignupStep(2);
+  };
+
+  const handleSignupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const userRegex = /^[a-zA-Z0-9]{6,}$/;
+    if (!userRegex.test(signupUser)) { triggerErr('signup-user'); showToast(t.errUser); return; }
+    if (!accepted) { triggerErr('signup-cb'); showToast(t.errCheck); return; }
+
+    triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser);
+  };
+
+  const triggerSuccess = (title: string, subtitle: string, letter: string, finalNick: string) => {
+    setSuccessData({ title, subtitle, letter });
+    setIsSuccess(true);
+    setLoadingDone(false);
+
+    // Wait 1.5 seconds displaying spinner, then change to check/logo, and log in automatically
+    setTimeout(() => {
+      setLoadingDone(true);
+      showToast(t.redirecting);
+      setTimeout(() => {
+        onLogin(finalNick);
+      }, 1000);
+    }, 1500);
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    setIsSuccess(false);
+    setLoadingDone(false);
+    setSignupStep(1);
+    setAccepted(false);
+    setLoginEmail(''); setLoginPass('');
+    setSignupEmail(''); setSignupPass(''); setSignupUser('');
+  };
+
+  // FORCE LIGHT MONOCHROME PALETTE LOCALLY
+  const lightMonoThemeVars = {
+    '--bg': '#F5F5F5',
+    '--surface': '#FFFFFF',
+    '--surface-dim': '#F9F9F9',
+    '--surface-bright': '#FFFFFF',
+    '--on-surface': '#171717',
+    '--on-surface-var': '#737373',
+    '--outline': '#E5E5E5',
+    '--outline-var': '#F5F5F5',
+    '--container': '#F5F5F5',
+    '--container-high': '#E5E5E5',
+    '--accent': '#171717',
+    '--on-accent': '#FFFFFF',
+  } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center font-sans overflow-x-hidden text-white relative">
-      <div className={`flex flex-col items-center gap-8 p-10 w-full max-w-5xl transition-all duration-500 ${isSuccess ? 'scale-[1.02]' : ''}`}>
-        
-        {/* Top Controls */}
-        <AnimatePresence>
-          {!isSuccess && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -20, pointerEvents: 'none' }}
-              className="flex flex-col items-center gap-4 z-20"
-            >
-              <div className="flex bg-[#242424] p-1.5 rounded-full border border-[#333333] shadow-lg">
-                <button 
-                  onClick={() => onLangChange('en')}
-                  className={`px-6 py-2.5 rounded-full text-[13px] font-bold tracking-wider transition-all ${lang === 'en' ? 'bg-white text-black shadow-sm' : 'text-[#a0a0a0] hover:text-white hover:bg-white/5'}`}
+    <div 
+      style={lightMonoThemeVars}
+      className="bg-[var(--bg)] min-h-screen w-full flex flex-col items-center justify-between font-sans text-[var(--on-surface)] select-none overflow-x-hidden relative"
+    >
+      {/* Decorative background grids/patterns */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e5e5e5_1px,transparent_1px)] [background-size:16px_16px] opacity-70 pointer-events-none z-0" />
+
+      {/* Top Header Controls */}
+      <header className="w-full max-w-6xl px-6 py-6 flex justify-between items-center z-20 relative">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3"
+        >
+          <div className="w-9 h-9 rounded-xl bg-black flex items-center justify-center shadow-sm">
+            <img 
+              src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" 
+              alt="Logo" 
+              className="w-6 h-6 object-contain rounded-full brightness-0 invert" 
+            />
+          </div>
+          <span className="text-sm font-black tracking-wider uppercase text-[var(--on-surface)]">
+            LinkerRu <span className="text-xs font-medium lowercase opacity-50">:re</span>
+          </span>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-3"
+        >
+          <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm">
+            <button 
+              onClick={() => onLangChange('en')}
+              className={`px-4 py-1.5 rounded-xl text-[11px] font-bold tracking-wider cursor-pointer transition-all ${lang === 'en' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}>
+              EN
+            </button>
+            <button 
+              onClick={() => onLangChange('ru')}
+              className={`px-4 py-1.5 rounded-xl text-[11px] font-bold tracking-wider cursor-pointer transition-all ${lang === 'ru' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}>
+              RU
+            </button>
+          </div>
+        </motion.div>
+      </header>
+
+      {/* Main Container */}
+      <main className="flex-1 flex items-center justify-center w-full max-w-[1200px] px-6 z-10 py-12">
+        <div className="w-full flex flex-col items-center">
+          
+          <AnimatePresence mode="wait">
+            {!selection ? (
+              // STEP 1: CHOOSE ACTION SPLIT LAYOUT
+              <motion.div 
+                key="choose"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl"
+              >
+                {/* LOGIN CHOICE CARD */}
+                <motion.div
+                  whileHover={{ y: -6, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.08)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelection('login')}
+                  className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[360px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
                 >
-                  EN
-                </button>
-                <button 
-                  onClick={() => onLangChange('ru')}
-                  className={`px-6 py-2.5 rounded-full text-[13px] font-bold tracking-wider transition-all ${lang === 'ru' ? 'bg-white text-black shadow-sm' : 'text-[#a0a0a0] hover:text-white hover:bg-white/5'}`}
-                >
-                  RU
-                </button>
-              </div>
-
-              {!selection ? (
-                <div className="flex items-center gap-3 bg-[#242424] px-5 py-2.5 rounded-full border border-[#333333] shadow-lg">
-                  <span className="text-[13.5px] font-semibold text-[#a0a0a0] tracking-wide">{t.infoText}</span>
-                </div>
-              ) : (
-                <div 
-                  onClick={clearSelection}
-                  className="flex items-center gap-3 bg-[#242424] px-5 py-2.5 rounded-full border border-[#333333] shadow-lg cursor-pointer hover:bg-[#2a2a2a] transition-colors"
-                >
-                  <span className="text-[13px] font-semibold text-white">{t.backBtn}</span>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="flex justify-center w-full max-w-[900px] relative h-[540px]">
-          {/* LOGIN PANEL */}
-          <motion.div
-            layout
-            onClick={() => !selection && setSelection('login')}
-            animate={{ 
-              x: selection === 'login' ? 0 : selection === 'signup' ? -400 : -20,
-              scale: selection === 'signup' ? 0.95 : 1,
-              opacity: selection === 'signup' ? 0 : 1,
-              zIndex: selection === 'login' ? 10 : 1,
-              width: selection === 'login' ? (isSuccess ? 400 : 600) : 400
-            }}
-            transition={{ type: "spring", damping: 20, stiffness: 200 }}
-            className={`absolute left-1/2 -translate-x-1/2 flex flex-col gap-3 p-3.5 bg-[#161616] border border-[#333333] shadow-2xl overflow-hidden
-              ${isSuccess && selection === 'login' ? '!bg-transparent !border-transparent !shadow-none' : ''}
-              ${selection === 'login' ? 'rounded-[36px] cursor-default' : 'rounded-[36px] cursor-pointer hover:border-white/20'}`}
-            style={{ 
-              pointerEvents: selection === 'signup' ? 'none' : 'auto',
-              borderTopColor: selection === null ? 'rgba(255,255,255,0.15)' : undefined
-            }}
-          >
-            <div className={`bg-[#242424] rounded-[24px] p-8 pb-7 flex flex-col items-center gap-3.5 transition-colors duration-500 ${isSuccess && selection === 'login' ? '!bg-transparent !shadow-none' : ''}`}>
-              <div className="relative">
-                <div className={`rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden relative
-                  ${isSuccess && selection === 'login' ? 'w-28 h-28 bg-[#cfcfcf]' : 'w-20 h-20 bg-[#e8e8e8] shadow-[0_0_0_5px_rgba(255,255,255,0.07),0_4px_16px_rgba(0,0,0,0.4)]'}`}>
-                  
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isSuccess && selection === 'login' && !isReady ? 'opacity-100 scale-100' : 'opacity-0 scale-50 rotate-12'}`}>
-                     <span className="font-sans text-[58px] font-bold text-[#111]">{nickname.charAt(0).toUpperCase()}</span>
-                  </div>
-                  
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isSuccess && selection === 'login' && isReady ? 'opacity-100 scale-100' : 'opacity-0 scale-50 -rotate-12'}`}>
-                    <img src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" alt="Logo" className="w-[60%] h-[60%] object-contain" />
-                  </div>
-
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${selection === 'login' && !isSuccess ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
-                    <img src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" alt="Logo" className="w-[60%] h-[60%] object-contain" />
-                  </div>
-
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${selection !== 'login' && !isSuccess ? 'opacity-100 scale-100' : 'opacity-0 scale-50 -rotate-12'}`}>
-                    <User size={36} className="text-[#1a1a1a]" strokeWidth={2} />
-                  </div>
-
-                </div>
-                {/* Online dot */}
-                {!isSuccess && (
-                  <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-[#d4d4d4] border-[2.5px] border-[#242424]" />
-                )}
-              </div>
-              <div className={`font-sans text-[#f0f0f0] transition-all duration-500 ${isSuccess && selection === 'login' ? 'text-[28px] font-normal tracking-normal' : 'text-[22px] font-semibold tracking-wide'}`}>
-                {isSuccess && selection === 'login' ? (lang === 'ru' ? `с возвращением ${nickname}` : `welcome back ${nickname}`) : t.loginTitle}
-              </div>
-              <div className={`flex items-center gap-1.5 text-[13px] text-[#a0a0a0] transition-all duration-300 ${isSuccess && selection === 'login' ? 'opacity-0 h-0 m-0' : ''}`}>
-                <div className="w-1.5 h-1.5 rounded-full bg-[#a0a0a0] opacity-50" />
-                {t.loginSubtitle}
-              </div>
-            </div>
-
-            <AnimatePresence mode="wait">
-              {selection === 'login' && !isSuccess && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex flex-col gap-2.5 flex-1 w-full max-w-[400px] mx-auto px-4"
-                >
-                  <div className={`bg-[#242424] rounded-[24px] border-[1.5px] p-[18px] pb-3 transition-colors ${errorField === 'login-email' ? 'border-[#ff6b6b] bg-[#ff6b6b]/5' : 'border-transparent focus-within:border-white/50'}`}>
-                    <div className="text-[10.5px] font-semibold tracking-[2px] text-[#a0a0a0] mb-1.5">{t.lblEmail}</div>
-                    <input 
-                      type="email" 
-                      value={loginEmail}
-                      onChange={e => setLoginEmail(e.target.value)}
-                      placeholder={t.plEmail}
-                      className="w-full bg-transparent border-none outline-none text-[#f0f0f0] text-[17px]" 
-                      autoComplete="email"
-                    />
-                    <div className="h-[1.5px] bg-[#333333] mt-2 w-full scale-x-95 origin-center transition-all focus-within:scale-x-100 focus-within:bg-white/50" />
-                  </div>
-                  
-                  <div className={`bg-[#242424] rounded-[24px] border-[1.5px] p-[18px] pb-3 transition-colors ${errorField === 'login-pass' ? 'border-[#ff6b6b] bg-[#ff6b6b]/5' : 'border-transparent focus-within:border-white/50'}`}>
-                    <div className="text-[10.5px] font-semibold tracking-[2px] text-[#a0a0a0] mb-1.5">{t.lblPass}</div>
-                    <input 
-                      type="password" 
-                      value={loginPass}
-                      onChange={e => setLoginPass(e.target.value)}
-                      placeholder={t.plPass}
-                      className="w-full bg-transparent border-none outline-none text-[#f0f0f0] text-[17px]" 
-                    />
-                    <div className="h-[1.5px] bg-[#333333] mt-2 w-full scale-x-95 origin-center transition-all focus-within:scale-x-100 focus-within:bg-white/50" />
-                  </div>
-
-                  <div className="mt-auto pb-4">
-                    <button 
-                      onClick={submitLogin}
-                      className="w-full py-5 bg-white text-black font-bold tracking-[2px] text-[13.5px] rounded-[24px] flex items-center justify-center gap-2.5 transition-transform active:scale-[0.97]"
-                    >
-                      {t.txtLoginSubmit}
-                      <ChevronRight size={18} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {selection === 'login' && isSuccess && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center flex-1 justify-center relative"
-                >
-                  <div className={`w-12 h-12 border-4 border-[#2e2e2e] border-t-white rounded-full animate-spin transition-all ${isReady ? 'opacity-0 scale-75' : 'opacity-100 scale-100'}`} />
-                  
-                  <button 
-                    onClick={() => onLogin(nickname)}
-                    className={`absolute top-1/2 -translate-y-1/2 bg-white text-black px-9 py-4 rounded-[24px] font-semibold text-base transition-all duration-500 hover:bg-[#e8e8e8] whitespace-nowrap ${isReady ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}
-                  >
-                    continue to LinkerRu :re
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* SIGNUP PANEL */}
-          <motion.div
-            layout
-            onClick={() => !selection && setSelection('signup')}
-            animate={{ 
-              x: selection === 'signup' ? 0 : selection === 'login' ? 400 : 20,
-              scale: selection === 'login' ? 0.95 : 1,
-              opacity: selection === 'login' ? 0 : 1,
-              zIndex: selection === 'signup' ? 10 : 1,
-              width: selection === 'signup' ? (isSuccess ? 400 : 600) : 400
-            }}
-            transition={{ type: "spring", damping: 20, stiffness: 200 }}
-            className={`absolute left-1/2 -translate-x-1/2 flex flex-col gap-3 p-3.5 bg-[#161616] border border-[#333333] shadow-2xl overflow-hidden
-              ${isSuccess && selection === 'signup' ? '!bg-transparent !border-transparent !shadow-none' : ''}
-              ${selection === 'signup' ? 'rounded-[36px] cursor-default' : 'rounded-[36px] cursor-pointer hover:border-white/20'}`}
-            style={{ 
-              pointerEvents: selection === 'login' ? 'none' : 'auto',
-              borderTopColor: selection === null ? 'rgba(255,255,255,0.05)' : undefined
-            }}
-          >
-            <div className={`bg-[#242424] rounded-[24px] p-8 pb-7 flex flex-col items-center gap-3.5 transition-colors duration-500 ${isSuccess && selection === 'signup' ? '!bg-transparent !shadow-none' : ''}`}>
-              <div className="relative">
-                <div className={`rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden relative
-                  ${isSuccess && selection === 'signup' ? 'w-28 h-28 bg-[#cfcfcf]' : 'w-20 h-20 bg-[#e8e8e8] shadow-[0_0_0_5px_rgba(255,255,255,0.07),0_4px_16px_rgba(0,0,0,0.4)]'}`}>
-                  
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isSuccess && selection === 'signup' && !isReady ? 'opacity-100 scale-100' : 'opacity-0 scale-50 rotate-12'}`}>
-                     <span className="font-sans text-[58px] font-bold text-[#111]">{nickname.charAt(0).toUpperCase()}</span>
-                  </div>
-                  
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isSuccess && selection === 'signup' && isReady ? 'opacity-100 scale-100' : 'opacity-0 scale-50 -rotate-12'}`}>
-                    <img src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" alt="Logo" className="w-[60%] h-[60%] object-contain" />
-                  </div>
-
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${selection === 'signup' && !isSuccess ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
-                    <img src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" alt="Logo" className="w-[60%] h-[60%] object-contain" />
-                  </div>
-
-                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${selection !== 'signup' && !isSuccess ? 'opacity-100 scale-100' : 'opacity-0 scale-50 -rotate-12'}`}>
-                    <User size={36} className="text-[#1a1a1a]" strokeWidth={2} />
-                  </div>
-                </div>
-                {!isSuccess && (
-                  <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-[#d4d4d4] border-[2.5px] border-[#242424]" />
-                )}
-              </div>
-              <div className={`font-sans text-[#f0f0f0] transition-all duration-500 ${isSuccess && selection === 'signup' ? 'text-[28px] font-normal tracking-normal' : 'text-[22px] font-semibold tracking-wide'}`}>
-                {isSuccess && selection === 'signup' ? (lang === 'ru' ? `привет ${nickname}` : `hello there ${nickname}`) : t.signupTitle}
-              </div>
-              <div className={`flex items-center gap-1.5 text-[13px] text-[#a0a0a0] transition-all duration-300 ${isSuccess && selection === 'signup' ? 'opacity-0 h-0 m-0' : ''}`}>
-                <div className="w-1.5 h-1.5 rounded-full bg-[#a0a0a0] opacity-50" />
-                {t.signupSubtitle}
-              </div>
-            </div>
-
-            <AnimatePresence mode="wait">
-              {selection === 'signup' && !isSuccess && signupStep === 1 && (
-                <motion.div 
-                  key="step1"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="flex flex-col gap-2.5 flex-1 w-full max-w-[400px] mx-auto px-4"
-                >
-                  <div className={`bg-[#242424] rounded-[24px] border-[1.5px] p-[18px] pb-3 transition-colors ${errorField === 'signup-email' ? 'border-[#ff6b6b] bg-[#ff6b6b]/5' : 'border-transparent focus-within:border-white/50'}`}>
-                    <div className="text-[10.5px] font-semibold tracking-[2px] text-[#a0a0a0] mb-1.5">{t.lblEmail}</div>
-                    <input 
-                      type="email" 
-                      value={signupEmail}
-                      onChange={e => setSignupEmail(e.target.value)}
-                      placeholder={t.plEmail}
-                      className="w-full bg-transparent border-none outline-none text-[#f0f0f0] text-[17px]" 
-                      autoComplete="email"
-                    />
-                    <div className="h-[1.5px] bg-[#333333] mt-2 w-full scale-x-95 origin-center transition-all focus-within:scale-x-100 focus-within:bg-white/50" />
-                  </div>
-                  
-                  <div className={`bg-[#242424] rounded-[24px] border-[1.5px] p-[18px] pb-3 transition-colors ${errorField === 'signup-pass' ? 'border-[#ff6b6b] bg-[#ff6b6b]/5' : 'border-transparent focus-within:border-white/50'}`}>
-                    <div className="text-[10.5px] font-semibold tracking-[2px] text-[#a0a0a0] mb-1.5">{t.lblPass}</div>
-                    <input 
-                      type="password" 
-                      value={signupPass}
-                      onChange={e => setSignupPass(e.target.value)}
-                      placeholder={t.plSignupPass}
-                      className="w-full bg-transparent border-none outline-none text-[#f0f0f0] text-[17px]" 
-                    />
-                    <div className="h-[1.5px] bg-[#333333] mt-2 w-full scale-x-95 origin-center transition-all focus-within:scale-x-100 focus-within:bg-white/50" />
-                  </div>
-
-                  <div className="mt-auto pb-4">
-                    <button 
-                      onClick={goToSignupStep2}
-                      className="w-full py-5 bg-white text-black font-bold tracking-[2px] text-[13.5px] rounded-[24px] flex items-center justify-center gap-2.5 transition-transform active:scale-[0.97]"
-                    >
-                      {t.txtNext}
-                      <ChevronRight size={18} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {selection === 'signup' && !isSuccess && signupStep === 2 && (
-                <motion.div 
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex flex-col gap-2.5 flex-1 w-full max-w-[400px] mx-auto px-4"
-                >
-                  <div className="flex items-center justify-center gap-1.5 text-[13px] text-[#a0a0a0] mb-2 mt-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#a0a0a0] opacity-50" />
-                    {t.hintStep2}
-                  </div>
-                  
-                  <div className={`bg-[#242424] rounded-[24px] border-[1.5px] p-[18px] pb-3 transition-colors ${errorField === 'signup-user' ? 'border-[#ff6b6b] bg-[#ff6b6b]/5' : 'border-transparent focus-within:border-white/50'}`}>
-                    <div className="text-[10.5px] font-semibold tracking-[2px] text-[#a0a0a0] mb-1.5">{t.lblUser}</div>
-                    <div className="flex items-center gap-0.5">
-                      <span className="text-[#f0f0f0] text-[17px] opacity-50 font-sans mb-1">@</span>
-                      <input 
-                        type="text" 
-                        value={signupUser}
-                        onChange={e => setSignupUser(e.target.value)}
-                        placeholder={t.plUser}
-                        className="w-full bg-transparent border-none outline-none text-[#f0f0f0] text-[17px] pl-1" 
-                        autoComplete="off"
-                        spellCheck="false"
-                      />
+                  <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all duration-300">
+                      <Mail size={22} />
                     </div>
-                    <div className="h-[1.5px] bg-[#333333] mt-2 w-full scale-x-95 origin-center transition-all focus-within:scale-x-100 focus-within:bg-white/50" />
+                    <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
+                      01 / SIGN IN
+                    </span>
                   </div>
-                  
-                  <div 
-                    onClick={() => setAccepted(!accepted)}
-                    className={`bg-[#242424] rounded-[24px] border-[1.5px] p-4 flex items-center gap-4 cursor-pointer hover:bg-[#2e2e2e] transition-colors overflow-hidden ${errorField === 'signup-cb' ? 'border-[#ff6b6b]' : 'border-transparent'}`}
-                  >
-                    <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 hover:bg-white/5 transition-colors">
-                       <div className="relative w-6 h-6 shrink-0 rounded-[5px] shadow-[inset_0_0_0_2px_#6a6a6a] overflow-hidden" style={{
-                         boxShadow: accepted ? 'inset 0 0 0 12px #9e9e9e' : 'inset 0 0 0 2px #6a6a6a'
-                       }}>
-                         <svg viewBox="0 0 24 24" className="absolute inset-0 block pointer-events-none fill-[#141414] scale-100">
-                           <path className="fill-none stroke-[#141414] stroke-[3px]" style={{ strokeLinecap: 'round', strokeLinejoin: 'round', strokeDasharray: '16.5px 33px', strokeDashoffset: accepted ? '46.5px' : '20.5px', transition: 'stroke-dashoffset 0.3s' }} d="M4.5 10L10.5 16L24.5 1" />
-                         </svg>
-                       </div>
+                  <div>
+                    <h2 className="text-2xl font-bold font-sans tracking-tight mb-2 text-[var(--on-surface)]">
+                      {lang === 'ru' ? 'Войти в профиль' : 'Sign In to Profile'}
+                    </h2>
+                    <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
+                      {lang === 'ru' ? 'Авторизуйтесь, чтобы синхронизировать свои виджеты и настройки.' : 'Log in to synchronize your customized widgets and user workspace settings.'}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* SIGNUP CHOICE CARD */}
+                <motion.div
+                  whileHover={{ y: -6, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.08)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelection('signup')}
+                  className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[360px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all duration-300">
+                      <User size={22} />
                     </div>
-                    <div className="flex flex-col gap-[3px]">
-                      <span className="text-[15px] font-medium text-[#f0f0f0] tracking-[0.1px]">{t.checkboxMain}</span>
-                      <a 
-                        href="#" 
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPrivacyModal(true); }}
-                        className="text-[12px] text-[#a0a0a0] underline underline-offset-2 flex items-center gap-1 hover:text-white transition-colors"
-                        style={{ textDecorationColor: 'rgba(160,160,160,0.4)' }}
+                    <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
+                      02 / SIGN UP
+                    </span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold font-sans tracking-tight mb-2 text-[var(--on-surface)]">
+                      {lang === 'ru' ? 'Зарегистрироваться' : 'Create Account'}
+                    </h2>
+                    <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
+                      {lang === 'ru' ? 'Создайте новый цифровой аккаунт и откройте весь потенциал платформы.' : 'Create a fresh account to unlock the full potential of your unified hub.'}
+                    </p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            ) : (
+              // STEP 2: ACTIVE FORM PANELS
+              <motion.div 
+                key="form-panel"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-md bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 shadow-xl relative overflow-hidden"
+              >
+                {/* Back button */}
+                <button
+                  onClick={resetSelection}
+                  className="absolute top-6 left-6 flex items-center gap-2 text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] transition-colors py-2 px-3 rounded-xl bg-[var(--container)] border border-[var(--outline)]"
+                >
+                  <ArrowLeft size={14} />
+                  <span>{t.backBtn}</span>
+                </button>
+
+                {!isSuccess ? (
+                  <div className="mt-8 flex flex-col h-full justify-between">
+                    {/* Header */}
+                    <div className="mb-8 text-center md:text-left">
+                      <div className="w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
+                        <img 
+                          src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" 
+                          alt="Logo" 
+                          className="w-9 h-9 object-contain rounded-full" 
+                        />
+                      </div>
+                      <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
+                        {selection === 'login' ? t.loginTitle : t.signupTitle}
+                      </h2>
+                      <p className="text-xs text-[var(--on-surface-var)] mt-1 font-medium">
+                        {selection === 'login' ? t.loginSubtitle : t.signupSubtitle}
+                      </p>
+                    </div>
+
+                    {/* LOGIN FORM */}
+                    {selection === 'login' && (
+                      <form onSubmit={handleLogin} className="space-y-4">
+                        {/* Email Field */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)] ml-1">
+                            {t.lblEmail}
+                          </label>
+                          <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'login-email' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
+                            <Mail size={16} className="text-[var(--on-surface-var)] shrink-0" />
+                            <input 
+                              type="email" 
+                              value={loginEmail} 
+                              onChange={e => setLoginEmail(e.target.value)} 
+                              placeholder={t.plEmail}
+                              className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
+                            />
+                          </div>
+                        </div>
+
+                        {/* Password Field */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)] ml-1">
+                            {t.lblPass}
+                          </label>
+                          <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'login-pass' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
+                            <Lock size={16} className="text-[var(--on-surface-var)] shrink-0" />
+                            <input 
+                              type="password" 
+                              value={loginPass} 
+                              onChange={e => setLoginPass(e.target.value)} 
+                              placeholder={t.plPass}
+                              className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
+                            />
+                          </div>
+                        </div>
+
+                        {/* Submit Button */}
+                        <motion.button 
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.98 }}
+                          type="submit" 
+                          className="w-full mt-6 bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all"
+                        >
+                          {t.txtLogin}
+                        </motion.button>
+                      </form>
+                    )}
+
+                    {/* SIGNUP FORM */}
+                    {selection === 'signup' && (
+                      <div className="space-y-4">
+                        {signupStep === 1 ? (
+                          <form onSubmit={handleSignupNext} className="space-y-4">
+                            {/* Email */}
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)] ml-1">
+                                {t.lblEmail}
+                              </label>
+                              <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'signup-email' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
+                                <Mail size={16} className="text-[var(--on-surface-var)] shrink-0" />
+                                <input 
+                                  type="email" 
+                                  value={signupEmail} 
+                                  onChange={e => setSignupEmail(e.target.value)} 
+                                  placeholder={t.plEmail}
+                                  className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
+                                />
+                              </div>
+                            </div>
+
+                            {/* Password */}
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)] ml-1">
+                                {t.lblPass}
+                              </label>
+                              <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'signup-pass' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
+                                <Lock size={16} className="text-[var(--on-surface-var)] shrink-0" />
+                                <input 
+                                  type="password" 
+                                  value={signupPass} 
+                                  onChange={e => setSignupPass(e.target.value)} 
+                                  placeholder="min 7 characters"
+                                  className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
+                                />
+                              </div>
+                            </div>
+
+                            <motion.button 
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                              type="submit" 
+                              className="w-full mt-6 bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all"
+                            >
+                              {t.txtNext}
+                            </motion.button>
+                          </form>
+                        ) : (
+                          <form onSubmit={handleSignupSubmit} className="space-y-4">
+                            <div className="text-[10px] text-[var(--on-surface-var)] text-center my-1 font-bold uppercase tracking-wider">
+                              {t.hintStep2}
+                            </div>
+
+                            {/* Username */}
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)] ml-1">
+                                {t.lblUser}
+                              </label>
+                              <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'signup-user' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
+                                <span className="text-sm font-bold text-[var(--on-surface-var)] shrink-0">@</span>
+                                <input 
+                                  type="text" 
+                                  value={signupUser} 
+                                  onChange={e => setSignupUser(e.target.value)} 
+                                  placeholder="username"
+                                  className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
+                                />
+                              </div>
+                            </div>
+
+                            {/* Consent Checkbox */}
+                            <div 
+                              onClick={() => setAccepted(!accepted)}
+                              className={`bg-[var(--surface-dim)] rounded-2xl p-4 flex items-start gap-4 cursor-pointer border ${errorField === 'signup-cb' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] hover:border-[var(--on-surface-var)]'} transition-all`}
+                            >
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${accepted ? 'bg-black text-white' : 'border border-[var(--outline)]'}`}>
+                                {accepted && <Check size={12} className="stroke-[3]" />}
+                              </div>
+                              <div className="flex flex-col text-xs leading-relaxed select-none">
+                                <span className="font-semibold text-[var(--on-surface)]">{t.acceptTerms}</span>
+                                <span 
+                                  onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }} 
+                                  className="text-[var(--on-surface-var)] underline font-bold cursor-pointer hover:text-black"
+                                >
+                                  {t.privacyPolicy}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 mt-6">
+                              <button 
+                                type="button" 
+                                onClick={() => setSignupStep(1)} 
+                                className="bg-[var(--surface-dim)] text-[var(--on-surface-var)] border border-[var(--outline)] rounded-2xl py-4 px-5 font-bold text-xs tracking-widest uppercase cursor-pointer hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all"
+                              >
+                                {t.txtBack}
+                              </button>
+                              <motion.button 
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                type="submit" 
+                                className="bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 flex-1 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all"
+                              >
+                                {t.txtSignup}
+                              </motion.button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // STEP 3: SUCCESS ANIMATION WITHOUT 'CONTINUE' BUTTON (AUTO REDIRECT)
+                  <div className="flex flex-col items-center justify-center py-12 gap-6 animate-fadeIn">
+                    <div className="w-20 h-20 rounded-full bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center shadow-md relative overflow-hidden">
+                      <AnimatePresence mode="wait">
+                        {!loadingDone ? (
+                          <motion.div 
+                            key="spinner"
+                            initial={{ rotate: 0 }}
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                            className="absolute inset-0 border-4 border-transparent border-t-[var(--accent)] rounded-full"
+                          />
+                        ) : null}
+                      </AnimatePresence>
+                      
+                      {!loadingDone ? (
+                        <span className="text-2xl font-black text-[var(--on-surface)]">
+                          {successData.letter}
+                        </span>
+                      ) : (
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: 'spring', damping: 15 }}
+                          className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center shadow-inner"
+                        >
+                          <Check size={24} className="stroke-[3]" />
+                        </motion.div>
+                      )}
+                    </div>
+                    
+                    <div className="text-center">
+                      <motion.h3 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-xl font-black tracking-tight text-[var(--on-surface)] lowercase"
                       >
-                        {t.checkboxLink}
-                        <ChevronRight size={10} />
-                      </a>
+                        {successData.title}
+                      </motion.h3>
+                      <motion.p 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-xs text-[var(--on-surface-var)] mt-1.5 font-bold tracking-wider uppercase"
+                      >
+                        {successData.subtitle}
+                      </motion.p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 mt-4 bg-[var(--surface-dim)] border border-[var(--outline)] rounded-full px-5 py-2.5 shadow-sm">
+                      <Loader2 size={14} className="animate-spin text-[var(--on-surface)]" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--on-surface-var)]">
+                        {t.redirecting}
+                      </span>
                     </div>
                   </div>
-
-                  <div className="mt-auto pb-4 flex gap-3">
-                    <button 
-                      onClick={() => setSignupStep(1)}
-                      className="flex-[0.55] py-5 bg-[#2e2e2e] text-[#f0f0f0] border border-[#333333] font-bold tracking-[2px] text-[13.5px] rounded-[24px] flex items-center justify-center transition-transform hover:bg-[#333] active:scale-[0.97]"
-                    >
-                      {t.txtBack}
-                    </button>
-                    <button 
-                      onClick={submitSignup}
-                      className="flex-1 py-5 bg-white text-black font-bold tracking-[2px] text-[13.5px] rounded-[24px] flex items-center justify-center gap-2.5 transition-transform active:scale-[0.97]"
-                    >
-                      {t.txtSubmit}
-                      <ChevronRight size={18} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {selection === 'signup' && isSuccess && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center flex-1 justify-center relative"
-                >
-                  <div className={`w-12 h-12 border-4 border-[#2e2e2e] border-t-white rounded-full animate-spin transition-all ${isReady ? 'opacity-0 scale-75' : 'opacity-100 scale-100'}`} />
-                  
-                  <button 
-                    onClick={() => onLogin(nickname)}
-                    className={`absolute top-1/2 -translate-y-1/2 bg-white text-black px-9 py-4 rounded-[24px] font-semibold text-base transition-all duration-500 hover:bg-[#e8e8e8] whitespace-nowrap ${isReady ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}
-                  >
-                    continue to LinkerRu :re
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
-      </div>
+      </main>
+
+      {/* Footer copyright */}
+      <footer className="w-full max-w-6xl px-6 py-6 text-center text-[10px] font-black uppercase tracking-widest text-[var(--on-surface-var)] opacity-50 z-10 relative">
+        &copy; 2026 LinkerRu &middot; Made with care
+      </footer>
 
       {/* Toast Notification */}
-      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-[#2e2e2e] text-[#f0f0f0] px-5 py-3 rounded-full text-[13.5px] font-medium tracking-[0.2px] border border-[#333333] shadow-[0_4px_24px_rgba(0,0,0,0.6)] z-50 whitespace-nowrap transition-all duration-300 ${toastMsg ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
-        {toastMsg}
+      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3.5 rounded-2xl border border-white/10 shadow-2xl z-50 transition-all duration-400 font-bold text-xs tracking-wider uppercase ${isToastShow ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
+        {toastMessage}
       </div>
 
       {/* Privacy Modal */}
       <AnimatePresence>
-        {showPrivacyModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowPrivacyModal(false)}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-          >
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-[#242424] border border-[#333333] rounded-[24px] w-full max-w-[640px] max-h-[85vh] p-8 flex flex-col gap-6 shadow-[0_16px_48px_rgba(0,0,0,0.8)]"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] max-w-md w-full p-8 flex flex-col gap-6 shadow-2xl relative"
             >
-              <h2 className="text-[22px] font-semibold text-white text-center">
-                {lang === 'ru' ? 'Политика конфиденциальности' : 'Privacy Policy'}
-              </h2>
-              <div className="overflow-y-auto pr-2 space-y-4 text-[13.5px] leading-relaxed text-[#a0a0a0] flex-1">
-                <p>Настоящий документ определяет порядок обработки, хранения и защиты пользовательских данных...</p>
-                <h3 className="text-[15px] font-bold text-white uppercase mt-4 mb-2">1. Общие положения</h3>
-                <p>Сбор данных на Платформе сведен к абсолютному техническому минимуму...</p>
-                <h3 className="text-[15px] font-bold text-white uppercase mt-4 mb-2">2. Обработка данных</h3>
-                <ul className="list-decimal pl-5 space-y-2">
-                  <li><strong>Инфраструктура хранения:</strong> Данные надежно хранятся...</li>
-                  <li><strong>Ограничение доступа:</strong> Исключена ручная обработка...</li>
-                </ul>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-8 h-8 rounded-xl bg-black/5 flex items-center justify-center text-black">
+                  <Shield size={18} />
+                </div>
+                <h3 className="text-base font-black uppercase tracking-wider text-[var(--on-surface)]">
+                  {t.privacyPolicy}
+                </h3>
               </div>
+
+              <div className="max-h-[300px] overflow-y-auto text-xs text-[var(--on-surface-var)] leading-relaxed pr-2 space-y-3 font-medium scrollbar-thin">
+                <p>Настоящий документ определяет порядок обработки, хранения и защиты пользовательских данных на веб-платформе <strong>LinkerRu :re</strong>.</p>
+                <h4 className="text-[10px] font-black text-[var(--on-surface)] uppercase">1. Общие положения</h4>
+                <p>Сбор данных на Платформе сведен к абсолютному техническому минимуму. Мы запрашиваем минимальный набор данных исключительно для предоставления базовых функций персонализации.</p>
+                <h4 className="text-[10px] font-black text-[var(--on-surface)] uppercase">2. Обработка данных</h4>
+                <p>Вся обработка и хранение ваших персональных данных происходит на стороне серверов в зашифрованном виде. Доступ третьих лиц полностью исключен.</p>
+              </div>
+
               <button 
-                onClick={() => setShowPrivacyModal(false)}
-                className="w-full bg-[#2e2e2e] hover:bg-[#333333] text-white border border-[#333333] py-4 rounded-[24px] font-semibold text-[14px] uppercase tracking-wide transition-colors mt-2"
+                onClick={() => setIsModalOpen(false)} 
+                className="bg-black text-white rounded-xl py-3.5 font-bold text-xs tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all"
               >
-                {lang === 'ru' ? 'Понятно' : 'Got it'}
+                Понятно / Got it
               </button>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

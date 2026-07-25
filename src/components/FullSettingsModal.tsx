@@ -22,7 +22,7 @@ import {
   Maximize,
   Minimize
 } from 'lucide-react';
-import { Shield, Wind, AlertTriangle } from 'lucide-react';
+import { Shield, Wind, AlertTriangle, LogOut } from 'lucide-react';
 import { Language, ThemeMode, Material3Palette } from '../types';
 import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
@@ -1329,51 +1329,6 @@ export default function FullSettingsModal({
                     )}
                     
                     {activeTab === 'developer' && (
-                      <div className="flex flex-col gap-6 animate-fade-in pb-10">
-                        <div className="flex items-center gap-4 mb-2">
-                          <div className="w-12 h-12 rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)]">
-                            <AlertTriangle size={24} className="text-red-500" />
-                          </div>
-                          <div>
-                            <h3 className="text-2xl font-black text-[var(--on-surface)] uppercase tracking-tight">
-                              {lang === 'ru' ? 'Опции разработчика' : 'Developer Options'}
-                            </h3>
-                            <p className="text-xs font-bold text-[var(--on-surface-var)] mt-1">
-                              {lang === 'ru' ? 'Опасные действия' : 'Dangerous actions'}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
-                             <div className="flex flex-col gap-2">
-                                <h4 className="text-sm font-black text-[var(--on-surface)]">
-                                  {lang === 'ru' ? 'Уничтожить сессию' : 'Destroy Session'}
-                                </h4>
-                                <p className="text-xs font-bold text-[var(--on-surface-var)]">
-                                  {lang === 'ru' 
-                                    ? 'Это действие удалит все локальные данные, настройки, кастомные ссылки, и сбросит приложение до заводских настроек. Отменить это действие невозможно.' 
-                                    : 'This action will delete all local data, settings, custom links, and reset the app to factory defaults. This cannot be undone.'}
-                                </p>
-                             </div>
-                             <button
-                               onClick={() => {
-                                 if (window.confirm(lang === 'ru' ? 'Вы уверены? Все данные будут удалены.' : 'Are you sure? All data will be deleted.')) {
-                                   localStorage.clear();
-                                   window.location.reload();
-                                 }
-                               }}
-                               className="w-full py-4 bg-red-500/10 text-red-500 hover:bg-red-500/20 active:bg-red-500/30 font-black rounded-xl border border-red-500/20 transition-all flex items-center justify-center gap-2"
-                             >
-                               <AlertTriangle size={18} />
-                               {lang === 'ru' ? 'УНИЧТОЖИТЬ СЕССИЮ' : 'DESTROY SESSION'}
-                             </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {activeTab === 'developer' && (
                       <div className="flex flex-col gap-6 animate-fade-in pb-10" id="dev-options-tab">
                         <div className="flex items-center gap-4 mb-2">
                           <div className="w-12 h-12 rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)]">
@@ -1390,6 +1345,33 @@ export default function FullSettingsModal({
                         </div>
                         
                         <div className="space-y-3" id="dev-danger-zone">
+                          {/* Force Login Screen Card */}
+                          <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+                             <div className="flex flex-col gap-2">
+                                <h4 className="text-sm font-black text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Принудительный выход' : 'Force Login Screen'}
+                                </h4>
+                                <p className="text-xs font-bold text-[var(--on-surface-var)]">
+                                  {lang === 'ru' 
+                                    ? 'Это действие мгновенно завершит текущую сессию и вернет вас на экран входа. Все ваши настройки, тема и кастомные ссылки будут сохранены.' 
+                                    : 'This action will instantly log you out and return to the login screen. All your settings, theme, and custom links will be preserved.'}
+                                </p>
+                             </div>
+                             <button
+                               onClick={() => {
+                                 if (window.confirm(lang === 'ru' ? 'Вы уверены, что хотите выйти на экран входа?' : 'Are you sure you want to log out to the login screen?')) {
+                                   localStorage.removeItem('linkerru_auth');
+                                   window.location.reload();
+                                 }
+                               }}
+                               className="w-full py-4 bg-[var(--on-surface)]/5 hover:bg-[var(--on-surface)]/10 active:bg-[var(--on-surface)]/20 text-[var(--on-surface)] font-black rounded-xl border border-[var(--outline-var)] transition-all flex items-center justify-center gap-2"
+                             >
+                               <LogOut size={18} />
+                               {lang === 'ru' ? 'ВЫЙТИ НА ЭКРАН ВХОДА' : 'FORCE TO LOGIN SCREEN'}
+                             </button>
+                          </div>
+
+                          {/* Destroy Session Card */}
                           <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
                              <div className="flex flex-col gap-2">
                                 <h4 className="text-sm font-black text-[var(--on-surface)]">
