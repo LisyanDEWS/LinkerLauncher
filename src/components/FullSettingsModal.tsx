@@ -64,7 +64,7 @@ interface FullSettingsModalProps {
   onMainWallpaperChange: (w: string) => void;
 }
 
-type Tab = 'appearance' | 'language' | 'notifications' | 'about' | 'security' | 'links' | 'toggles';
+type Tab = 'appearance' | 'language' | 'notifications' | 'about' | 'security' | 'links' | 'toggles' | 'developer';
 
 export default function FullSettingsModal({
   isOpen,
