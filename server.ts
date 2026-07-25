@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
-  const wss = new WebSocketServer({ server, path: '/signal' });
+  const wss = new WebSocketServer({ server });
   
   // --- LISYAN CONNECT WEB SOCKET SIGNALING ---
   const rooms = new Map<string, Set<WebSocket>>();

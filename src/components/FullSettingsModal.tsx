@@ -55,8 +55,6 @@ interface FullSettingsModalProps {
   onPanicKeyChange: (key: string) => void;
   panicUrl: string;
   onPanicUrlChange: (url: string) => void;
-  onDeveloperReset: () => void;
-  onOpenLoginPreview: () => void;
   isMobileLayout?: boolean;
   standbyBg: string;
   onStandbyBgChange: (bg: string) => void;
@@ -66,7 +64,7 @@ interface FullSettingsModalProps {
   onMainWallpaperChange: (w: string) => void;
 }
 
-type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles';
+type Tab = 'appearance' | 'language' | 'notifications' | 'about' | 'security' | 'links' | 'toggles';
 
 export default function FullSettingsModal({
   isOpen,
@@ -95,8 +93,6 @@ export default function FullSettingsModal({
   onPanicKeyChange,
   panicUrl,
   onPanicUrlChange,
-  onDeveloperReset,
-  onOpenLoginPreview,
   isMobileLayout,
   standbyBg,
   onStandbyBgChange,
@@ -474,6 +470,21 @@ export default function FullSettingsModal({
                   <Info size={16} />
                   <span>{t.page_about}</span>
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('developer');
+                    setSearchQuery('');
+                  }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                    activeTab === 'developer' && !searchQuery
+                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                  }`}
+                  id="tab-dev-btn"
+                >
+                  <AlertTriangle size={16} />
+                  <span>{lang === 'ru' ? 'Dev опции' : 'Dev Options'}</span>
+                </button>
               </div>
 
               {/* Developer branding in sidebar footer */}
@@ -500,8 +511,6 @@ export default function FullSettingsModal({
                     t.page_notifications
                   ) : activeTab === 'security' ? (
                     lang === 'ru' ? 'Безопасность' : 'Security'
-                  ) : activeTab === 'sound' ? (
-                    lang === 'ru' ? 'Звук' : 'Sound'
                   ) : activeTab === 'links' ? (
                     lang === 'ru' ? 'Пользовательские ссылки' : 'Custom Links'
                   ) : activeTab === 'toggles' ? (
@@ -1182,36 +1191,6 @@ export default function FullSettingsModal({
                             {lang === 'ru' ? 'АКТИВИРОВАТЬ ПАНИКУ (ТЕСТ)' : 'ACTIVATE PANIC (TEST)'}
                           </button>
                         </div>
-
-                        <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-3">
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)] shrink-0">
-                              <Wind size={18} />
-                            </div>
-                            <div>
-                              <div className="text-sm font-bold text-[var(--on-surface)]">
-                                {t.developer_options_title}
-                              </div>
-                              <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
-                                {t.developer_options_desc}
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={onOpenLoginPreview}
-                            className="w-full py-3 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline)] text-[var(--on-surface)] font-bold text-xs transition-colors hover:bg-[var(--container)]"
-                          >
-                            {t.open_login_preview}
-                          </button>
-
-                          <button
-                            onClick={onDeveloperReset}
-                            className="w-full py-3 rounded-xl bg-red-500 text-white font-bold text-xs transition-colors hover:bg-red-600"
-                          >
-                            {t.full_local_reset}
-                          </button>
-                        </div>
                       </div>
                     )}
                     
@@ -1344,6 +1323,96 @@ export default function FullSettingsModal({
                                 </div>
                               ));
                             })()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeTab === 'developer' && (
+                      <div className="flex flex-col gap-6 animate-fade-in pb-10">
+                        <div className="flex items-center gap-4 mb-2">
+                          <div className="w-12 h-12 rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)]">
+                            <AlertTriangle size={24} className="text-red-500" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black text-[var(--on-surface)] uppercase tracking-tight">
+                              {lang === 'ru' ? 'Опции разработчика' : 'Developer Options'}
+                            </h3>
+                            <p className="text-xs font-bold text-[var(--on-surface-var)] mt-1">
+                              {lang === 'ru' ? 'Опасные действия' : 'Dangerous actions'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+                             <div className="flex flex-col gap-2">
+                                <h4 className="text-sm font-black text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Уничтожить сессию' : 'Destroy Session'}
+                                </h4>
+                                <p className="text-xs font-bold text-[var(--on-surface-var)]">
+                                  {lang === 'ru' 
+                                    ? 'Это действие удалит все локальные данные, настройки, кастомные ссылки, и сбросит приложение до заводских настроек. Отменить это действие невозможно.' 
+                                    : 'This action will delete all local data, settings, custom links, and reset the app to factory defaults. This cannot be undone.'}
+                                </p>
+                             </div>
+                             <button
+                               onClick={() => {
+                                 if (window.confirm(lang === 'ru' ? 'Вы уверены? Все данные будут удалены.' : 'Are you sure? All data will be deleted.')) {
+                                   localStorage.clear();
+                                   window.location.reload();
+                                 }
+                               }}
+                               className="w-full py-4 bg-red-500/10 text-red-500 hover:bg-red-500/20 active:bg-red-500/30 font-black rounded-xl border border-red-500/20 transition-all flex items-center justify-center gap-2"
+                             >
+                               <AlertTriangle size={18} />
+                               {lang === 'ru' ? 'УНИЧТОЖИТЬ СЕССИЮ' : 'DESTROY SESSION'}
+                             </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeTab === 'developer' && (
+                      <div className="flex flex-col gap-6 animate-fade-in pb-10" id="dev-options-tab">
+                        <div className="flex items-center gap-4 mb-2">
+                          <div className="w-12 h-12 rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)]">
+                            <AlertTriangle size={24} className="text-red-500" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black text-[var(--on-surface)] uppercase tracking-tight">
+                              {lang === 'ru' ? 'Опции разработчика' : 'Developer Options'}
+                            </h3>
+                            <p className="text-xs font-bold text-[var(--on-surface-var)] mt-1">
+                              {lang === 'ru' ? 'Опасные действия' : 'Dangerous actions'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3" id="dev-danger-zone">
+                          <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+                             <div className="flex flex-col gap-2">
+                                <h4 className="text-sm font-black text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Уничтожить сессию' : 'Destroy Session'}
+                                </h4>
+                                <p className="text-xs font-bold text-[var(--on-surface-var)]">
+                                  {lang === 'ru' 
+                                    ? 'Это действие удалит все локальные данные, настройки, кастомные ссылки, и сбросит приложение до заводских настроек. Отменить это действие невозможно.' 
+                                    : 'This action will delete all local data, settings, custom links, and reset the app to factory defaults. This cannot be undone.'}
+                                </p>
+                             </div>
+                             <button
+                               onClick={() => {
+                                 if (window.confirm(lang === 'ru' ? 'Вы уверены? Все данные будут удалены.' : 'Are you sure? All data will be deleted.')) {
+                                   localStorage.clear();
+                                   window.location.reload();
+                                 }
+                               }}
+                               className="w-full py-4 bg-red-500/10 text-red-500 hover:bg-red-500/20 active:bg-red-500/30 font-black rounded-xl border border-red-500/20 transition-all flex items-center justify-center gap-2"
+                             >
+                               <AlertTriangle size={18} />
+                               {lang === 'ru' ? 'УНИЧТОЖИТЬ СЕССИЮ' : 'DESTROY SESSION'}
+                             </button>
                           </div>
                         </div>
                       </div>

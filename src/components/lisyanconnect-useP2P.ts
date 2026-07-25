@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
 
 export function useP2P() {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
@@ -18,14 +18,15 @@ export function useP2P() {
   const receivedChunks = useRef<ArrayBuffer[]>([]);
   const receivingMeta = useRef<{name: string, size: number} | null>(null);
   const unsubscribe = useRef<() => void | null>(null);
-  const appliedHostCandidates = useRef<Set<string>>(new Set());
-  const appliedGuestCandidates = useRef<Set<string>>(new Set());
 
   const initWebRTC = useCallback(() => {
     pc.current = new RTCPeerConnection({
       iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun.l.google.com:19302' }
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
       ]
     });
     
@@ -61,8 +62,6 @@ export function useP2P() {
     initWebRTC();
     setStatus('connecting');
     isHost.current = true;
-    appliedHostCandidates.current.clear();
-    appliedGuestCandidates.current.clear();
     
     if (pc.current) {
       ch.current = pc.current.createDataChannel('tx', { ordered: true });
@@ -85,9 +84,7 @@ export function useP2P() {
     // Collect ICE candidates
     pc.current.onicecandidate = (event) => {
       if (event.candidate) {
-        updateDoc(roomRef, {
-          hostCandidates: arrayUnion(event.candidate.toJSON())
-        }).catch(() => {});
+        updateDoc(roomRef, { hostCandidates: arrayUnion(event.candidate.toJSON()) });
       }
     };
 
@@ -108,22 +105,40 @@ export function useP2P() {
     await setDoc(roomRef, roomWithOffer);
 
     // Listen for answer and guest candidates
-    const unsub = onSnapshot(roomRef, (snapshot) => {
+    const guestCandidatesQueue: any[] = [];
+    let isSettingRemote = false;
+
+    const unsub = onSnapshot(roomRef, async (snapshot) => {
       const data = snapshot.data();
       if (!data) return;
 
-      if (!pc.current?.currentRemoteDescription && data.answer) {
-        const answer = new RTCSessionDescription(data.answer);
-        pc.current?.setRemoteDescription(answer).catch(console.error);
-      }
-
+      // Queue candidates
       if (data.guestCandidates) {
         data.guestCandidates.forEach((candidate: any) => {
-          const key = JSON.stringify(candidate);
-          if (appliedGuestCandidates.current.has(key)) return;
-          appliedGuestCandidates.current.add(key);
-          pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+           // To avoid duplicates, we can just push all and let WebRTC handle it, but better to keep track of added
+           guestCandidatesQueue.push(candidate);
         });
+      }
+
+      if (!pc.current?.currentRemoteDescription && data.answer && !isSettingRemote) {
+        isSettingRemote = true;
+        const answer = new RTCSessionDescription(data.answer);
+        await pc.current?.setRemoteDescription(answer).catch(console.error);
+        
+        // Drain queue
+        guestCandidatesQueue.forEach(candidate => {
+           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+        });
+      } else if (pc.current?.currentRemoteDescription) {
+         // If already set, just drain queue
+         guestCandidatesQueue.forEach(candidate => {
+           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+         });
+      }
+      
+      // Clear queue after processing
+      if (pc.current?.currentRemoteDescription) {
+         guestCandidatesQueue.length = 0;
       }
     });
     
@@ -135,8 +150,6 @@ export function useP2P() {
     initWebRTC();
     setStatus('connecting');
     isHost.current = false;
-    appliedHostCandidates.current.clear();
-    appliedGuestCandidates.current.clear();
 
     const roomRef = doc(db, 'connectRooms', roomId);
     const roomSnapshot = await getDoc(roomRef);
@@ -151,9 +164,7 @@ export function useP2P() {
     // Collect ICE candidates
     pc.current.onicecandidate = (event) => {
       if (event.candidate) {
-        updateDoc(roomRef, {
-          guestCandidates: arrayUnion(event.candidate.toJSON())
-        }).catch(() => {});
+        updateDoc(roomRef, { guestCandidates: arrayUnion(event.candidate.toJSON()) });
       }
     };
 
@@ -170,6 +181,8 @@ export function useP2P() {
       }
     });
 
+    const hostCandidatesQueue: any[] = [];
+    
     // Listen for host ICE candidates
     const unsub = onSnapshot(roomRef, (snapshot) => {
       const data = snapshot.data();
@@ -177,11 +190,15 @@ export function useP2P() {
 
       if (data.hostCandidates) {
         data.hostCandidates.forEach((candidate: any) => {
-          const key = JSON.stringify(candidate);
-          if (appliedHostCandidates.current.has(key)) return;
-          appliedHostCandidates.current.add(key);
-          pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+          hostCandidatesQueue.push(candidate);
         });
+      }
+      
+      if (pc.current?.currentRemoteDescription) {
+         hostCandidatesQueue.forEach(candidate => {
+           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+         });
+         hostCandidatesQueue.length = 0;
       }
     });
 
@@ -201,8 +218,14 @@ export function useP2P() {
     
     reader.onload = (e) => {
       if (!e.target?.result || !ch.current) return;
-      ch.current.send(e.target.result as ArrayBuffer);
-      offset += (e.target.result as ArrayBuffer).byteLength;
+      try {
+        ch.current.send(e.target.result as ArrayBuffer);
+        offset += (e.target.result as ArrayBuffer).byteLength;
+      } catch (err) {
+        console.error("WebRTC send error:", err);
+        setTimeout(readSlice, 100);
+        return;
+      }
       
       setProgress({ percent: (offset / file.size) * 100, name: file.name });
       
