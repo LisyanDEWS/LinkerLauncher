@@ -20,7 +20,8 @@ import {
   Link2,
   ToggleLeft,
   Maximize,
-  Minimize
+  Minimize,
+  ArrowLeft
 } from 'lucide-react';
 import { Shield, Wind, AlertTriangle, LogOut } from 'lucide-react';
 import { Language, ThemeMode, Material3Palette } from '../types';
@@ -64,7 +65,7 @@ interface FullSettingsModalProps {
   onMainWallpaperChange: (w: string) => void;
 }
 
-type Tab = 'appearance' | 'language' | 'notifications' | 'about' | 'security' | 'links' | 'toggles' | 'developer';
+type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer';
 
 export default function FullSettingsModal({
   isOpen,
@@ -104,17 +105,32 @@ export default function FullSettingsModal({
   const [activeTab, setActiveTab] = useState<Tab>('appearance');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showMobileContent, setShowMobileContent] = useState(false);
 
   const t = translations[lang];
+
+  // Auto-hide content when the modal opens, so user starts on sidebar on mobile
+  useEffect(() => {
+    if (isOpen) {
+      setShowMobileContent(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleOpenTab = (e: Event) => {
       const customE = e as CustomEvent<Tab>;
       setActiveTab(customE.detail);
+      setShowMobileContent(true);
     };
     window.addEventListener('open_settings_tab', handleOpenTab);
     return () => window.removeEventListener('open_settings_tab', handleOpenTab);
   }, []);
+
+  const selectTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+    setShowMobileContent(true);
+  };
 
   const [customPrimary, setCustomPrimary] = useState('#8B5CF6');
   const [customSecondary, setCustomSecondary] = useState('#A78BFA');
@@ -300,18 +316,23 @@ export default function FullSettingsModal({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.94, y: 20, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className={`relative z-10 w-full rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] backdrop-blur-xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-[250px_1fr] transition-all duration-300 ${isFullscreen ? 'max-w-none h-full !rounded-none' : 'max-w-4xl h-[76vh]'}`}
+            className={`relative z-10 w-full rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all duration-300 ${isFullscreen ? 'max-w-none h-full !rounded-none' : 'max-w-4xl h-[76vh]'}`}
             id="full-settings-modal-container"
           >
             {/* LEFT SIDEBAR PANEL */}
-            <aside className="bg-[var(--container)] border-r border-[var(--outline-var)] flex flex-col p-4" id="settings-sidebar">
+            <aside className={`bg-[var(--container)] border-r border-[var(--outline-var)] flex-col p-4 w-full md:w-[250px] md:h-full shrink-0 ${showMobileContent ? 'hidden md:flex' : 'flex'}`} id="settings-sidebar">
               {/* Search Bar */}
               <div className="relative mb-5" id="settings-search-wrapper">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (e.target.value.trim() !== '') {
+                      setShowMobileContent(true);
+                    }
+                  }}
                   placeholder={t.search_placeholder}
                   className="w-full text-xs font-semibold py-2.5 pl-10 pr-4 bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--on-surface)]"
                   id="settings-search-input"
@@ -327,16 +348,13 @@ export default function FullSettingsModal({
               </div>
 
               {/* Sidebar Tabs */}
-              <div className="flex-1 space-y-1.5" id="sidebar-nav-tabs">
+              <div className="flex-1 space-y-1.5 overflow-y-auto scrollbar-none pr-1" id="sidebar-nav-tabs">
                 <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mb-2">
                   {lang === 'ru' ? 'Общие' : 'General'}
                 </span>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('appearance');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('appearance')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'appearance' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -349,10 +367,7 @@ export default function FullSettingsModal({
                 </button>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('language');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('language')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'language' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -369,10 +384,7 @@ export default function FullSettingsModal({
                 </span>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('notifications');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('notifications')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'notifications' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -384,10 +396,7 @@ export default function FullSettingsModal({
                   <span>{t.page_notifications}</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setActiveTab('sound');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('sound')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'sound' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -400,10 +409,7 @@ export default function FullSettingsModal({
                 </button>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('security');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('security')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'security' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -420,10 +426,7 @@ export default function FullSettingsModal({
                 </span>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('links');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('links')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'links' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -436,10 +439,7 @@ export default function FullSettingsModal({
                 </button>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('toggles');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('toggles')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'toggles' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -456,10 +456,7 @@ export default function FullSettingsModal({
                 </span>
 
                 <button
-                  onClick={() => {
-                    setActiveTab('about');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('about')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'about' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -471,10 +468,7 @@ export default function FullSettingsModal({
                   <span>{t.page_about}</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setActiveTab('developer');
-                    setSearchQuery('');
-                  }}
+                  onClick={() => selectTab('developer')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'developer' && !searchQuery
                       ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
@@ -495,30 +489,42 @@ export default function FullSettingsModal({
             </aside>
 
             {/* RIGHT MAIN CONTENT AREA */}
-            <main className="flex-1 flex flex-col overflow-hidden bg-[var(--bg)]" id="settings-content-wrapper">
+            <main className={`flex-1 flex flex-col overflow-hidden bg-[var(--bg)] h-full ${showMobileContent ? 'flex' : 'hidden md:flex'}`} id="settings-content-wrapper">
               {/* Header inside settings */}
               <header className="flex items-center justify-between p-6 pb-2 border-b border-[var(--outline-var)] flex-shrink-0" id="settings-content-header">
-                <h2 className="text-2xl font-extrabold tracking-tight text-[var(--on-surface)]">
-                  {searchQuery ? (
-                    <span className="text-sm font-semibold text-[var(--on-surface-var)] uppercase tracking-wider block mb-1">
-                      {lang === 'ru' ? 'Результаты поиска' : 'Search results for'} &quot;{searchQuery}&quot;
-                    </span>
-                  ) : activeTab === 'appearance' ? (
-                    t.page_appearance
-                  ) : activeTab === 'language' ? (
-                    t.page_language
-                  ) : activeTab === 'notifications' ? (
-                    t.page_notifications
-                  ) : activeTab === 'security' ? (
-                    lang === 'ru' ? 'Безопасность' : 'Security'
-                  ) : activeTab === 'links' ? (
-                    lang === 'ru' ? 'Пользовательские ссылки' : 'Custom Links'
-                  ) : activeTab === 'toggles' ? (
-                    lang === 'ru' ? 'Настройка переключателей' : 'Quick Toggles Setup'
-                  ) : (
-                    t.page_about
+                <div className="flex items-center gap-3">
+                  {/* Back button on mobile */}
+                  {showMobileContent && (
+                    <button
+                      onClick={() => setShowMobileContent(false)}
+                      className="md:hidden flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)]"
+                      title={lang === 'ru' ? 'Назад' : 'Back'}
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
                   )}
-                </h2>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-[var(--on-surface)]">
+                    {searchQuery ? (
+                      <span className="text-sm font-semibold text-[var(--on-surface-var)] uppercase tracking-wider block mb-1">
+                        {lang === 'ru' ? 'Результаты поиска' : 'Search results for'} &quot;{searchQuery}&quot;
+                      </span>
+                    ) : activeTab === 'appearance' ? (
+                      t.page_appearance
+                    ) : activeTab === 'language' ? (
+                      t.page_language
+                    ) : activeTab === 'notifications' ? (
+                      t.page_notifications
+                    ) : activeTab === 'security' ? (
+                      lang === 'ru' ? 'Безопасность' : 'Security'
+                    ) : activeTab === 'links' ? (
+                      lang === 'ru' ? 'Пользовательские ссылки' : 'Custom Links'
+                    ) : activeTab === 'toggles' ? (
+                      lang === 'ru' ? 'Настройка переключателей' : 'Quick Toggles Setup'
+                    ) : (
+                      t.page_about
+                    )}
+                  </h2>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <button

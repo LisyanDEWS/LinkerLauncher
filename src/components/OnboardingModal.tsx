@@ -262,7 +262,7 @@ export default function OnboardingModal({
         </div>
 
         {/* Scrollable Step Content */}
-        <div className="p-8 flex-1 min-h-[340px] max-h-[50vh] overflow-y-auto scrollbar-thin">
+        <div className="p-8 flex-1 min-h-[220px] sm:min-h-[340px] max-h-[50vh] overflow-y-auto scrollbar-thin">
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div
