@@ -187,15 +187,8 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3"
+          className="flex items-center"
         >
-          <div className="w-9 h-9 rounded-xl bg-black flex items-center justify-center shadow-sm">
-            <img 
-              src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" 
-              alt="Logo" 
-              className="w-6 h-6 object-contain rounded-full brightness-0 invert" 
-            />
-          </div>
           <span className="text-sm font-black tracking-wider uppercase text-[var(--on-surface)]">
             LinkerRu <span className="text-xs font-medium lowercase opacity-50">:re</span>
           </span>

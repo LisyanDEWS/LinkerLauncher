@@ -63,6 +63,7 @@ import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
 import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
+import OnboardingModal from './components/OnboardingModal';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -92,7 +93,7 @@ export default function App() {
   });
 
   const [activePaletteId, setActivePaletteId] = useState<string>(() => {
-    return localStorage.getItem('linkerru_accent') || 'sage_khaki';
+    return localStorage.getItem('linkerru_accent') || 'monochrome';
   });
 
   const [isContrast, setIsContrast] = useState<boolean>(() => {
@@ -221,8 +222,17 @@ export default function App() {
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isStandbyOpen, setIsStandbyOpen] = useState(false);
   const [isStandbySetupOpen, setIsStandbySetupOpen] = useState(false);
-  const [clockType, setClockType] = useState<'digital' | 'analog'>('digital');
-  const [clockVariation, setClockVariation] = useState<1 | 2 | 3>(1);
+  const [clockType, setClockType] = useState<'digital' | 'analog'>(() => {
+    return (localStorage.getItem('linkerru_clock_type') as 'digital' | 'analog') || 'digital';
+  });
+  const [clockVariation, setClockVariation] = useState<1 | 2 | 3>(() => {
+    return (Number(localStorage.getItem('linkerru_clock_variation')) as 1 | 2 | 3) || 1;
+  });
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
+    const auth = localStorage.getItem('linkerru_auth') === 'true';
+    const onboarded = localStorage.getItem('linkerru_onboarded') === 'true';
+    return auth && !onboarded;
+  });
 
   // --- Real-time time chips ---
   const [nowTime, setNowTime] = useState('--:--');
@@ -944,6 +954,9 @@ export default function App() {
           setNickname(nick);
           localStorage.setItem('linkerru_nickname', nick);
           playChime('click');
+          if (localStorage.getItem('linkerru_onboarded') !== 'true') {
+            setIsOnboardingOpen(true);
+          }
         }}
         lang={lang}
         onLangChange={setLang}
@@ -2094,6 +2107,55 @@ export default function App() {
         clockType={clockType}
         clockVariation={clockVariation}
       />
+
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => {
+          setIsOnboardingOpen(false);
+          playChime('toast');
+        }}
+        lang={lang}
+        onLangChange={(l) => {
+          setLang(l);
+          localStorage.setItem('linkerru_lang', l);
+        }}
+        theme={theme}
+        onThemeChange={(t) => {
+          setTheme(t);
+          localStorage.setItem('linkerru_theme', t);
+        }}
+        activePaletteId={activePaletteId}
+        onPaletteChange={(id) => {
+          setActivePaletteId(id);
+          localStorage.setItem('linkerru_accent', id);
+        }}
+        mainWallpaper={mainWallpaper}
+        onWallpaperChange={(w) => {
+          setMainWallpaper(w);
+          localStorage.setItem('linkerru_wallpaper', w);
+        }}
+        clockType={clockType}
+        onClockTypeChange={(type) => {
+          setClockType(type);
+          localStorage.setItem('linkerru_clock_type', type);
+        }}
+        clockVariation={clockVariation}
+        onClockVariationChange={(v) => {
+          setClockVariation(v);
+          localStorage.setItem('linkerru_clock_variation', String(v));
+        }}
+        panicKey={panicKey}
+        onPanicKeyChange={(key) => {
+          setPanicKey(key);
+          localStorage.setItem('linkerru_panic_key', key);
+        }}
+        panicUrl={panicUrl}
+        onPanicUrlChange={(url) => {
+          setPanicUrl(url);
+          localStorage.setItem('linkerru_panic_url', url);
+        }}
+      />
+
       <div 
         className="pointer-events-none fixed inset-0 z-[9999]" 
         style={{ 
