@@ -21,13 +21,22 @@ import {
   ToggleLeft,
   Maximize,
   Minimize,
-  ArrowLeft
+  ArrowLeft,
+  User,
+  Mail,
+  Lock,
+  Loader2,
+  KeyRound,
+  Edit2
 } from 'lucide-react';
 import { Shield, Wind, AlertTriangle, LogOut } from 'lucide-react';
 import { Language, ThemeMode, Material3Palette } from '../types';
 import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
 import SquashToggle from './SquashToggle';
+import { userAuth, userDb } from '../lib/userFirebase';
+import { updatePassword, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 
 interface FullSettingsModalProps {
   isOpen: boolean;
@@ -63,9 +72,13 @@ interface FullSettingsModalProps {
   onFontChange: (font: string) => void;
   mainWallpaper: string;
   onMainWallpaperChange: (w: string) => void;
+  isAuthenticated: boolean;
+  nickname: string;
+  onNicknameChange: (newNick: string) => void;
+  initialTab?: Tab;
 }
 
-type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer';
+type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account';
 
 export default function FullSettingsModal({
   isOpen,
@@ -101,8 +114,12 @@ export default function FullSettingsModal({
   onFontChange,
   mainWallpaper,
   onMainWallpaperChange,
+  isAuthenticated,
+  nickname,
+  onNicknameChange,
+  initialTab,
 }: FullSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('appearance');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showMobileContent, setShowMobileContent] = useState(false);
@@ -113,8 +130,11 @@ export default function FullSettingsModal({
   useEffect(() => {
     if (isOpen) {
       setShowMobileContent(false);
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   useEffect(() => {
     const handleOpenTab = (e: Event) => {
@@ -350,6 +370,23 @@ export default function FullSettingsModal({
               {/* Sidebar Tabs */}
               <div className="flex-1 space-y-1.5 overflow-y-auto scrollbar-none pr-1" id="sidebar-nav-tabs">
                 <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mb-2">
+                  {lang === 'ru' ? 'Аккаунт' : 'Account'}
+                </span>
+
+                <button
+                  onClick={() => selectTab('account')}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                    activeTab === 'account' && !searchQuery
+                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                  }`}
+                  id="tab-account-btn"
+                >
+                  <User size={16} />
+                  <span>{lang === 'ru' ? 'Профиль & Пароль' : 'Profile & Password'}</span>
+                </button>
+
+                <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
                   {lang === 'ru' ? 'Общие' : 'General'}
                 </span>
 
@@ -508,6 +545,8 @@ export default function FullSettingsModal({
                       <span className="text-sm font-semibold text-[var(--on-surface-var)] uppercase tracking-wider block mb-1">
                         {lang === 'ru' ? 'Результаты поиска' : 'Search results for'} &quot;{searchQuery}&quot;
                       </span>
+                    ) : activeTab === 'account' ? (
+                      lang === 'ru' ? 'Управление аккаунтом' : 'Account Management'
                     ) : activeTab === 'appearance' ? (
                       t.page_appearance
                     ) : activeTab === 'language' ? (
@@ -1406,6 +1445,17 @@ export default function FullSettingsModal({
                       </div>
                     )}
                     
+                    {activeTab === 'account' && (
+                      <div className="space-y-6" id="page-account-view">
+                        <AccountTabContent
+                          lang={lang}
+                          nickname={nickname}
+                          onNicknameChange={onNicknameChange}
+                          isAuthenticated={isAuthenticated}
+                        />
+                      </div>
+                    )}
+
                     {activeTab === 'about' && (
                       <div className="space-y-6" id="page-about-view">
                         <div className="p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl flex flex-col items-center justify-center text-center gap-4 py-12">
@@ -1431,5 +1481,238 @@ export default function FullSettingsModal({
         </div>
       )}
     </AnimatePresence>
+  );
+}
+
+function AccountTabContent({
+  lang,
+  nickname,
+  onNicknameChange,
+  isAuthenticated
+}: {
+  lang: Language;
+  nickname: string;
+  onNicknameChange: (newNick: string) => void;
+  isAuthenticated: boolean;
+}) {
+  const [nickInput, setNickInput] = useState(nickname);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    setNickInput(nickname);
+  }, [nickname]);
+
+  const handleUpdateNickname = async () => {
+    if (!nickInput.trim()) {
+      setMessage({
+        type: 'error',
+        text: lang === 'ru' ? 'Никнейм не может быть пустым' : 'Nickname cannot be empty'
+      });
+      return;
+    }
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      onNicknameChange(nickInput.trim());
+      // If user is authenticated, we also update it in Firestore
+      if (isAuthenticated && userAuth.currentUser) {
+        const userDocRef = doc(userDb, 'users', userAuth.currentUser.uid);
+        await updateDoc(userDocRef, {
+          nickname: nickInput.trim(),
+          updatedAt: Date.now()
+        });
+      }
+      setMessage({
+        type: 'success',
+        text: lang === 'ru' ? 'Никнейм успешно обновлен!' : 'Nickname updated successfully!'
+      });
+    } catch (err: any) {
+      console.error(err);
+      setMessage({
+        type: 'error',
+        text: lang === 'ru' ? 'Ошибка при сохранении' : 'Failed to save nickname'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword) {
+      setMessage({
+        type: 'error',
+        text: lang === 'ru' ? 'Введите новый пароль' : 'Please enter a new password'
+      });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setMessage({
+        type: 'error',
+        text: lang === 'ru' ? 'Пароль должен быть не менее 6 символов' : 'Password must be at least 6 characters'
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setMessage({
+        type: 'error',
+        text: lang === 'ru' ? 'Пароли не совпадают' : 'Passwords do not match'
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const user = userAuth.currentUser;
+      if (user) {
+        await updatePassword(user, newPassword);
+        setMessage({
+          type: 'success',
+          text: lang === 'ru' ? 'Пароль успешно изменен!' : 'Password updated successfully!'
+        });
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setMessage({
+          type: 'error',
+          text: lang === 'ru' ? 'Пользователь не найден' : 'User not found'
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      let errMsg = lang === 'ru' ? 'Ошибка изменения пароля' : 'Failed to update password';
+      if (err.code === 'auth/requires-recent-login') {
+        errMsg = lang === 'ru' 
+          ? 'Для изменения пароля требуется выйти и войти заново.' 
+          : 'This operation is sensitive and requires recent authentication. Please log out and log back in.';
+      }
+      setMessage({
+        type: 'error',
+        text: errMsg
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Alert Banner if message exists */}
+      {message && (
+        <div className={`p-4 rounded-2xl border text-xs font-bold flex items-center gap-2 ${
+          message.type === 'success' 
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
+            : 'bg-red-500/10 border-red-500/20 text-red-500'
+        }`}>
+          <span>{message.text}</span>
+        </div>
+      )}
+
+      {/* User Profile Info */}
+      <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-[var(--accent)] to-[var(--on-surface)] p-0.5 shadow-sm">
+            <div className="h-full w-full rounded-full bg-[var(--surface)] flex items-center justify-center">
+              <User size={20} className="text-[var(--on-surface-var)]" />
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-[var(--on-surface)] leading-tight">
+              {isAuthenticated ? nickname : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
+            </h4>
+            <p className="text-[11px] text-[var(--on-surface-var)] font-semibold mt-0.5">
+              {isAuthenticated ? userAuth.currentUser?.email : 'guest@linker.os'}
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--outline-var)] pt-4 space-y-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)]">
+              {lang === 'ru' ? 'Имя профиля (Никнейм)' : 'Profile Nickname'}
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={nickInput}
+                onChange={(e) => setNickInput(e.target.value)}
+                className="flex-1 text-xs font-semibold px-4.5 py-3 bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--on-surface)]"
+                placeholder={lang === 'ru' ? 'Имя пользователя' : 'Username'}
+                disabled={isLoading}
+              />
+              <button
+                onClick={handleUpdateNickname}
+                disabled={isLoading}
+                className="px-5 py-3 rounded-xl text-xs font-black bg-[var(--accent)] text-white hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                <span>{lang === 'ru' ? 'Сохранить' : 'Save'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Change Password Panel */}
+      <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+        <h4 className="text-sm font-black text-[var(--on-surface)] flex items-center gap-2">
+          <KeyRound size={16} className="text-[var(--on-surface-var)]" />
+          <span>{lang === 'ru' ? 'Безопасность & Пароль' : 'Security & Password'}</span>
+        </h4>
+
+        {isAuthenticated ? (
+          <form onSubmit={handleChangePassword} className="space-y-4 pt-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)]">
+                {lang === 'ru' ? 'Новый пароль' : 'New Password'}
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full text-xs font-semibold px-4.5 py-3 bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--on-surface)]"
+                placeholder="••••••••"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)]">
+                {lang === 'ru' ? 'Подтвердите пароль' : 'Confirm Password'}
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full text-xs font-semibold px-4.5 py-3 bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--on-surface)]"
+                placeholder="••••••••"
+                disabled={isLoading}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3.5 rounded-xl text-xs font-black bg-[var(--accent)] text-white hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+              <span>{lang === 'ru' ? 'Изменить пароль' : 'Update Password'}</span>
+            </button>
+          </form>
+        ) : (
+          <div className="pt-2 text-center py-6 px-4">
+            <p className="text-xs font-bold text-[var(--on-surface-var)] max-w-sm mx-auto leading-relaxed">
+              {lang === 'ru' 
+                ? 'Смена пароля недоступна в гостевом режиме. Пожалуйста, откройте Linker R Launcher на ПК или переключитесь на десктопную версию для полноценной авторизации.' 
+                : 'Password changing is not available in guest mode. Please launch Linker R Launcher on a desktop browser or PC mode to register and manage your account.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

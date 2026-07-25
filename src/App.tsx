@@ -221,6 +221,7 @@ export default function App() {
   const [isWeatherOpen, setIsWeatherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [isFullSettingsOpen, setIsFullSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account'>('appearance');
   const [isServerOpen, setIsServerOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isStandbyOpen, setIsStandbyOpen] = useState(false);
@@ -852,6 +853,11 @@ export default function App() {
     localStorage.setItem('linkerru_theme', final);
   };
 
+  const handleOpenSettings = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account' = 'appearance') => {
+    setSettingsInitialTab(tab);
+    setIsFullSettingsOpen(true);
+  };
+
   useEffect(() => {
     localStorage.setItem('linkerru_palette', activePalette.primary);
   }, [activePalette]);
@@ -1128,7 +1134,10 @@ export default function App() {
   }
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="min-h-screen text-[var(--on-surface)] p-5 transition-colors duration-300 md:p-8 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white"
       style={{ background: getWallpaperStyle() }}
       id="root-launcher-app"
@@ -1348,7 +1357,7 @@ export default function App() {
           <button
             onClick={() => {
               playChime('click');
-              setIsFullSettingsOpen(true);
+              handleOpenSettings();
             }}
             className="w-11 h-11 rounded-full bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer"
             id="topbar-avatar"
@@ -1598,7 +1607,7 @@ export default function App() {
             {/* Settings App Shortcut */}
             <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
               playChime('click');
-              setIsFullSettingsOpen(true);
+              handleOpenSettings();
             }}>
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
                 <Settings size={24} className="text-[var(--on-surface)]" />
@@ -1638,9 +1647,7 @@ export default function App() {
             title="Edit Links"
             onClick={() => {
               playChime('click');
-              setIsFullSettingsOpen(true);
-              // We need a way to open specific tab, but for now we'll dispatch an event
-              setTimeout(() => window.dispatchEvent(new CustomEvent('open_settings_tab', { detail: 'links' })), 100);
+              handleOpenSettings('links');
             }}
           >
             <Edit2 size={14} />
@@ -1692,8 +1699,7 @@ export default function App() {
             title="Edit Toggles"
             onClick={() => {
               playChime('click');
-              setIsFullSettingsOpen(true);
-              setTimeout(() => window.dispatchEvent(new CustomEvent('open_settings_tab', { detail: 'toggles' })), 100);
+              handleOpenSettings('toggles');
             }}
           >
             <Edit2 size={14} />
@@ -1791,8 +1797,12 @@ export default function App() {
               </div>
             </div>
             <div className="flex flex-col flex-1">
-              <span className="text-sm font-black text-[var(--on-surface)] leading-tight">Guest User</span>
-              <span className="text-[10px] text-[var(--on-surface-var)] font-semibold mt-0.5">guest@linker.os</span>
+              <span className="text-sm font-black text-[var(--on-surface)] leading-tight">
+                {isAuthenticated ? nickname : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
+              </span>
+              <span className="text-[10px] text-[var(--on-surface-var)] font-semibold mt-0.5">
+                {isAuthenticated ? userAuth.currentUser?.email : 'guest@linker.os'}
+              </span>
             </div>
             <button onClick={handleDestroySession} className="h-10 w-10 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors shadow-sm" title={lang === 'ru' ? 'Выйти' : 'Log out'}>
               <LogOut size={16} />
@@ -1800,7 +1810,7 @@ export default function App() {
           </div>
           
           <div className="mt-4 flex flex-col gap-2">
-            <button className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm">
+            <button onClick={() => { playChime('click'); handleOpenSettings('account'); }} className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm">
               {lang === 'ru' ? 'Управление аккаунтом' : 'Manage Account'}
             </button>
             <p className="text-[9px] text-[var(--on-surface-var)] text-center select-none font-semibold">
@@ -2094,7 +2104,7 @@ export default function App() {
         onLangChange={handleLangChange}
         theme={theme}
         onThemeToggle={handleThemeToggle}
-        onOpenFullSettings={() => setIsFullSettingsOpen(true)}
+        onOpenFullSettings={() => handleOpenSettings()}
         primaryColor={activePalette.primary}
         brightness={brightness}
         onBrightnessChange={(v) => {
@@ -2114,6 +2124,7 @@ export default function App() {
           playChime('click');
           setIsFullSettingsOpen(false);
         }}
+        initialTab={settingsInitialTab}
         lang={lang}
         onLangChange={handleLangChange}
         theme={theme}
@@ -2150,6 +2161,12 @@ export default function App() {
         }}
         brightness={brightness}
         onBrightnessChange={setBrightness}
+        isAuthenticated={isAuthenticated}
+        nickname={nickname}
+        onNicknameChange={(newNick) => {
+          setNickname(newNick);
+          localStorage.setItem('linkerru_nickname', newNick);
+        }}
         onClickSoundChange={(s) => {
           setClickSound(s);
           localStorage.setItem('linkerru_click_sound', s);
@@ -2326,6 +2343,6 @@ export default function App() {
           transition: 'background-color 0.3s' 
         }} 
       />
-    </div>
+    </motion.div>
   );
 }
