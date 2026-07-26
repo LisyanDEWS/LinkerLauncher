@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield } from 'lucide-react';
+import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
+type LoginThemeMode = 'light' | 'dark' | 'system';
+
 interface LoginScreenProps {
-  onLogin: (nickname: string) => void;
+  onLogin: (nickname: string, isSignup: boolean) => void;
   lang: 'ru' | 'en';
   onLangChange: (lang: 'ru' | 'en') => void;
 }
@@ -15,6 +17,36 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const [selection, setSelection] = useState<'login' | 'signup' | null>(null);
   const [signupStep, setSignupStep] = useState<number>(1);
   const [accepted, setAccepted] = useState<boolean>(false);
+
+  // --- Login screen theme (light / dark / system) ---
+  const [themeMode, setThemeMode] = useState<LoginThemeMode>(() => {
+    return (localStorage.getItem('linkerru_login_theme') as LoginThemeMode) || 'system';
+  });
+  const [systemDark, setSystemDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const effectiveTheme: 'light' | 'dark' = useMemo(() => {
+    if (themeMode === 'system') return systemDark ? 'dark' : 'light';
+    return themeMode;
+  }, [themeMode, systemDark]);
+
+  const cycleTheme = () => {
+    const order: LoginThemeMode[] = ['light', 'dark', 'system'];
+    const idx = order.indexOf(themeMode);
+    const next = order[(idx + 1) % order.length];
+    setThemeMode(next);
+    localStorage.setItem('linkerru_login_theme', next);
+  };
   
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
@@ -129,7 +161,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         }
       }
       
-      triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick);
+      triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick, false);
     } catch (err: any) {
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка входа: Неверный email или пароль' : 'Login failed: Invalid email or password';
@@ -171,7 +203,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         updatedAt: Date.now()
       });
       
-      triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser);
+      triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser, true);
     } catch (err: any) {
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка регистрации' : 'Registration failed';
@@ -186,7 +218,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     }
   };
 
-  const triggerSuccess = (title: string, subtitle: string, letter: string, finalNick: string) => {
+  const triggerSuccess = (title: string, subtitle: string, letter: string, finalNick: string, isSignup: boolean) => {
     setSuccessData({ title, subtitle, letter });
     setIsSuccess(true);
     setLoadingDone(false);
@@ -196,7 +228,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       setLoadingDone(true);
       showToast(t.redirecting);
       setTimeout(() => {
-        onLogin(finalNick);
+        onLogin(finalNick, isSignup);
       }, 1000);
     }, 1500);
   };
@@ -211,7 +243,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     setSignupEmail(''); setSignupPass(''); setSignupUser('');
   };
 
-  // FORCE LIGHT MONOCHROME PALETTE LOCALLY
+  // MONOCHROME PALETTES FOR THE LOGIN SCREEN (light + dark)
   const lightMonoThemeVars = {
     '--bg': '#F5F5F5',
     '--surface': '#FFFFFF',
@@ -227,13 +259,46 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     '--on-accent': '#FFFFFF',
   } as React.CSSProperties;
 
+  const darkMonoThemeVars = {
+    '--bg': '#09090b',
+    '--surface': '#18181b',
+    '--surface-dim': '#27272a',
+    '--surface-bright': '#3f3f46',
+    '--on-surface': '#fafafa',
+    '--on-surface-var': '#a1a1aa',
+    '--outline': '#3f3f46',
+    '--outline-var': '#27272a',
+    '--container': '#121212',
+    '--container-high': '#27272a',
+    '--accent': '#fafafa',
+    '--on-accent': '#09090b',
+  } as React.CSSProperties;
+
+  const themeVars = effectiveTheme === 'dark' ? darkMonoThemeVars : lightMonoThemeVars;
+  const isDark = effectiveTheme === 'dark';
+
+  // Theme toggle labels
+  const themeLabel = lang === 'ru'
+    ? (themeMode === 'light' ? 'Светлая' : themeMode === 'dark' ? 'Тёмная' : 'Авто')
+    : (themeMode === 'light' ? 'Light' : themeMode === 'dark' ? 'Dark' : 'Auto');
+  const themeIcon = themeMode === 'light' ? <Sun size={14} />
+    : themeMode === 'dark' ? <Moon size={14} />
+    : <Monitor size={14} />;
+
   return (
-    <div 
-      style={lightMonoThemeVars}
-      className="bg-[var(--bg)] min-h-screen w-full flex flex-col items-center justify-between font-sans text-[var(--on-surface)] select-none overflow-x-hidden relative"
+    <div
+      style={themeVars}
+      data-theme={effectiveTheme}
+      className="bg-[var(--bg)] min-h-screen w-full flex flex-col items-center justify-between font-sans text-[var(--on-surface)] select-none overflow-x-hidden relative transition-colors duration-300"
     >
-      {/* Decorative background grids/patterns */}
-      <div className="absolute inset-0 bg-[radial-gradient(#e5e5e5_1px,transparent_1px)] [background-size:16px_16px] opacity-70 pointer-events-none z-0" />
+      {/* Decorative background: aurora glow + dot grid */}
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+        <div
+          className="absolute -top-1/4 left-1/2 -translate-x-1/2 h-[60vh] w-[80vh] rounded-full blur-[120px] opacity-30"
+          style={{ background: `radial-gradient(circle, var(--accent) 0%, transparent 60%)` }}
+        />
+        <div className={`absolute inset-0 bg-[radial-gradient(${isDark ? '#3f3f46' : '#e5e5e5'}_1px,transparent_1px)] [background-size:18px_18px] opacity-50`} />
+      </div>
 
       {/* Top Header Controls */}
       <header className="w-full max-w-6xl px-6 py-6 flex justify-between items-center z-20 relative">
@@ -247,18 +312,31 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
           </span>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-3"
         >
+          {/* Theme toggle (Light / Dark / System) */}
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={cycleTheme}
+            title={lang === 'ru' ? 'Переключить тему (Светлая / Тёмная / Авто)' : 'Toggle theme (Light / Dark / Auto)'}
+            aria-label={lang === 'ru' ? 'Переключить тему' : 'Toggle theme'}
+            className="flex items-center gap-2 bg-[var(--surface)] rounded-2xl px-3 py-2 border border-[var(--outline)] shadow-sm cursor-pointer text-[var(--on-surface)] hover:border-[var(--on-surface)] transition-colors"
+          >
+            {themeIcon}
+            <span className="text-[11px] font-bold tracking-wider uppercase">{themeLabel}</span>
+          </motion.button>
+
           <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm">
-            <button 
+            <button
               onClick={() => onLangChange('en')}
               className={`px-4 py-1.5 rounded-xl text-[11px] font-bold tracking-wider cursor-pointer transition-all ${lang === 'en' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}>
               EN
             </button>
-            <button 
+            <button
               onClick={() => onLangChange('ru')}
               className={`px-4 py-1.5 rounded-xl text-[11px] font-bold tracking-wider cursor-pointer transition-all ${lang === 'ru' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}>
               RU
@@ -270,67 +348,94 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       {/* Main Container */}
       <main className="flex-1 flex items-center justify-center w-full max-w-[1200px] px-6 z-10 py-12">
         <div className="w-full flex flex-col items-center">
-          
+
           <AnimatePresence mode="wait">
             {!selection ? (
-              // STEP 1: CHOOSE ACTION SPLIT LAYOUT
-              <motion.div 
+              // STEP 1: HERO + CHOOSE ACTION
+              <motion.div
                 key="choose"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl"
+                className="flex flex-col items-center w-full"
               >
-                {/* LOGIN CHOICE CARD */}
+                {/* Hero branding */}
                 <motion.div
-                  whileHover={{ y: -6, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.08)' }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setSelection('login')}
-                  className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[360px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.6 }}
+                  className="flex flex-col items-center text-center mb-10"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all duration-300">
-                      <Mail size={22} />
-                    </div>
-                    <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
-                      01 / SIGN IN
-                    </span>
+                  <div className="w-16 h-16 rounded-3xl bg-[var(--accent)] flex items-center justify-center mb-5 shadow-lg overflow-hidden" style={{ boxShadow: '0 12px 32px -8px var(--accent)' }}>
+                    <img
+                      src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8"
+                      alt="LinkerRu Logo"
+                      className="w-12 h-12 object-contain rounded-full"
+                    />
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold font-sans tracking-tight mb-2 text-[var(--on-surface)]">
-                      {lang === 'ru' ? 'Войти в профиль' : 'Sign In to Profile'}
-                    </h2>
-                    <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
-                      {lang === 'ru' ? 'Авторизуйтесь, чтобы синхронизировать свои виджеты и настройки.' : 'Log in to synchronize your customized widgets and user workspace settings.'}
-                    </p>
-                  </div>
+                  <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-[var(--on-surface)] leading-none">
+                    {lang === 'ru' ? 'Добро пожаловать' : 'Welcome back'}
+                  </h1>
+                  <p className="mt-3 text-sm font-bold uppercase tracking-[0.15em] text-[var(--on-surface-var)]">
+                    {lang === 'ru' ? 'Войдите или создайте аккаунт LinkerRu' : 'Sign in or create your LinkerRu account'}
+                  </p>
                 </motion.div>
 
-                {/* SIGNUP CHOICE CARD */}
-                <motion.div
-                  whileHover={{ y: -6, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.08)' }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setSelection('signup')}
-                  className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[360px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-black group-hover:text-white transition-all duration-300">
-                      <User size={22} />
+                {/* Choice cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+                  {/* LOGIN CHOICE CARD */}
+                  <motion.div
+                    whileHover={{ y: -6, scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelection('login')}
+                    className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[300px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
+                    style={{ boxShadow: 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.06))' }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-all duration-300">
+                        <Mail size={22} />
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
+                        01 / SIGN IN
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
-                      02 / SIGN UP
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold font-sans tracking-tight mb-2 text-[var(--on-surface)]">
-                      {lang === 'ru' ? 'Зарегистрироваться' : 'Create Account'}
-                    </h2>
-                    <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
-                      {lang === 'ru' ? 'Создайте новый цифровой аккаунт и откройте весь потенциал платформы.' : 'Create a fresh account to unlock the full potential of your unified hub.'}
-                    </p>
-                  </div>
-                </motion.div>
+                    <div>
+                      <h2 className="text-2xl font-black tracking-tight mb-2 text-[var(--on-surface)]">
+                        {lang === 'ru' ? 'Войти в профиль' : 'Sign In to Profile'}
+                      </h2>
+                      <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
+                        {lang === 'ru' ? 'Авторизуйтесь, чтобы синхронизировать свои виджеты и настройки.' : 'Log in to synchronize your customized widgets and user workspace settings.'}
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* SIGNUP CHOICE CARD */}
+                  <motion.div
+                    whileHover={{ y: -6, scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelection('signup')}
+                    className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[300px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
+                    style={{ boxShadow: 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.06))' }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-all duration-300">
+                        <User size={22} />
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
+                        02 / SIGN UP
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-black tracking-tight mb-2 text-[var(--on-surface)]">
+                        {lang === 'ru' ? 'Зарегистрироваться' : 'Create Account'}
+                      </h2>
+                      <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
+                        {lang === 'ru' ? 'Создайте новый цифровой аккаунт и откройте весь потенциал платформы.' : 'Create a fresh account to unlock the full potential of your unified hub.'}
+                      </p>
+                    </div>
+                  </motion.div>
+                </div>
               </motion.div>
             ) : (
               // STEP 2: ACTIVE FORM PANELS
@@ -355,7 +460,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   <div className="mt-8 flex flex-col h-full justify-between">
                     {/* Header */}
                     <div className="mb-8 text-center md:text-left">
-                      <div className="w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
+                      <div className="w-14 h-14 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center mb-4 mx-auto md:mx-0">
                         <img 
                           src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" 
                           alt="Logo" 
@@ -495,14 +600,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                               onClick={() => setAccepted(!accepted)}
                               className={`bg-[var(--surface-dim)] rounded-2xl p-4 flex items-start gap-4 cursor-pointer border ${errorField === 'signup-cb' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] hover:border-[var(--on-surface-var)]'} transition-all`}
                             >
-                              <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${accepted ? 'bg-black text-white' : 'border border-[var(--outline)]'}`}>
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${accepted ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'border border-[var(--outline)]'}`}>
                                 {accepted && <Check size={12} className="stroke-[3]" />}
                               </div>
                               <div className="flex flex-col text-xs leading-relaxed select-none">
                                 <span className="font-semibold text-[var(--on-surface)]">{t.acceptTerms}</span>
                                 <span 
                                   onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }} 
-                                  className="text-[var(--on-surface-var)] underline font-bold cursor-pointer hover:text-black"
+                                  className="text-[var(--on-surface-var)] underline font-bold cursor-pointer hover:text-[var(--on-surface)]"
                                 >
                                   {t.privacyPolicy}
                                 </span>
@@ -557,7 +662,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ type: 'spring', damping: 15 }}
-                          className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center shadow-inner"
+                          className="w-12 h-12 bg-[var(--accent)] text-[var(--on-accent)] rounded-full flex items-center justify-center shadow-inner"
                         >
                           <Check size={24} className="stroke-[3]" />
                         </motion.div>
@@ -604,7 +709,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       </footer>
 
       {/* Toast Notification */}
-      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3.5 rounded-2xl border border-white/10 shadow-2xl z-50 transition-all duration-400 font-bold text-xs tracking-wider uppercase ${isToastShow ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
+      <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-[var(--on-accent)] px-6 py-3.5 rounded-2xl border border-[var(--outline)] shadow-2xl z-50 transition-all duration-400 font-bold text-xs tracking-wider uppercase ${isToastShow ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
         {toastMessage}
       </div>
 
@@ -620,7 +725,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
               className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] max-w-md w-full p-8 flex flex-col gap-6 shadow-2xl relative"
             >
               <div className="flex items-center gap-3 mb-1">
-                <div className="w-8 h-8 rounded-xl bg-black/5 flex items-center justify-center text-black">
+                <div className="w-8 h-8 rounded-xl bg-[var(--container)] flex items-center justify-center text-[var(--on-surface)]">
                   <Shield size={18} />
                 </div>
                 <h3 className="text-base font-black uppercase tracking-wider text-[var(--on-surface)]">
@@ -638,7 +743,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
               <button 
                 onClick={() => setIsModalOpen(false)} 
-                className="bg-black text-white rounded-xl py-3.5 font-bold text-xs tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all"
+                className="bg-[var(--accent)] text-[var(--on-accent)] rounded-xl py-3.5 font-bold text-xs tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all"
               >
                 Понятно / Got it
               </button>

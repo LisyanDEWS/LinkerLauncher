@@ -1,6 +1,6 @@
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from '../data/sounds';
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useContainerSize } from '../hooks/useContainerSize';
 import {
   X,
   Palette,
@@ -19,24 +19,28 @@ import {
   CloudSun,
   Link2,
   ToggleLeft,
-  Maximize,
-  Minimize,
   ArrowLeft,
   User,
-  Mail,
   Lock,
   Loader2,
   KeyRound,
-  Edit2
 } from 'lucide-react';
 import { Shield, Wind, AlertTriangle, LogOut } from 'lucide-react';
-import { Language, ThemeMode, Material3Palette } from '../types';
+import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
 import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
 import SquashToggle from './SquashToggle';
+import { ColorPickerField } from './ColorPickerField';
 import { userAuth, userDb } from '../lib/userFirebase';
-import { updatePassword, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { updatePassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+
+const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
+  theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)' },
+  language: { ru: 'Язык', en: 'Language' },
+  sound: { ru: 'Звук', en: 'Sound' },
+  contrast: { ru: 'Контраст', en: 'Contrast' },
+};
 
 interface FullSettingsModalProps {
   isOpen: boolean;
@@ -75,14 +79,19 @@ interface FullSettingsModalProps {
   isAuthenticated: boolean;
   nickname: string;
   onNicknameChange: (newNick: string) => void;
+  customLinks: QuickLink[];
+  onLinksChange: (links: QuickLink[]) => void;
+  activeToggles: ToggleId[];
+  onTogglesChange: (toggles: ToggleId[]) => void;
   initialTab?: Tab;
+  embedded?: boolean;
 }
 
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account';
 
 export default function FullSettingsModal({
   isOpen,
-  onClose,
+  onClose: _onClose,
   lang,
   onLangChange,
   theme,
@@ -117,24 +126,42 @@ export default function FullSettingsModal({
   isAuthenticated,
   nickname,
   onNicknameChange,
+  customLinks,
+  onLinksChange,
+  activeToggles,
+  onTogglesChange,
   initialTab,
+  embedded = false,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showMobileContent, setShowMobileContent] = useState(false);
+
+  // Track the container (window manager) width to switch between
+  // wide (iPadOS split-view) and narrow (iOS stack navigation) layouts.
+  const { ref: containerRef, isNarrow } = useContainerSize();
+
+  // When switching to narrow layout, reset to sidebar (master list) view.
+  // When switching to wide layout, always show content panel.
+  useEffect(() => {
+    if (!isNarrow) {
+      setShowMobileContent(true);
+    } else {
+      setShowMobileContent(false);
+    }
+  }, [isNarrow]);
 
   const t = translations[lang];
 
   // Auto-hide content when the modal opens, so user starts on sidebar on mobile
   useEffect(() => {
     if (isOpen) {
-      setShowMobileContent(false);
+      setShowMobileContent(isNarrow ? false : true);
       if (initialTab) {
         setActiveTab(initialTab);
       }
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, isNarrow]);
 
   useEffect(() => {
     const handleOpenTab = (e: Event) => {
@@ -188,7 +215,7 @@ export default function FullSettingsModal({
         setCustomPrimary(p.primary || '#8B5CF6');
         setCustomSecondary(p.secondary || '#A78BFA');
         setCustomTertiary(p.tertiary || '#6D28D9');
-      } catch (e) {}
+      } catch {}
     }
   }, []);
 
@@ -316,31 +343,28 @@ export default function FullSettingsModal({
     );
   }, [searchQuery, searchableSettings]);
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/45 backdrop-blur-md"
-            id="full-settings-backdrop"
-          />
-
-          {/* Core Window Frame */}
-          <motion.div
-            initial={{ scale: 0.94, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.94, y: 20, opacity: 0 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className={`relative z-10 w-full rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all duration-300 ${isFullscreen ? 'max-w-none h-full !rounded-none' : 'max-w-4xl h-[76vh]'}`}
-            id="full-settings-modal-container"
-          >
-            {/* LEFT SIDEBAR PANEL */}
-            <aside className={`bg-[var(--container)] border-r border-[var(--outline-var)] flex-col p-4 w-full md:w-[250px] md:h-full shrink-0 ${showMobileContent ? 'hidden md:flex' : 'flex'}`} id="settings-sidebar">
+  // Embedded mode: render content inline filling the window manager container.
+  // No fixed overlay, no backdrop, no fullscreen/close buttons (window manager provides those).
+  // Layout adapts to the container width via ResizeObserver (isNarrow state):
+  //   - Wide (>= 580px): iPadOS-style split view (sidebar + content side-by-side)
+  //   - Narrow (< 580px): iOS-style stack navigation (master list -> drill-down detail)
+  if (embedded) {
+    if (!isOpen) return null;
+    return (
+      <div
+        ref={containerRef}
+        className={`flex h-full w-full overflow-hidden bg-[var(--bg)] ${isNarrow ? 'flex-col' : 'flex-row'}`}
+        id="full-settings-modal-container"
+      >
+            {/* LEFT SIDEBAR PANEL — master list in narrow mode, sidebar in wide mode */}
+            <aside
+              className={`bg-[var(--container)] border-[var(--outline-var)] flex-col p-4 shrink-0 ${
+                isNarrow
+                  ? `w-full h-full border-b ${showMobileContent ? 'hidden' : 'flex'}`
+                  : `w-[250px] h-full border-r ${showMobileContent ? 'flex' : 'flex'}`
+              }`}
+              id="settings-sidebar"
+            >
               {/* Search Bar */}
               <div className="relative mb-5" id="settings-search-wrapper">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
@@ -525,16 +549,23 @@ export default function FullSettingsModal({
               </div>
             </aside>
 
-            {/* RIGHT MAIN CONTENT AREA */}
-            <main className={`flex-1 flex flex-col overflow-hidden bg-[var(--bg)] h-full ${showMobileContent ? 'flex' : 'hidden md:flex'}`} id="settings-content-wrapper">
+            {/* RIGHT MAIN CONTENT AREA — drill-down detail in narrow mode */}
+            <main
+              className={`flex-1 flex flex-col overflow-hidden bg-[var(--bg)] h-full ${
+                isNarrow
+                  ? (showMobileContent ? 'flex' : 'hidden')
+                  : 'flex'
+              }`}
+              id="settings-content-wrapper"
+            >
               {/* Header inside settings */}
               <header className="flex items-center justify-between p-6 pb-2 border-b border-[var(--outline-var)] flex-shrink-0" id="settings-content-header">
                 <div className="flex items-center gap-3">
-                  {/* Back button on mobile */}
-                  {showMobileContent && (
+                  {/* Back button — only shown in narrow (iOS) mode */}
+                  {isNarrow && showMobileContent && (
                     <button
                       onClick={() => setShowMobileContent(false)}
-                      className="md:hidden flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)]"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)]"
                       title={lang === 'ru' ? 'Назад' : 'Back'}
                     >
                       <ArrowLeft size={18} />
@@ -563,23 +594,6 @@ export default function FullSettingsModal({
                       t.page_about
                     )}
                   </h2>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsFullscreen(!isFullscreen)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
-                    id="full-settings-maximize-btn"
-                  >
-                    {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
-                    id="full-settings-close-btn"
-                  >
-                    <X size={18} />
-                  </button>
                 </div>
               </header>
 
@@ -821,27 +835,21 @@ export default function FullSettingsModal({
                                  {lang === 'ru' ? 'Создать свою тему' : 'Create your own theme'}
                                </div>
                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase">Primary (Hex)</label>
-                                    <div className="flex relative items-center">
-                                      <input type="color" value={customPrimary} onChange={e => setCustomPrimary(e.target.value)} className="absolute left-2 w-4 h-4 p-0 border-0 rounded-sm overflow-hidden" />
-                                      <input type="text" value={customPrimary} onChange={e => setCustomPrimary(e.target.value)} className="w-full bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--on-surface)] uppercase" placeholder="#8B5CF6" />
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase">Secondary (Hex)</label>
-                                    <div className="flex relative items-center">
-                                      <input type="color" value={customSecondary} onChange={e => setCustomSecondary(e.target.value)} className="absolute left-2 w-4 h-4 p-0 border-0 rounded-sm overflow-hidden" />
-                                      <input type="text" value={customSecondary} onChange={e => setCustomSecondary(e.target.value)} className="w-full bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--on-surface)] uppercase" placeholder="#A78BFA" />
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase">Tertiary (Hex)</label>
-                                    <div className="flex relative items-center">
-                                      <input type="color" value={customTertiary} onChange={e => setCustomTertiary(e.target.value)} className="absolute left-2 w-4 h-4 p-0 border-0 rounded-sm overflow-hidden" />
-                                      <input type="text" value={customTertiary} onChange={e => setCustomTertiary(e.target.value)} className="w-full bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--on-surface)] uppercase" placeholder="#6D28D9" />
-                                    </div>
-                                  </div>
+                                  <ColorPickerField
+                                    label="Primary (Hex)"
+                                    value={customPrimary}
+                                    onChange={setCustomPrimary}
+                                  />
+                                  <ColorPickerField
+                                    label="Secondary (Hex)"
+                                    value={customSecondary}
+                                    onChange={setCustomSecondary}
+                                  />
+                                  <ColorPickerField
+                                    label="Tertiary (Hex)"
+                                    value={customTertiary}
+                                    onChange={setCustomTertiary}
+                                  />
                                </div>
                                <button 
                                  onClick={createCustomTheme} 
@@ -1204,7 +1212,7 @@ export default function FullSettingsModal({
                               onKeyDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                let key = e.key;
+                                const key = e.key;
                                 if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta') return;
                                 const modifiers = [];
                                 if (e.ctrlKey) modifiers.push('Ctrl');
@@ -1244,76 +1252,77 @@ export default function FullSettingsModal({
                         <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-4">
                           <div className="flex items-center justify-between">
                             <div className="text-sm font-bold text-[var(--on-surface)]">
-                              {lang === 'ru' ? 'Пользовательские ссылки' : 'Custom Links'}
+                              {lang === 'ru' ? 'Быстрые ссылки' : 'Quick Links'}
                             </div>
+                            <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tabular-nums">
+                              {customLinks.length}/{MAX_QUICK_LINKS}
+                            </span>
                           </div>
-                          
-                          <div className="flex flex-col gap-3">
-                            {(() => {
-                              const s = localStorage.getItem('linkerru_links');
-                              const defaultLinks = [
-                                { name: 'Telegram Version A', url: 'https://t.me/linkerru' },
-                                { name: 'SoundCloud', url: 'https://soundcloud.com' }
-                              ];
-                              const links: {name: string, url: string}[] = s ? JSON.parse(s) : defaultLinks;
-                              
-                              const saveLinks = (newLinks: typeof links) => {
-                                localStorage.setItem('linkerru_links', JSON.stringify(newLinks));
-                                window.dispatchEvent(new Event('linkerru_links_changed'));
-                                // Force re-render of this block
-                                setSearchQuery(searchQuery + ' ');
-                                setTimeout(() => setSearchQuery(searchQuery.trim()), 0);
-                              };
 
+                          <p className="text-[11px] text-[var(--on-surface-var)]">
+                            {lang === 'ru'
+                              ? `Первые 2 ссылки — стандартные (редактируются, но не удаляются). Можно добавить до ${MAX_QUICK_LINKS - DEFAULT_QUICK_LINKS.length} своих.`
+                              : `First 2 links are default (editable but not removable). You can add up to ${MAX_QUICK_LINKS - DEFAULT_QUICK_LINKS.length} custom ones.`}
+                          </p>
+
+                          <div className="flex flex-col gap-3">
+                            {customLinks.map((link, idx) => {
+                              const isDefault = idx < DEFAULT_QUICK_LINKS.length;
                               return (
-                                <>
-                                  {links.map((link, idx) => (
-                                    <div key={idx} className="flex items-center gap-2">
-                                      <input 
-                                        type="text" 
-                                        value={link.name}
-                                        onChange={(e) => {
-                                          const newLinks = [...links];
-                                          newLinks[idx].name = e.target.value;
-                                          saveLinks(newLinks);
-                                        }}
-                                        placeholder="Name"
-                                        className="flex-1 text-xs py-2 px-3 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none"
-                                      />
-                                      <input 
-                                        type="url" 
-                                        value={link.url}
-                                        onChange={(e) => {
-                                          const newLinks = [...links];
-                                          newLinks[idx].url = e.target.value;
-                                          saveLinks(newLinks);
-                                        }}
-                                        placeholder="URL"
-                                        className="flex-[2] text-xs py-2 px-3 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none"
-                                      />
-                                      <button 
-                                        onClick={() => {
-                                          const newLinks = links.filter((_, i) => i !== idx);
-                                          saveLinks(newLinks);
-                                        }}
-                                        className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20"
-                                      >
-                                        <X size={14} />
-                                      </button>
-                                    </div>
-                                  ))}
-                                  <button 
-                                    onClick={() => {
-                                      const newLinks = [...links, { name: 'New Link', url: 'https://' }];
-                                      saveLinks(newLinks);
+                                <div key={idx} className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={link.name}
+                                    onChange={(e) => {
+                                      const next = [...customLinks];
+                                      next[idx] = { ...next[idx], name: e.target.value };
+                                      onLinksChange(next);
                                     }}
-                                    className="w-full py-2.5 rounded-xl bg-[var(--surface-dim)] border border-dashed border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] hover:bg-[var(--surface)] transition-colors mt-2"
-                                  >
-                                    + {lang === 'ru' ? 'Добавить ссылку' : 'Add Link'}
-                                  </button>
-                                </>
+                                    placeholder={lang === 'ru' ? 'Название' : 'Name'}
+                                    className="flex-1 min-w-0 text-xs py-2 px-3 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--accent)]"
+                                  />
+                                  <input
+                                    type="url"
+                                    value={link.url}
+                                    onChange={(e) => {
+                                      const next = [...customLinks];
+                                      next[idx] = { ...next[idx], url: e.target.value };
+                                      onLinksChange(next);
+                                    }}
+                                    placeholder="https://"
+                                    className="flex-[2] min-w-0 text-xs py-2 px-3 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--accent)]"
+                                  />
+                                  {isDefault ? (
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--outline)]" title={lang === 'ru' ? 'Нельзя удалить' : 'Cannot delete'}>
+                                      <Lock size={13} />
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        const next = customLinks.filter((_, i) => i !== idx);
+                                        onLinksChange(next);
+                                      }}
+                                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                                      title={lang === 'ru' ? 'Удалить' : 'Delete'}
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  )}
+                                </div>
                               );
-                            })()}
+                            })}
+
+                            {customLinks.length < MAX_QUICK_LINKS && (
+                              <button
+                                onClick={() => {
+                                  const next = [...customLinks, { name: '', url: 'https://' }];
+                                  onLinksChange(next);
+                                }}
+                                className="w-full py-2.5 rounded-xl bg-[var(--surface-dim)] border border-dashed border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] hover:bg-[var(--surface)] transition-colors mt-2"
+                              >
+                                + {lang === 'ru' ? 'Добавить ссылку' : 'Add Link'}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1326,48 +1335,39 @@ export default function FullSettingsModal({
                             <div className="text-sm font-bold text-[var(--on-surface)]">
                               {lang === 'ru' ? 'Быстрые переключатели' : 'Quick Toggles'}
                             </div>
+                            <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tabular-nums">
+                              {activeToggles.length}/{MAX_TOGGLES}
+                            </span>
                           </div>
-                          
+
+                          <p className="text-[11px] text-[var(--on-surface-var)]">
+                            {lang === 'ru'
+                              ? 'Включите или выключите переключатели, которые появятся на главной панели.'
+                              : 'Enable or disable the toggles that appear on the home panel.'}
+                          </p>
+
                           <div className="grid grid-cols-2 gap-3">
-                            {(() => {
-                              const s = localStorage.getItem('linkerru_toggles');
-                              const defaultToggles = ['theme', 'language', 'sound', 'contrast'];
-                              const parsedToggles: string[] = s ? JSON.parse(s) : defaultToggles;
-                              const activeToggles = parsedToggles.filter(t => defaultToggles.includes(t));
-                              
-                              const saveToggles = (newToggles: string[]) => {
-                                localStorage.setItem('linkerru_toggles', JSON.stringify(newToggles));
-                                window.dispatchEvent(new Event('linkerru_toggles_changed'));
-                                setSearchQuery(searchQuery + ' ');
-                                setTimeout(() => setSearchQuery(searchQuery.trim()), 0);
-                              };
-
-                              const toggleItem = (id: string) => {
-                                if (activeToggles.includes(id)) {
-                                  saveToggles(activeToggles.filter(t => t !== id));
-                                } else {
-                                  saveToggles([...activeToggles, id]);
-                                }
-                              };
-
-                              const allAvailableToggles = [
-                                { id: 'theme', name: lang === 'ru' ? 'Тема (Светлая/Темная)' : 'Theme (Light/Dark)' },
-                                { id: 'language', name: lang === 'ru' ? 'Язык' : 'Language' },
-                                { id: 'sound', name: lang === 'ru' ? 'Звук' : 'Sound' },
-                                { id: 'contrast', name: lang === 'ru' ? 'Контраст' : 'Contrast' }
-                              ];
-
-                              return allAvailableToggles.map(tgl => (
-                                <div key={tgl.id} className="flex items-center justify-between p-3 bg-[var(--surface-dim)] rounded-xl border border-[var(--outline-var)]">
-                                  <span className="text-xs font-semibold text-[var(--on-surface)]">{tgl.name}</span>
-                                  <SquashToggle 
-                                    checked={activeToggles.includes(tgl.id)} 
-                                    onChange={() => toggleItem(tgl.id)} 
-                                    color={activePalette.primary} 
+                            {TOGGLE_IDS.map((id) => {
+                              const isActive = activeToggles.includes(id);
+                              return (
+                                <div key={id} className="flex items-center justify-between p-3 bg-[var(--surface-dim)] rounded-xl border border-[var(--outline-var)]">
+                                  <span className="text-xs font-semibold text-[var(--on-surface)]">
+                                    {lang === 'ru' ? TOGGLE_LABELS[id].ru : TOGGLE_LABELS[id].en}
+                                  </span>
+                                  <SquashToggle
+                                    checked={isActive}
+                                    onChange={() => {
+                                      if (isActive) {
+                                        onTogglesChange(activeToggles.filter((t) => t !== id));
+                                      } else if (activeToggles.length < MAX_TOGGLES) {
+                                        onTogglesChange([...activeToggles, id]);
+                                      }
+                                    }}
+                                    color={activePalette.primary}
                                   />
                                 </div>
-                              ));
-                            })()}
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -1477,11 +1477,12 @@ export default function FullSettingsModal({
                 )}
               </div>
             </main>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
+      </div>
+    );
+  }
+
+  // Non-embedded mode (legacy fixed overlay) — no longer used, settings opens via window manager
+  return null;
 }
 
 function AccountTabContent({

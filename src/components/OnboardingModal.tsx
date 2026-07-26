@@ -221,43 +221,40 @@ export default function OnboardingModal({
   }[lang];
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[200] flex items-center justify-center p-4 overflow-y-auto">
-      <motion.div 
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-lg z-[200] flex items-center justify-center p-4 overflow-y-auto">
+      <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 15 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-        className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2.5rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col relative my-8"
-        style={{
-          boxShadow: '0 30px 60px -15px rgba(0,0,0,0.5)'
-        }}
+        className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] w-full max-w-2xl overflow-hidden flex flex-col relative my-8"
+        style={{ boxShadow: 'var(--shadow-3, 0 12px 32px rgba(0,0,0,0.25))' }}
       >
-        {/* Top Progress bar */}
-        <div className="h-1.5 w-full bg-[var(--outline-var)] flex">
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div 
-              key={i} 
-              className="flex-1 transition-all duration-300"
-              style={{
-                backgroundColor: i < step ? 'var(--on-surface)' : 'transparent',
-                opacity: i < step ? 1 : 0
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Modal Header */}
-        <div className="p-8 pb-4 border-b border-[var(--outline-var)] flex justify-between items-start">
-          <div>
-            <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
-              {t.step} {step} {t.of} {totalSteps}
-            </span>
-            <h2 className="text-xl font-black text-[var(--on-surface)] mt-1 flex items-center gap-2">
-              <Sparkles size={20} className="text-[var(--on-surface-var)] shrink-0" />
-              <span>{t.welcome}</span>
-            </h2>
+        {/* Accent gradient header — integrated feel */}
+        <div className="relative px-8 pt-8 pb-6 overflow-hidden" style={{ background: `linear-gradient(135deg, ${selectedPalette.primary} 0%, ${selectedPalette.tertiary} 100%)` }}>
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-white/5" />
+          <div className="relative z-10 flex justify-between items-start text-white">
+            <div>
+              <span className="text-[10px] font-black tracking-widest uppercase opacity-80">
+                {t.step} {step} {t.of} {totalSteps}
+              </span>
+              <h2 className="text-2xl font-black mt-1 flex items-center gap-2">
+                <Sparkles size={20} className="shrink-0" />
+                <span>{t.welcome}</span>
+              </h2>
+              <p className="text-xs font-semibold opacity-80 mt-1">{t.subtitle}</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm px-3.5 py-1.5 rounded-full text-xs font-bold border border-white/20">
+              linkerru :re
+            </div>
           </div>
-          <div className="bg-[var(--surface-dim)] px-3.5 py-1.5 rounded-full text-xs font-bold text-[var(--on-surface-var)] border border-[var(--outline-var)]">
-            linkerru :re
+          {/* Progress bar */}
+          <div className="relative z-10 mt-5 h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+            <motion.div
+              animate={{ width: `${(step / totalSteps) * 100}%` }}
+              transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+              className="h-full bg-white rounded-full"
+            />
           </div>
         </div>
 

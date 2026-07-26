@@ -2,6 +2,14 @@ export type Language = 'ru' | 'en';
 export type ThemeMode = 'light' | 'dark';
 export type ClockType = 'digital' | 'analog';
 
+/**
+ * Available home screen versions. Each value maps to a registered home
+ * component in the HomeVersionRegistry. Add new values here when introducing
+ * a new top-level home design (not minor tweaks — those belong as settings
+ * inside an existing version).
+ */
+export type HomeVersion = 'classic' | 'nextgen' | 'expressive' | 'fusion';
+
 export interface Material3Palette {
   id: string;
   nameRu: string;
@@ -32,3 +40,25 @@ export interface CalendarEvent {
   titleRu: string;
   titleEn: string;
 }
+
+/** A single quick-link shown on the home screen panel. */
+export interface QuickLink {
+  name: string;
+  url: string;
+}
+
+/** Maximum number of quick links allowed (2 default + 2 custom). */
+export const MAX_QUICK_LINKS = 4;
+
+/** The 2 default quick links — always present, editable but not deletable. */
+export const DEFAULT_QUICK_LINKS: QuickLink[] = [
+  { name: 'Telegram', url: 'https://t.me/linkerru' },
+  { name: 'SoundCloud', url: 'https://soundcloud.com' },
+];
+
+/** All available quick toggle ids. */
+export const TOGGLE_IDS = ['theme', 'language', 'sound', 'contrast'] as const;
+export type ToggleId = (typeof TOGGLE_IDS)[number];
+
+/** Maximum number of toggles that can be active in the panel at once. */
+export const MAX_TOGGLES = 4;

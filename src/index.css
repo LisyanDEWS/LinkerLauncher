@@ -184,3 +184,395 @@ input[type="range"]::-moz-range-thumb {
   animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* ── Embedded modal override ──
+   When a modal is rendered inside a window-manager window, its `fixed inset-0`
+   + backdrop would escape the window bounds. This class neutralizes that:
+   the backdrop becomes transparent/non-blocking and the card fills the window. */
+.wm-embedded > .fixed.inset-0,
+.wm-embedded > .fixed {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  padding: 0 !important;
+  z-index: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+/* Hide the backdrop entirely inside windows */
+.wm-embedded > .fixed > .absolute.inset-0,
+.wm-embedded .bg-black\/40,
+.wm-embedded .bg-black\/60,
+.wm-embedded .bg-black\/75 {
+  display: none !important;
+}
+/* Make the modal card fill the window instead of being a centered popup */
+.wm-embedded > .fixed > .relative.z-10,
+.wm-embedded > .fixed > [class*="max-w-"] {
+  position: relative !important;
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+/* Ensure settings modal body fills the window and is scrollable/resizable */
+.wm-embedded #full-settings-modal-container {
+  height: 100% !important;
+  max-height: none !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+/* Hide the close button inside windows — the window frame has its own */
+.wm-embedded .absolute.top-4.right-4,
+.wm-embedded [id*="close-btn"],
+.wm-embedded [id*="maximize-btn"] {
+  display: none !important;
+}
+
+/* ── Container Queries for window-manager windows ──
+   The .wm-content element is a CSS container. When its width drops below
+   580px, we override Tailwind's md: and sm: breakpoint classes so that
+   child components switch to their mobile layout — regardless of the
+   actual browser viewport size. This makes every app inside a floating
+   window respond to the window's dimensions, not the screen's. */
+.wm-content {
+  container-type: inline-size;
+  container-name: wm-window;
+}
+
+/* When the window container is narrow (< 580px), force all md: and sm:
+   responsive classes to use their mobile (base) values instead.
+   This effectively makes the browser think the viewport is mobile-sized
+   for everything inside the window. */
+@container wm-window (max-width: 579px) {
+  /* Layout direction: row → column */
+  .wm-content .md\:flex-row { flex-direction: column !important; }
+  .wm-content .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
+  .wm-content .md\:grid-cols-3 { grid-template-columns: 1fr !important; }
+  .wm-content .md\:grid-cols-4 { grid-template-columns: 1fr !important; }
+
+  /* Borders: remove right borders, add bottom borders (for stacked layout) */
+  .wm-content .md\:border-r { border-right-width: 0 !important; border-bottom-width: 1px !important; }
+  .wm-content .md\:border-r-0 { border-right-width: 0 !important; }
+  .wm-content .md\:border-t-0 { border-top-width: 1px !important; }
+
+  /* Width: full width in narrow mode */
+  .wm-content .md\:w-\[250px\],
+  .wm-content .md\:w-\[280px\],
+  .wm-content .md\:w-\[300px\],
+  .wm-content .md\:w-\[320px\],
+  .wm-content .md\:w-\[340px\],
+  .wm-content .md\:w-\[360px\],
+  .wm-content .md\:w-1\/2,
+  .wm-content .md\:w-1\/3,
+  .wm-content .md\:w-2\/3,
+  .wm-content .md\:w-64,
+  .wm-content .md\:w-72,
+  .wm-content .md\:w-80 { width: 100% !important; }
+
+  /* Display: show/hide elements that are md: controlled */
+  .wm-content .md\:flex { display: flex !important; }
+  .wm-content .md\:hidden { display: none !important; }
+  .wm-content .md\:block { display: block !important; }
+
+  /* sm: breakpoint overrides (for slightly narrow windows) */
+  .wm-content .sm\:grid-cols-2 { grid-template-columns: 1fr !important; }
+  .wm-content .sm\:grid-cols-3 { grid-template-columns: 1fr !important; }
+  .wm-content .sm\:flex-row { flex-direction: column !important; }
+
+  /* Padding adjustments for narrow windows */
+  .wm-content .sm\:p-6 { padding: 1rem !important; }
+  .wm-content .md\:p-6 { padding: 1rem !important; }
+  .wm-content .md\:p-8 { padding: 1.25rem !important; }
+
+  /* Text size adjustments */
+  .wm-content .md\:text-2xl { font-size: 1.25rem !important; }
+  .wm-content .md\:text-3xl { font-size: 1.5rem !important; }
+}
+
+/* When the window container is very narrow (< 380px), apply even more
+   aggressive mobile styling */
+@container wm-window (max-width: 379px) {
+  .wm-content .sm\:min-h-\[200px\] { min-height: 120px !important; }
+  .wm-content .sm\:text-base { font-size: 0.875rem !important; }
+}
+
+/* ── Boot Animation (3-phase launch sequence) ──
+   Phase 1 'skeleton'  : blank shapes fall in one-by-one (staggered), gray
+   Phase 2 'colored'   : shapes get their actual colors, still no text/icons
+   Phase 3 'ready'     : text and icons fade in
+
+   The data-boot attribute on #root-launcher-app drives all three phases.
+   This gives apps (especially Weather) time to fetch data before content
+   is revealed.
+
+   Timing: first element finishes falling at 1.1s, last at 1.7s.
+   Animation duration: 0.4s (fast). Stagger step: 40ms.
+   17 elements total, delays range from 0.70s to 1.34s. */
+
+/* Base transition for opacity — always active during boot so that when
+   !important overrides are removed (entering 'ready' phase), the opacity
+   change animates smoothly. */
+[data-boot] svg,
+[data-boot] img,
+[data-boot] h1,
+[data-boot] h2,
+[data-boot] h3,
+[data-boot] h4,
+[data-boot] p,
+[data-boot] span {
+  transition: opacity 0.5s ease;
+}
+
+/* ── Keyframes for falling entrance (same style as weather forecast) ── */
+@keyframes boot-fall {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Phase 1: Skeleton (blank shapes falling in one-by-one) ── */
+[data-boot="skeleton"] .card,
+[data-boot="skeleton"] .panel,
+[data-boot="skeleton"] #app-topbar button,
+[data-boot="skeleton"] #branding-tag,
+[data-boot="skeleton"] #version-pill,
+[data-boot="skeleton"] #branding-title {
+  animation: boot-fall 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  opacity: 0;
+}
+
+/* Gray backgrounds for cards/panels during skeleton */
+[data-boot="skeleton"] .card,
+[data-boot="skeleton"] .panel {
+  background: var(--surface-dim) !important;
+}
+
+/* The branding tag is a <span> — keep it visible as a blank pill */
+[data-boot="skeleton"] #branding-tag {
+  color: transparent !important;
+  background: var(--surface-dim) !important;
+}
+
+/* Stagger delays — 40ms steps, first starts at 0.70s (finishes 1.10s),
+   last starts at 1.34s (finishes 1.74s).
+   Order: topbar pills → branding → row1 cards → row2 cards/panels */
+[data-boot="skeleton"] #topbar-weather-pill     { animation-delay: 0.70s; }
+[data-boot="skeleton"] #topbar-calendar-pill    { animation-delay: 0.74s; }
+[data-boot="skeleton"] #topbar-clock-pill       { animation-delay: 0.78s; }
+[data-boot="skeleton"] #topbar-settings-pill    { animation-delay: 0.82s; }
+[data-boot="skeleton"] #topbar-notifications    { animation-delay: 0.86s; }
+[data-boot="skeleton"] #topbar-avatar           { animation-delay: 0.90s; }
+
+[data-boot="skeleton"] #branding-tag     { animation-delay: 0.94s; }
+[data-boot="skeleton"] #branding-title   { animation-delay: 0.98s; }
+[data-boot="skeleton"] #version-pill     { animation-delay: 1.02s; }
+
+[data-boot="skeleton"] #card-proxy-space      { animation-delay: 1.06s; }
+[data-boot="skeleton"] #card-agno-gpt         { animation-delay: 1.10s; }
+[data-boot="skeleton"] #card-linkergames      { animation-delay: 1.14s; }
+[data-boot="skeleton"] #card-lisyan-connect   { animation-delay: 1.18s; }
+
+[data-boot="skeleton"] #card-locked-2        { animation-delay: 1.22s; }
+[data-boot="skeleton"] #card-app-launcher    { animation-delay: 1.26s; }
+[data-boot="skeleton"] #panel-links          { animation-delay: 1.30s; }
+[data-boot="skeleton"] #panel-quicktoggles   { animation-delay: 1.34s; }
+
+/* ── Hide all text, icons, and images during skeleton and colored phases ── */
+[data-boot="skeleton"] svg,
+[data-boot="skeleton"] img,
+[data-boot="skeleton"] h1,
+[data-boot="skeleton"] h2,
+[data-boot="skeleton"] h3,
+[data-boot="skeleton"] h4,
+[data-boot="skeleton"] p,
+[data-boot="skeleton"] span,
+[data-boot="colored"] svg,
+[data-boot="colored"] img,
+[data-boot="colored"] h1,
+[data-boot="colored"] h2,
+[data-boot="colored"] h3,
+[data-boot="colored"] h4,
+[data-boot="colored"] p,
+[data-boot="colored"] span {
+  opacity: 0 !important;
+}
+
+/* Keep the branding tag visible (as a blank colored pill) during colored phase */
+[data-boot="colored"] #branding-tag {
+  opacity: 1 !important;
+  color: transparent !important;
+}
+
+/* ── Phase 2: Colored (shapes get colors, no text yet) ── */
+/* The [data-boot="skeleton"] background !important stops applying,
+   so cards naturally transition to their Tailwind-assigned backgrounds.
+   Add a transition for smooth color fade. */
+[data-boot="colored"] .card,
+[data-boot="colored"] .panel {
+  transition: background 0.5s ease;
+}
+
+/* ── Phase 3: Ready (text and icons fade in) ── */
+/* No explicit rules needed — the !important overrides from skeleton/colored
+   phases simply stop applying. The base [data-boot] transition on opacity
+   (defined above) ensures text/icons fade in smoothly. */
+
+/* ── "Running in background" pill label ──
+   A small pill in the top-right corner of an app card, indicating the app
+   is minimized but still running. Clean M3 Expressive style. */
+.running-pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 6px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 60%, transparent);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pillFadeIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.running-pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pillPulse 1.6s ease-in-out infinite;
+}
+@keyframes pillFadeIn {
+  from { transform: scale(0.6) translateY(-4px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes pillPulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Mini pill for small app tiles — just a dot indicator */
+.running-pill-mini {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 20;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface), 0 2px 6px -1px color-mix(in srgb, var(--accent) 60%, transparent);
+  pointer-events: none;
+  animation: pillFadeIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.running-pill-mini::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pillRipple 1.8s ease-out infinite;
+}
+@keyframes pillRipple {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ── M3 Expressive loading animations ── */
+
+/* Shimmer skeleton — for card content loading */
+.m3-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--container) 0%,
+    var(--container-high) 50%,
+    var(--container) 100%
+  );
+  background-size: 200% 100%;
+  animation: m3-shimmer 1.4s ease-in-out infinite;
+  border-radius: 12px;
+}
+@keyframes m3-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* M3 circular progress indicator — for inline loading */
+.m3-progress {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--container-high);
+  border-top-color: var(--accent);
+  animation: m3-spin 0.8s linear infinite;
+}
+.m3-progress-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
+}
+.m3-progress-lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+@keyframes m3-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* M3 Expressive loading overlay — for modal content */
+.m3-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--surface);
+  z-index: 5;
+  animation: m3-fade-in 0.2s ease;
+}
+.m3-loading-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-surface-var);
+  animation: m3-fade-pulse 1.8s ease-in-out infinite;
+}
+@keyframes m3-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes m3-fade-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* M3 Expressive card stagger entrance */
+.m3-card-enter {
+  animation: m3-card-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+@keyframes m3-card-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+

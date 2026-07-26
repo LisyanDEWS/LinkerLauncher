@@ -27,27 +27,47 @@ export default function StandbyClock({ isOpen, onClose, lang, activePalette, bac
     return () => clearInterval(timer);
   }, []);
 
-  // Hide controls after a few seconds of no mouse movement
+  // Hide controls after a few seconds of no mouse movement.
+  // Dismiss standby on any deliberate mouse movement (touch/click).
   useEffect(() => {
     let timeout: NodeJS.Timeout;
+    let dismissTimer: NodeJS.Timeout;
+    let moved = false;
+
     const handleMouseMove = () => {
+      // First movement reveals controls; a second movement within 600ms dismisses
       setShowControls(true);
       clearTimeout(timeout);
       timeout = setTimeout(() => {
         setShowControls(false);
       }, 3000);
+      if (moved) {
+        // Dismiss shortly after the second movement to avoid accidental exit
+        clearTimeout(dismissTimer);
+        dismissTimer = setTimeout(() => {
+          onClose();
+        }, 250);
+      }
+      moved = true;
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
     };
 
     if (isOpen) {
       window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('keydown', handleKey);
       timeout = setTimeout(() => setShowControls(false), 3000);
     }
-    
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('keydown', handleKey);
       clearTimeout(timeout);
+      clearTimeout(dismissTimer);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   const hours = String(time.getHours()).padStart(2, '0');
   const minutes = String(time.getMinutes()).padStart(2, '0');

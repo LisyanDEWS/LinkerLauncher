@@ -55,8 +55,9 @@ async function startServer() {
     });
   }
 
-  server.listen(3000, () => {
-    console.log('Server running with WebSocket signaling on port 3000');
+  const PORT = Number(process.env.PORT) || 3001;
+  server.listen(PORT, () => {
+    console.log(`Server running with WebSocket signaling on port ${PORT}`);
   });
 }
 

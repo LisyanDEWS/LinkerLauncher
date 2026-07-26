@@ -102,6 +102,13 @@ export default function CalendarModal({ isOpen, onClose, lang, primaryColor }: C
     days.push(new Date(year, month, d));
   }
 
+  // Pad the end so the grid always has 42 cells (6 rows × 7 days).
+  // This keeps the grid height constant regardless of how many weeks
+  // the current month spans — preventing the controls below from jumping.
+  while (days.length < 42) {
+    days.push(null);
+  }
+
   const selectedKey = getDateKey(selectedDate);
   const selectedDayEvents = events[selectedKey] || [];
 
@@ -139,7 +146,7 @@ export default function CalendarModal({ isOpen, onClose, lang, primaryColor }: C
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 15, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-hidden rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-xl shadow-2xl flex flex-col"
+            className="relative z-10 w-[560px] h-[640px] overflow-hidden rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-xl shadow-2xl flex flex-col"
             id="calendar-modal"
           >
             {/* Top Toolbar */}

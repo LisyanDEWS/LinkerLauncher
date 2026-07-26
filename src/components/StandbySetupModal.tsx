@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check } from 'lucide-react';
 import { Language } from '../types';
@@ -28,6 +28,13 @@ export default function StandbySetupModal({
   const p2 = activePalette.secondary;
   const p3 = activePalette.tertiary;
 
+  // Live clock for preview
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const gradients = [
     { id: 'theme', name: 'Theme', style: 'var(--bg)' },
     { id: 'gradient-1', name: 'Gradient 1', style: `linear-gradient(135deg, ${p1}, ${p2}, ${p3})` },
@@ -35,6 +42,9 @@ export default function StandbySetupModal({
     { id: 'gradient-3', name: 'Gradient 3', style: `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)` },
     { id: 'gradient-4', name: 'Gradient 4', style: `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)` },
   ];
+
+  const activeGradient = gradients.find((g) => g.id === background) || gradients[0];
+  const previewTime = now.toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <AnimatePresence>
@@ -90,6 +100,16 @@ export default function StandbySetupModal({
                   )}
                 </button>
               ))}
+            </div>
+
+            {/* Live clock preview */}
+            <div
+              className="relative mb-5 flex h-32 items-center justify-center overflow-hidden rounded-2xl border border-[var(--outline-var)]"
+              style={{ background: activeGradient.style }}
+            >
+              <span className="text-3xl font-black tabular-nums tracking-tight text-white drop-shadow-lg">
+                {previewTime}
+              </span>
             </div>
 
             <button

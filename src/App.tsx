@@ -1,6 +1,6 @@
 import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { userAuth, userDb } from './lib/userFirebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -15,9 +15,6 @@ import {
   User,
   History,
   Globe,
-  Lightbulb,
-  FileText,
-  Hourglass,
   Gamepad2,
   Lock,
   Link2,
@@ -25,14 +22,10 @@ import {
   Newspaper,
   QrCode,
   ChevronRight,
-  Trash2,
-  Play,
-  Square,
   Volume2,
   VolumeX,
   Send,
   Mail,
-  RefreshCw,
   X,
   Maximize,
   Minimize,
@@ -40,27 +33,31 @@ import {
   Bot,
   Battery,
   BatteryCharging,
-  Zap,
   MapPin,
   Monitor,
   LogOut,
   Languages,
   Edit2,
-  ExternalLink
+  Calculator,
+  StickyNote
 } from 'lucide-react';
 
-import { Language, ThemeMode } from './types';
+import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from './types';
 import { materialPalettes } from './data/themes';
 import { translations } from './data/translations';
+import { getGreeting } from './data/greetings';
 
 // Components
 import ClockModal from './components/ClockModal';
 import CalendarModal from './components/CalendarModal';
 import WeatherModal from './components/WeatherModal';
-import WeatherApp from './components/WeatherApp';
 import SettingsModal from './components/SettingsModal';
 import FullSettingsModal from './components/FullSettingsModal';
 import { LoginScreen } from './components/LoginScreen';
+import AppLoader from './components/AppLoader';
+import { useWindows, WindowManagerLayer } from './components/WindowManager';
+import { CalculatorApp } from './components/CalculatorApp';
+import { KeepsApp } from './components/KeepsApp';
 import ServerModal from './components/ServerModal';
 import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
@@ -71,6 +68,9 @@ import OnboardingModal from './components/OnboardingModal';
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  // OS-style window manager for popup apps (Agno, Settings, Lisyan, Weather, Calculator)
+  const wm = useWindows();
 
   // --- Persistent States (localStorage) ---
   const [lang, setLang] = useState<Language>(() => {
@@ -110,6 +110,26 @@ export default function App() {
   const [nickname, setNickname] = useState<string>(() => {
     return localStorage.getItem('linkerru_nickname') || 'Guest';
   });
+
+  // ── Animated greeting: shows "LinkerRu:Re" on load, then transitions
+  //    to a time-based greeting (e.g. "Good morning, Guest!") with animation.
+  //    The transition is triggered AFTER the AppLoader finishes (via
+  //    onLoaderComplete) so the greeting animation doesn't play under the
+  //    loading overlay.
+  const [greetingPhase, setGreetingPhase] = useState<'brand' | 'greeting'>('brand');
+  const [greetingText, setGreetingText] = useState('');
+
+  const onLoaderComplete = useCallback(() => {
+    setGreetingText(getGreeting(nickname, lang));
+    setGreetingPhase('greeting');
+  }, [nickname, lang]);
+
+  // Update greeting if language or nickname changes while greeting is shown
+  useEffect(() => {
+    if (greetingPhase === 'greeting') {
+      setGreetingText(getGreeting(nickname, lang));
+    }
+  }, [lang, nickname, greetingPhase]);
 
   const [isToastEnabled, setIsToastEnabled] = useState<boolean>(() => {
     return localStorage.getItem('linkerru_toast') !== 'false';
@@ -175,37 +195,66 @@ export default function App() {
   }, [tabletChoice]);
 
   const [isAgnoOpen, setIsAgnoOpen] = useState(false);
-  const [isLisyanConnectOpen, setIsLisyanConnectOpen] = useState(false);
   const [isAgnoFullscreen, setIsAgnoFullscreen] = useState(false);
-  const [isWeatherAppOpen, setIsWeatherAppOpen] = useState(false);
-    const [isWeatherAppFullscreen, setIsWeatherAppFullscreen] = useState(false);
 
-  const defaultLinks = [
-    { name: 'Telegram Version A', url: 'https://t.me/linkerru' },
-    { name: 'SoundCloud', url: 'https://soundcloud.com' }
-  ];
-  const [customLinks, setCustomLinks] = useState<{name: string, url: string}[]>(() => {
+  const [customLinks, setCustomLinks] = useState<QuickLink[]>(() => {
     const s = localStorage.getItem('linkerru_links');
-    return s ? JSON.parse(s) : defaultLinks;
+    if (s) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed.slice(0, MAX_QUICK_LINKS);
+      } catch {}
+    }
+    return DEFAULT_QUICK_LINKS;
   });
 
-  const defaultToggles = ['theme', 'language', 'sound', 'contrast'];
-  const [activeToggles, setActiveToggles] = useState<string[]>(() => {
+  const handleLinksChange = useCallback((newLinks: QuickLink[]) => {
+    const clamped = newLinks.slice(0, MAX_QUICK_LINKS);
+    setCustomLinks(clamped);
+    localStorage.setItem('linkerru_links', JSON.stringify(clamped));
+  }, []);
+
+  const [activeToggles, setActiveToggles] = useState<ToggleId[]>(() => {
     const s = localStorage.getItem('linkerru_toggles');
-    const parsed = s ? JSON.parse(s) : defaultToggles;
-    return parsed.filter((t: string) => defaultToggles.includes(t));
+    if (s) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
+        }
+      } catch {}
+    }
+    return [...TOGGLE_IDS];
   });
+
+  const handleTogglesChange = useCallback((next: ToggleId[]) => {
+    const valid = next.filter((t) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
+    setActiveToggles(valid);
+    localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
+  }, []);
 
   const [activeSupportQr, setActiveSupportQr] = useState<string | null>(null);
 
   useEffect(() => {
     const handleLinksChanged = () => {
       const s = localStorage.getItem('linkerru_links');
-      if (s) setCustomLinks(JSON.parse(s));
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) setCustomLinks(parsed.slice(0, MAX_QUICK_LINKS));
+        } catch {}
+      }
     };
     const handleTogglesChanged = () => {
       const s = localStorage.getItem('linkerru_toggles');
-      if (s) setActiveToggles(JSON.parse(s));
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            setActiveToggles(parsed.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[]);
+          }
+        } catch {}
+      }
     };
     window.addEventListener('linkerru_links_changed', handleLinksChanged);
     window.addEventListener('linkerru_toggles_changed', handleTogglesChanged);
@@ -220,10 +269,11 @@ export default function App() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isWeatherOpen, setIsWeatherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
-  const [isFullSettingsOpen, setIsFullSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account'>('appearance');
   const [isServerOpen, setIsServerOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  // Login screen preview overlay (dev tool — does NOT log out)
+  const [isLoginPreviewOpen, setIsLoginPreviewOpen] = useState(false);
   const [isStandbyOpen, setIsStandbyOpen] = useState(false);
   const [isStandbySetupOpen, setIsStandbySetupOpen] = useState(false);
   const [clockType, setClockType] = useState<'digital' | 'analog'>(() => {
@@ -232,11 +282,9 @@ export default function App() {
   const [clockVariation, setClockVariation] = useState<1 | 2 | 3>(() => {
     return (Number(localStorage.getItem('linkerru_clock_variation')) as 1 | 2 | 3) || 1;
   });
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
-    const auth = localStorage.getItem('linkerru_auth') === 'true';
-    const onboarded = localStorage.getItem('linkerru_onboarded') === 'true';
-    return auth && !onboarded;
-  });
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+
+  // Home screen version (hotswappable). Migrated from the old boolean flag.
 
   // --- Real-time time chips ---
   const [nowTime, setNowTime] = useState('--:--');
@@ -349,13 +397,19 @@ export default function App() {
               if (s.clock_variation) { setClockVariation(s.clock_variation); localStorage.setItem('linkerru_clock_variation', String(s.clock_variation)); }
               if (s.links) {
                 const parsedLinks = typeof s.links === 'string' ? JSON.parse(s.links) : s.links;
-                setCustomLinks(parsedLinks);
-                localStorage.setItem('linkerru_links', JSON.stringify(parsedLinks));
+                if (Array.isArray(parsedLinks)) {
+                  const clamped = parsedLinks.slice(0, MAX_QUICK_LINKS);
+                  setCustomLinks(clamped);
+                  localStorage.setItem('linkerru_links', JSON.stringify(clamped));
+                }
               }
               if (s.toggles) {
                 const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
-                setActiveToggles(parsedToggles);
-                localStorage.setItem('linkerru_toggles', JSON.stringify(parsedToggles));
+                if (Array.isArray(parsedToggles)) {
+                  const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
+                  setActiveToggles(valid);
+                  localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
+                }
               }
               
               isSyncingFromCloud.current = false;
@@ -593,33 +647,53 @@ export default function App() {
     root.style.setProperty('--accent-tertiary', activePalette.tertiary);
 
     if (theme === 'dark') {
-      root.style.setProperty('--bg', '#09090b'); // Strict dark gray/black, no green tint
-      root.style.setProperty('--surface', '#18181b');
-      root.style.setProperty('--surface-dim', '#27272a');
-      root.style.setProperty('--surface-bright', '#3f3f46');
+      // ── Section 1/4: BASE (deepest layer — page background, app canvas) ──
+      root.style.setProperty('--bg', '#08080a');
+      root.style.setProperty('--surface-dim', '#0e0e11');
+
+      // ── Section 2/4: SURFACES (cards, panels, containers — layered elevation) ──
+      root.style.setProperty('--surface', '#151518');
+      root.style.setProperty('--surface-bright', '#1e1e22');
+      root.style.setProperty('--container', '#1a1a1e');
+      root.style.setProperty('--container-high', '#26262c');
+      root.style.setProperty('--card-bg', `color-mix(in srgb, #151518 78%, ${activePalette.primary} 22%)`);
+      root.style.setProperty('--panel-bg', `color-mix(in srgb, #151518 86%, ${activePalette.primary} 14%)`);
+
+      // ── Section 3/4: CONTENT (text, icons, outlines — contrast & readability) ──
       root.style.setProperty('--on-surface', '#fafafa');
-      root.style.setProperty('--on-surface-var', '#a1a1aa');
-      root.style.setProperty('--outline', '#52525b');
-      root.style.setProperty('--outline-var', '#3f3f46');
-      root.style.setProperty('--container', '#121212');
-      root.style.setProperty('--container-high', '#27272a');
-      root.style.setProperty('--card-bg', `color-mix(in srgb, #18181b 75%, ${activePalette.primary} 25%)`);
-      root.style.setProperty('--panel-bg', `color-mix(in srgb, #18181b 85%, ${activePalette.primary} 15%)`);
-      root.style.setProperty('--icon-tint', `color-mix(in srgb, #18181b 70%, ${activePalette.primary} 30%)`);
+      root.style.setProperty('--on-surface-var', '#b4b4c0');
+      root.style.setProperty('--outline', '#34343a');
+      root.style.setProperty('--outline-var', '#44444c');
+      root.style.setProperty('--icon-tint', `color-mix(in srgb, #151518 60%, ${activePalette.primary} 40%)`);
+
+      // ── Section 4/4: ELEVATION (shadows — depth perception per M3 levels 1-3) ──
+      root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.35)');
+      root.style.setProperty('--shadow-2', '0 6px 16px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35)');
+      root.style.setProperty('--shadow-3', '0 16px 40px rgba(0,0,0,0.6), 0 6px 12px rgba(0,0,0,0.4)');
     } else {
-      root.style.setProperty('--bg', '#fafafa'); // Strict light gray, no green tint
-      root.style.setProperty('--surface', '#ffffff');
+      // ── Section 1/4: BASE ──
+      root.style.setProperty('--bg', '#fafafa');
       root.style.setProperty('--surface-dim', '#f4f4f5');
+
+      // ── Section 2/4: SURFACES ──
+      root.style.setProperty('--surface', '#ffffff');
       root.style.setProperty('--surface-bright', '#ffffff');
-      root.style.setProperty('--on-surface', '#09090b');
-      root.style.setProperty('--on-surface-var', '#71717a');
-      root.style.setProperty('--outline', '#d4d4d8');
-      root.style.setProperty('--outline-var', '#e4e4e7');
       root.style.setProperty('--container', '#f4f4f5');
       root.style.setProperty('--container-high', '#e4e4e7');
       root.style.setProperty('--card-bg', `color-mix(in srgb, #ffffff 70%, ${activePalette.primary} 30%)`);
       root.style.setProperty('--panel-bg', `color-mix(in srgb, #ffffff 80%, ${activePalette.primary} 20%)`);
+
+      // ── Section 3/4: CONTENT ──
+      root.style.setProperty('--on-surface', '#09090b');
+      root.style.setProperty('--on-surface-var', '#52525b');
+      root.style.setProperty('--outline', '#d4d4d8');
+      root.style.setProperty('--outline-var', '#e4e4e7');
       root.style.setProperty('--icon-tint', `color-mix(in srgb, #ffffff 70%, ${activePalette.primary} 30%)`);
+
+      // ── Section 4/4: ELEVATION ──
+      root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)');
+      root.style.setProperty('--shadow-2', '0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04)');
+      root.style.setProperty('--shadow-3', '0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.05)');
     }
 
     if (isContrast) {
@@ -854,8 +928,153 @@ export default function App() {
   };
 
   const handleOpenSettings = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account' = 'appearance') => {
+    playChime('click');
+    openSettingsWindow(tab);
+  };
+
+  // --- Window manager helpers (popup apps) ---
+  // Check if a window app is minimized (running in background)
+  const isMinimized = (id: string) => {
+    const w = wm.windows.find((win) => win.id === id);
+    return w ? w.isMinimized : false;
+  };
+  const agnoMinimized = isMinimized('agno');
+  const lisyanMinimized = isMinimized('lisyan');
+  const settingsMinimized = isMinimized('settings');
+  const calculatorMinimized = isMinimized('calculator');
+  const keepsMinimized = isMinimized('keeps');
+
+  const openAgnoWindow = () => {
+    wm.open({
+      id: 'agno',
+      title: 'Agno GPT',
+      icon: <Bot size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 900,
+      initialHeight: 640,
+      minWidth: 480,
+      minHeight: 360,
+      render: () => (
+        <iframe
+          src="https://agno-agent-ui.vercel.app/"
+          className="h-full w-full border-none"
+          title="Agno GPT"
+        />
+      ),
+    });
+  };
+
+  const openSettingsWindow = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account' = 'appearance') => {
     setSettingsInitialTab(tab);
-    setIsFullSettingsOpen(true);
+    wm.open({
+      id: 'settings',
+      title: lang === 'ru' ? 'Настройки' : 'Settings',
+      icon: <Settings size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 820,
+      initialHeight: 620,
+      minWidth: 420,
+      minHeight: 360,
+      render: () => (
+        <div className="h-full w-full">
+          <FullSettingsModal
+            isOpen={true}
+            embedded={true}
+            onClose={() => wm.close('settings')}
+            lang={lang}
+            onLangChange={handleLangChange}
+            theme={theme}
+            onThemeToggle={handleThemeToggle}
+            activePaletteId={activePaletteId}
+            onPaletteChange={handlePaletteChange}
+            isContrast={isContrast}
+            onContrastToggle={handleContrastToggle}
+            isToastEnabled={isToastEnabled}
+            onToastToggle={() => { const n = !isToastEnabled; setIsToastEnabled(n); localStorage.setItem('linkerru_toast', String(n)); }}
+            isSoundEnabled={isSoundEnabled}
+            onSoundToggle={() => { const n = !isSoundEnabled; setIsSoundEnabled(n); localStorage.setItem('linkerru_sound', String(n)); }}
+            clickSound={clickSound}
+            onClickSoundChange={(s) => { setClickSound(s); localStorage.setItem('linkerru_click_sound', s); }}
+            notifySound={notifySound}
+            onNotifySoundChange={(s) => { setNotifySound(s); localStorage.setItem('linkerru_notify_sound', s); }}
+            brightness={brightness}
+            onBrightnessChange={(v) => { setBrightness(v); localStorage.setItem('linkerru_brightness', String(v)); }}
+            volume={soundVolume}
+            onVolumeChange={(v) => { setSoundVolume(v); localStorage.setItem('linkerru_sound_volume', String(v)); }}
+            panicKey={panicKey}
+            onPanicKeyChange={(k) => { setPanicKey(k); localStorage.setItem('linkerru_panic_key', k); }}
+            panicUrl={panicUrl}
+            onPanicUrlChange={(u) => { setPanicUrl(u); localStorage.setItem('linkerru_panic_url', u); }}
+            isMobileLayout={isMobileLayout}
+            standbyBg={standbyBg}
+            onStandbyBgChange={(bg) => { setStandbyBg(bg); localStorage.setItem('linkerru_standby_bg', bg); }}
+            fontFamily={fontFamily}
+            onFontChange={(f) => { setFontFamily(f); localStorage.setItem('linkerru_font', f); }}
+            mainWallpaper={mainWallpaper}
+            onMainWallpaperChange={(wp) => { setMainWallpaper(wp); localStorage.setItem('linkerru_wallpaper', wp); }}
+            isAuthenticated={isAuthenticated}
+            nickname={nickname}
+            onNicknameChange={(n) => { setNickname(n); localStorage.setItem('linkerru_nickname', n); }}
+            customLinks={customLinks}
+            onLinksChange={handleLinksChange}
+            activeToggles={activeToggles}
+            onTogglesChange={handleTogglesChange}
+            initialTab={tab}
+          />
+        </div>
+      ),
+    });
+  };
+
+  const openLisyanWindow = () => {
+    wm.open({
+      id: 'lisyan',
+      title: 'Lisyan Connect',
+      icon: <Monitor size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 880,
+      initialHeight: 680,
+      minWidth: 420,
+      minHeight: 380,
+      render: () => (
+        <div className="wm-embedded h-full w-full">
+          <LisyanConnectModal
+            isOpen={true}
+            onClose={() => wm.close('lisyan')}
+            lang={lang}
+            isMobileLayout={isMobileLayout}
+          />
+        </div>
+      ),
+    });
+  };
+
+  const openCalculatorWindow = () => {
+    wm.open({
+      id: 'calculator',
+      title: lang === 'ru' ? 'Калькулятор' : 'Calculator',
+      icon: <Calculator size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 380,
+      initialHeight: 600,
+      minWidth: 320,
+      minHeight: 480,
+      render: () => <CalculatorApp lang={lang} theme={theme} activePalette={activePalette} />,
+    });
+  };
+
+  const openKeepsWindow = () => {
+    wm.open({
+      id: 'keeps',
+      title: lang === 'ru' ? 'Заметки' : 'Keeps',
+      icon: <StickyNote size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 480,
+      initialHeight: 620,
+      minWidth: 340,
+      minHeight: 420,
+      render: () => <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />,
+    });
   };
 
   useEffect(() => {
@@ -992,7 +1211,7 @@ export default function App() {
 
   // --- Panic Key Global Listener ---
   useEffect(() => {
-    if (!panicKey || !panicUrl || isFullSettingsOpen) return;
+    if (!panicKey || !panicUrl || wm.windows.some(w => w.id === 'settings' && !w.isMinimized)) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       let key = e.key;
@@ -1013,7 +1232,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [panicKey, panicUrl, isFullSettingsOpen]);
+  }, [panicKey, panicUrl, wm.windows]);
 
   // --- Cross-window communication ---
   useEffect(() => {
@@ -1117,13 +1336,14 @@ export default function App() {
   if (!isAuthenticated && !isMobileLayout) {
     return (
       <LoginScreen
-        onLogin={(nick) => {
+        onLogin={(nick, isSignup) => {
           setIsAuthenticated(true);
           localStorage.setItem('linkerru_auth', 'true');
           setNickname(nick);
           localStorage.setItem('linkerru_nickname', nick);
           playChime('click');
-          if (localStorage.getItem('linkerru_onboarded') !== 'true') {
+          // Onboarding now only fires after a fresh signup, not on every login
+          if (isSignup && localStorage.getItem('linkerru_onboarded') !== 'true') {
             setIsOnboardingOpen(true);
           }
         }}
@@ -1134,14 +1354,28 @@ export default function App() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="min-h-screen text-[var(--on-surface)] p-5 transition-colors duration-300 md:p-8 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white"
-      style={{ background: getWallpaperStyle() }}
-      id="root-launcher-app"
-    >
+    <>
+      <AppLoader
+        imageUrls={[
+          theme === 'dark'
+            ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
+            : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142",
+          "https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3",
+        ]}
+        minDuration={2500}
+        color={activePalette.primary}
+        background={getWallpaperStyle()}
+        brightness={brightness}
+        onComplete={onLoaderComplete}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="min-h-screen text-[var(--on-surface)] p-5 transition-colors duration-300 md:p-8 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white"
+        style={{ background: getWallpaperStyle() }}
+        id="root-launcher-app"
+      >
       <div className="fixed top-6 right-6 z-[100] pointer-events-auto flex flex-col items-end">
         <AnimatePresence mode="popLayout">
           {!isMobileLayout && toasts.map(toast => (
@@ -1242,9 +1476,9 @@ export default function App() {
              
           </div>
           
-          <div 
+          <div
             className="group relative overflow-hidden rounded-[2rem] p-8 cursor-pointer active:scale-[0.98] transition-all shadow-xl bg-[var(--surface-dim)] border border-[var(--outline)]"
-            onClick={() => setIsLisyanConnectOpen(true)}
+            onClick={() => { playChime('click'); openLisyanWindow(); }}
           >
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
             
@@ -1304,7 +1538,9 @@ export default function App() {
               className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-sm cursor-default"
               title={isCharging ? (lang === 'ru' ? 'Заряжается' : 'Charging') : (lang === 'ru' ? 'От батареи' : 'On battery')}
             >
-              {isCharging ? <BatteryCharging size={16} className="text-green-500" /> : <Battery size={16} style={{ color: activePalette.primary }} />}
+              {isCharging
+                ? <BatteryCharging size={16} style={{ color: activePalette.primary }} />
+                : <Battery size={16} style={{ color: activePalette.primary }} />}
               <span className="tabular-nums font-extrabold">{Math.round(batteryLvl * 100)}%</span>
             </div>
           )}
@@ -1377,18 +1613,38 @@ export default function App() {
           LinkerRu × Lisyan
         </span>
         <div className="mb-4 h-12 md:h-16 flex items-center gap-4" id="branding-title">
-          <img 
-            src={theme === 'dark' 
-              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6" 
+          <img
+            src={theme === 'dark'
+              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
               : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
-            } 
+            }
             alt="LinkerRu Logo"
             className={`h-12 w-12 md:h-16 md:w-16 rounded-full object-cover transition-opacity border-2 border-[var(--outline-var)] shadow-sm ${theme === "dark" ? "bg-black" : "bg-white"}`}
             referrerPolicy="no-referrer"
           />
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-[var(--on-surface)]">
-            LinkerRu:Re
-          </h1>
+          <AnimatePresence mode="wait">
+            {greetingPhase === 'brand' ? (
+              <motion.h1
+                key="brand"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0, filter: 'blur(8px)', y: -10 }}
+                transition={{ duration: 0.5 }}
+                className="text-5xl md:text-7xl font-black tracking-tighter text-[var(--on-surface)]"
+              >
+                LinkerRu:Re
+              </motion.h1>
+            ) : (
+              <motion.h1
+                key="greeting"
+                initial={{ opacity: 0, filter: 'blur(8px)', y: 10 }}
+                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+                className="text-3xl md:text-5xl font-black tracking-tight text-[var(--on-surface)]"
+              >
+                {greetingText}
+              </motion.h1>
+            )}
+          </AnimatePresence>
         </div>
         <button
           onClick={() => {
@@ -1407,9 +1663,6 @@ export default function App() {
       <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
         {/* WIDGET 1: Proxy Server Hub selector */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-proxy-space">
-          <div className="absolute top-6 right-6 flex items-center gap-2 text-[var(--accent)] hover:text-[var(--on-surface)] transition-colors cursor-pointer" title="Proxy Status: Online">
-            <Lightbulb size={20} />
-          </div>
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
               <Globe size={20} className="text-white" />
@@ -1438,9 +1691,9 @@ export default function App() {
 
         {/* WIDGET 2: Agno GPT */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
-          <div className="absolute top-6 right-6 flex items-center gap-2 text-[var(--accent)] hover:text-[var(--on-surface)] transition-colors cursor-pointer" title="Status: Online">
-            <Lightbulb size={20} />
-          </div>
+          {agnoMinimized && (
+            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+          )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner">
               <Bot size={20} className="text-white" />
@@ -1458,55 +1711,11 @@ export default function App() {
               <button
                 onClick={() => {
                   playChime('click');
-                  setIsAgnoOpen(true);
+                  openAgnoWindow();
                 }}
                 className="flex-1 py-3 bg-[var(--container)] hover:bg-[var(--container-high)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-full text-[10px] font-black cursor-pointer shadow-sm transition-all hover:scale-[1.02] active:scale-95 px-1"
               >
                 Linker.Ru
-              </button>
-              <button
-                onClick={() => {
-                  playChime('click');
-                  const win = window.open('about:blank', '_blank');
-                  if (win) {
-                    win.document.write(`
-                      <!DOCTYPE html>
-                      <html>
-                      <head>
-                        <title>Agno GPT</title>
-                        <style>
-                          body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #09090b; display: flex; align-items: center; justify-content: center; color: white; font-family: sans-serif; }
-                          .loader { border: 4px solid rgba(255,255,255,0.1); border-left-color: #fff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-                          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                        </style>
-                      </head>
-                      <body>
-                        <div id="bell" style="position:fixed; top:20px; right:20px; z-index:9999; background:rgba(255,255,255,0.1); padding:10px; border-radius:50%; cursor:pointer; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s;">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                        </div>
-                        <div id="loader" class="loader"></div>
-                        <iframe id="frame" src="https://agno-agent-ui.vercel.app/" style="width: 100vw; height: 100vh; border: none; display: none;"></iframe>
-                        <script>
-                          document.getElementById('bell').addEventListener('click', () => {
-                            if (window.opener) {
-                              window.opener.postMessage('openNotifications', '*');
-                            }
-                          });
-                          document.getElementById('bell').addEventListener('mouseover', function() { this.style.background = 'rgba(255,255,255,0.2)' });
-                          document.getElementById('bell').addEventListener('mouseout', function() { this.style.background = 'rgba(255,255,255,0.1)' });
-                          setTimeout(() => {
-                            document.getElementById('loader').style.display = 'none';
-                            document.getElementById('frame').style.display = 'block';
-                          }, 3000);
-                        </script>
-                      </body>
-                      </html>
-                    `);
-                  }
-                }}
-                className="flex-1 py-3 bg-[var(--container)] hover:bg-[var(--container-high)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-full text-[10px] font-black cursor-pointer shadow-sm transition-all hover:scale-[1.02] active:scale-95 px-1"
-              >
-                about:blank
               </button>
             </div>
           </div>
@@ -1540,7 +1749,10 @@ export default function App() {
         </div>
 
         {/* WIDGET 4: Lisyan Connect */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative" id="card-lisyan-connect" onClick={() => { playChime('click'); setIsLisyanConnectOpen(true); }}>
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
+          {lisyanMinimized && (
+            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+          )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: activePalette.primary }}>
               <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect" className="w-full h-full object-cover p-1" />
@@ -1557,7 +1769,7 @@ export default function App() {
               <button
                 className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center"
                 style={{ backgroundColor: activePalette.primary }}
-                onClick={(e) => { e.stopPropagation(); playChime('click'); setIsLisyanConnectOpen(true); }}
+                onClick={() => { playChime('click'); openLisyanWindow(); }}
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
               </button>
@@ -1596,35 +1808,51 @@ export default function App() {
             {/* Weather App Shortcut */}
             <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
               playChime('click');
-              setIsWeatherAppOpen(true);
+              setIsWeatherOpen(true);
             }}>
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
                 <CloudSun size={24} className="text-white" />
               </div>
               <span className="text-[9px] font-bold text-[var(--on-surface)]">Weather</span>
             </div>
-            
+
             {/* Settings App Shortcut */}
-            <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
+            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
               playChime('click');
               handleOpenSettings();
             }}>
+              {settingsMinimized && <div className="running-pill-mini" />}
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
                 <Settings size={24} className="text-[var(--on-surface)]" />
               </div>
               <span className="text-[9px] font-bold text-[var(--on-surface)]">Settings</span>
             </div>
 
+            {/* Calculator App Shortcut */}
+            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
+              playChime('click');
+              openCalculatorWindow();
+            }}>
+              {calculatorMinimized && <div className="running-pill-mini" />}
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
+                <Calculator size={24} className="text-white" />
+              </div>
+              <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Калькулятор' : 'Calculator'}</span>
+            </div>
+
+            {/* Keeps App Shortcut — local notes with image support (cache only) */}
+            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
+              playChime('click');
+              openKeepsWindow();
+            }}>
+              {keepsMinimized && <div className="running-pill-mini" />}
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
+                <StickyNote size={24} className="text-[var(--accent)]" />
+              </div>
+              <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Заметки' : 'Keeps'}</span>
+            </div>
+
             {/* Blank Placeholder Apps to match design */}
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
-            </div>
             <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
               <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
             </div>
@@ -1640,11 +1868,11 @@ export default function App() {
           </span>
         </div>
 
-        {/* PANEL: Link list with real working COPY buttons */}
+        {/* PANEL: Quick Links — max 4 (2 default + 2 custom) */}
         <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative group" id="panel-links">
-          <button 
+          <button
             className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
-            title="Edit Links"
+            title={lang === 'ru' ? 'Изменить ссылки' : 'Edit Links'}
             onClick={() => {
               playChime('click');
               handleOpenSettings('links');
@@ -1655,48 +1883,61 @@ export default function App() {
           <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-4">
             <Link2 size={16} />
             <span>{t.ph_links}</span>
+            <span className="ml-auto text-[10px] tabular-nums text-[var(--outline)]">{customLinks.length}/{MAX_QUICK_LINKS}</span>
           </div>
 
-          <div className="space-y-2.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
-            {customLinks.map((link, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    playChime('click');
-                    window.open(link.url, '_blank');
-                  }}
-                  className="flex-1 inline-flex items-center gap-2 px-4.5 py-3 rounded-full border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] hover:text-[var(--surface)] hover:border-transparent transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = activePalette.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <Globe size={14} />
-                  <span className="truncate max-w-[120px] text-left">{link.name}</span>
-                </button>
-                <button
-                  onClick={() => handleCopyLink(link.url)}
-                  className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.05] active:scale-95"
-                  title="Copy Link"
-                >
-                  <Copy size={14} />
-                </button>
+          <div className="flex flex-col gap-2 flex-1">
+            {customLinks.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-[11px] text-[var(--outline)] italic">
+                {lang === 'ru' ? 'Нет ссылок' : 'No links'}
               </div>
-            ))}
+            ) : (
+              customLinks.map((link, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (!link.url || link.url === 'https://') return;
+                      playChime('click');
+                      window.open(link.url, '_blank', 'noopener,noreferrer');
+                    }}
+                    className="flex-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = activePalette.primary;
+                      e.currentTarget.style.color = '#fff';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--on-surface)';
+                      e.currentTarget.style.borderColor = 'var(--outline)';
+                    }}
+                    title={link.url}
+                  >
+                    <Globe size={13} className="shrink-0" />
+                    <span className="truncate text-left">{link.name || (lang === 'ru' ? 'Без названия' : 'Untitled')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleCopyLink(link.url)}
+                    className="h-9 w-9 shrink-0 flex items-center justify-center rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                    title={lang === 'ru' ? 'Копировать' : 'Copy Link'}
+                  >
+                    <Copy size={13} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
 
-          <div className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase text-center mt-4">
+          <div className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase text-center mt-3">
             {t.ph_community}
           </div>
         </div>
 
-        {/* PANEL: Sound effects toggles and mode selectors */}
+        {/* PANEL: Quick Toggles — max 4 (theme/language/sound/contrast) */}
         <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative group" id="panel-quicktoggles">
-          <button 
+          <button
             className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
-            title="Edit Toggles"
+            title={lang === 'ru' ? 'Изменить переключатели' : 'Edit Toggles'}
             onClick={() => {
               playChime('click');
               handleOpenSettings('toggles');
@@ -1708,70 +1949,70 @@ export default function App() {
             <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
               <span>{t.ph_toggles}</span>
             </div>
-            <div className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase">
-              quick toggles
-            </div>
+            <span className="text-[10px] tabular-nums text-[var(--outline)]">{activeToggles.length}/{MAX_TOGGLES}</span>
           </div>
-          
-          {/* Quick Toggles Grid (3x2) */}
-          <div className="grid grid-cols-2 gap-2 mt-auto">
-            {activeToggles.includes('theme') && (
-              <button onClick={handleThemeToggle} className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 group">
-                <div className="p-2 rounded-full transition-colors flex items-center justify-center" style={{ backgroundColor: theme === 'dark' ? activePalette.primary : 'var(--surface-dim)', color: theme === 'dark' ? 'white' : 'var(--on-surface)' }}>
-                  {theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />}
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">{theme === 'dark' ? 'Dark' : 'Light'} Mode</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">Theme</span>
-                </div>
-              </button>
-            )}
-            
-            {activeToggles.includes('language') && (
-              <button onClick={() => setLang(lang === 'ru' ? 'en' : 'ru')} className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 group">
-                <div className="p-2 rounded-full transition-colors flex items-center justify-center" style={{ backgroundColor: lang === 'ru' ? activePalette.primary : 'var(--surface-dim)', color: lang === 'ru' ? 'white' : 'var(--on-surface)' }}>
-                  <Languages size={14} />
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">{lang === 'ru' ? 'Русский' : 'English'}</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">Language</span>
-                </div>
-              </button>
-            )}
 
-            {activeToggles.includes('sound') && (
-              <button onClick={handleSoundToggle} className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 group">
-                <div className="p-2 rounded-full transition-colors flex items-center justify-center" style={{ backgroundColor: isSoundEnabled ? activePalette.primary : 'var(--surface-dim)', color: isSoundEnabled ? 'white' : 'var(--on-surface)' }}>
-                  {isSoundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Sounds</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">{isSoundEnabled ? 'Enabled' : 'Disabled'}</span>
-                </div>
-              </button>
-            )}
-            
-            {activeToggles.includes('contrast') && (
-              <button onClick={handleContrastToggle} className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 group">
-                <div className="p-2 rounded-full transition-colors flex items-center justify-center" style={{ backgroundColor: isContrast ? activePalette.primary : 'var(--surface-dim)', color: isContrast ? 'white' : 'var(--on-surface)' }}>
-                  <Monitor size={14} />
-                </div>
-                <div className="flex flex-col items-start text-left">
-                  <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Contrast</span>
-                  <span className="text-[8px] text-[var(--on-surface-var)]">{isContrast ? 'High' : 'Normal'}</span>
-                </div>
-              </button>
-            )}
-            
-            <button className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3 opacity-50 cursor-not-allowed">
-              <div className="p-2 rounded-full bg-[var(--surface-dim)] text-[var(--on-surface-var)] flex items-center justify-center">
-                <span className="text-xs font-bold">+</span>
+          <div className="grid grid-cols-2 gap-2 flex-1">
+            {activeToggles.length === 0 ? (
+              <div className="col-span-2 flex items-center justify-center text-[11px] text-[var(--outline)] italic">
+                {lang === 'ru' ? 'Нет переключателей' : 'No toggles'}
               </div>
-              <div className="flex flex-col items-start text-left">
-                <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight">Add</span>
-                <span className="text-[8px] text-[var(--on-surface-var)]">Shortcut</span>
-              </div>
-            </button>
+            ) : (
+              activeToggles.map((id) => {
+                const cfg = {
+                  theme: {
+                    icon: theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />,
+                    label: theme === 'dark' ? (lang === 'ru' ? 'Тёмная' : 'Dark') : (lang === 'ru' ? 'Светлая' : 'Light'),
+                    sub: lang === 'ru' ? 'Тема' : 'Theme',
+                    active: theme === 'dark',
+                    onClick: handleThemeToggle,
+                  },
+                  language: {
+                    icon: <Languages size={14} />,
+                    label: lang === 'ru' ? 'Русский' : 'English',
+                    sub: lang === 'ru' ? 'Язык' : 'Language',
+                    active: lang === 'ru',
+                    onClick: () => setLang(lang === 'ru' ? 'en' : 'ru'),
+                  },
+                  sound: {
+                    icon: isSoundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />,
+                    label: lang === 'ru' ? 'Звук' : 'Sounds',
+                    sub: isSoundEnabled ? (lang === 'ru' ? 'Вкл' : 'Enabled') : (lang === 'ru' ? 'Выкл' : 'Disabled'),
+                    active: isSoundEnabled,
+                    onClick: handleSoundToggle,
+                  },
+                  contrast: {
+                    icon: <Monitor size={14} />,
+                    label: lang === 'ru' ? 'Контраст' : 'Contrast',
+                    sub: isContrast ? (lang === 'ru' ? 'Высокий' : 'High') : (lang === 'ru' ? 'Обычный' : 'Normal'),
+                    active: isContrast,
+                    onClick: handleContrastToggle,
+                  },
+                }[id];
+
+                return (
+                  <button
+                    key={id}
+                    onClick={cfg.onClick}
+                    className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3"
+                  >
+                    <div
+                      className="p-2 rounded-full flex items-center justify-center transition-colors"
+                      style={{
+                        backgroundColor: cfg.active ? activePalette.primary : 'var(--surface-dim)',
+                        color: cfg.active ? '#fff' : 'var(--on-surface)',
+                      }}
+                    >
+                      {cfg.icon}
+                    </div>
+                    <div className="flex flex-col items-start text-left min-w-0">
+                      <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight truncate">{cfg.label}</span>
+                      <span className="text-[8px] text-[var(--on-surface-var)] truncate">{cfg.sub}</span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
       </section>
@@ -1925,25 +2166,6 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    const win = window.open('about:blank', '_blank');
-                    if (win) {
-                      win.document.write(`
-                        <html>
-                        <head><title>Agno GPT</title></head>
-                        <body style="margin:0;padding:0;overflow:hidden;background:#000;">
-                          <iframe src="https://agno-agent-ui.vercel.app/" style="width:100vw;height:100vh;border:none;"></iframe>
-                        </body>
-                        </html>
-                      `);
-                    }
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
-                  title="Open in about:blank"
-                >
-                  <ExternalLink size={14} />
-                </button>
-                <button
                   onClick={() => setIsAgnoFullscreen(!isAgnoFullscreen)}
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
                   title={isAgnoFullscreen ? "Minimize" : "Maximize"}
@@ -1963,48 +2185,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating Weather App Window */}
-      <AnimatePresence>
-        {isLisyanConnectOpen && <LisyanConnectModal isOpen={isLisyanConnectOpen} onClose={() => setIsLisyanConnectOpen(false)} lang={lang} isMobileLayout={isMobileLayout} />}
-      {isWeatherAppOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`fixed z-[60] flex flex-col rounded-3xl overflow-hidden shadow-2xl border border-[var(--outline)] transition-all duration-300 ${isWeatherAppFullscreen ? 'inset-0 md:inset-0 rounded-none border-none' : 'inset-4 md:inset-10'}`}
-            style={{ backgroundColor: 'var(--surface)' }}
-          >
-            <div className="h-12 border-b border-[var(--outline-var)] flex items-center justify-between px-4 shrink-0" style={{ backgroundColor: 'var(--surface-dim)' }}>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md overflow-hidden border border-[var(--outline-var)] flex items-center justify-center" style={{ backgroundColor: activePalette.primary }}>
-                  <CloudSun size={14} className="text-white" />
-                </div>
-                <span className="text-xs font-black text-[var(--on-surface)]">Weather App</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-2" title="Online" />
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsWeatherAppFullscreen(!isWeatherAppFullscreen)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
-                  title={isWeatherAppFullscreen ? "Minimize" : "Maximize"}
-                >
-                  {isWeatherAppFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                </button>
-                <button
-                  onClick={() => {
-                    playChime('click');
-                    setIsWeatherAppOpen(false);
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-            <WeatherApp primaryColor={activePalette.primary} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Lisyan Connect — now rendered via window manager only */}
 
       {/* Location Permission Prompt */}
       <AnimatePresence>
@@ -2088,10 +2269,6 @@ export default function App() {
         }}
         lang={lang}
         primaryColor={activePalette.primary}
-        onOpenInLinkerRu={() => {
-          playChime('click');
-          setIsWeatherAppOpen(true);
-        }}
       />
 
       <SettingsModal
@@ -2118,88 +2295,7 @@ export default function App() {
         }}
       />
 
-      <FullSettingsModal
-        isOpen={isFullSettingsOpen}
-        onClose={() => {
-          playChime('click');
-          setIsFullSettingsOpen(false);
-        }}
-        initialTab={settingsInitialTab}
-        lang={lang}
-        onLangChange={handleLangChange}
-        theme={theme}
-        onThemeToggle={handleThemeToggle}
-        activePaletteId={activePaletteId}
-        onPaletteChange={handlePaletteChange}
-        isContrast={isContrast}
-        onContrastToggle={handleContrastToggle}
-        isToastEnabled={isToastEnabled}
-        onToastToggle={handleToastToggle}
-        isSoundEnabled={isSoundEnabled}
-        onSoundToggle={handleSoundToggle}
-        clickSound={clickSound}
-        notifySound={notifySound}
-        panicKey={panicKey}
-        onPanicKeyChange={(key) => {
-          setPanicKey(key);
-          localStorage.setItem('linkerru_panic_key', key);
-        }}
-        panicUrl={panicUrl}
-        onPanicUrlChange={(url) => {
-          setPanicUrl(url);
-          localStorage.setItem('linkerru_panic_url', url);
-        }}
-        isMobileLayout={isMobileLayout}
-        standbyBg={standbyBg}
-        onStandbyBgChange={handleStandbyBgSave}
-        fontFamily={fontFamily}
-        onFontChange={handleFontChange}
-        mainWallpaper={mainWallpaper}
-        onMainWallpaperChange={(w) => {
-          setMainWallpaper(w);
-          localStorage.setItem('linkerru_wallpaper', w);
-        }}
-        brightness={brightness}
-        onBrightnessChange={setBrightness}
-        isAuthenticated={isAuthenticated}
-        nickname={nickname}
-        onNicknameChange={(newNick) => {
-          setNickname(newNick);
-          localStorage.setItem('linkerru_nickname', newNick);
-        }}
-        onClickSoundChange={(s) => {
-          setClickSound(s);
-          localStorage.setItem('linkerru_click_sound', s);
-          const url = CLICK_SOUNDS.find(x => x.id === s)?.url;
-          if (url && isSoundEnabled && soundVolume > 0) {
-            const audio = new Audio(url);
-            audio.volume = soundVolume / 100;
-            audio.play().catch(e => console.log(e));
-          }
-        }}
-        onNotifySoundChange={(s) => {
-          setNotifySound(s);
-          localStorage.setItem('linkerru_notify_sound', s);
-          const url = NOTIFICATION_SOUNDS.find(x => x.id === s)?.url;
-          if (url && isSoundEnabled && soundVolume > 0) {
-            const audio = new Audio(url);
-            audio.volume = soundVolume / 100;
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-              playPromise.then(() => {
-                if (s === 'iphone') {
-                  setTimeout(() => {
-                    audio.pause();
-                    audio.currentTime = 0;
-                  }, 2000);
-                }
-              }).catch(e => console.log('Audio play error:', e));
-            }
-          }
-        }}
-        volume={soundVolume}
-        onVolumeChange={setSoundVolume}
-      />
+      {/* Settings is now rendered via window manager */}
 
       {!isMobileLayout && (
         <NotificationsModal
@@ -2336,13 +2432,49 @@ export default function App() {
         }}
       />
 
-      <div 
-        className="pointer-events-none fixed inset-0 z-[9999]" 
-        style={{ 
+      <div
+        className="pointer-events-none fixed inset-0 z-[9999]"
+        style={{
           backgroundColor: `rgba(0, 0, 0, ${1 - brightness / 100})`,
-          transition: 'background-color 0.3s' 
-        }} 
+          transition: 'background-color 0.3s'
+        }}
       />
+
+
+      {/* OS-style window manager layer (popup apps) */}
+      <WindowManagerLayer wm={wm} lang={lang} />
+
+      {/* Login screen PREVIEW overlay (dev tool — does NOT log out) */}
+      <AnimatePresence>
+        {isLoginPreviewOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300]"
+          >
+            <div className="absolute inset-0">
+              <LoginScreen
+                onLogin={() => { setIsLoginPreviewOpen(false); }}
+                lang={lang}
+                onLangChange={setLang}
+              />
+            </div>
+            {/* Floating "back to app" bar — makes it clear this is a preview */}
+            <motion.button
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              onClick={() => setIsLoginPreviewOpen(false)}
+              className="fixed bottom-6 left-1/2 z-[310] -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--outline)] bg-[var(--surface)] px-5 py-3 text-xs font-black uppercase tracking-wider text-[var(--on-surface)] shadow-2xl hover:bg-[var(--container)] transition-colors cursor-pointer"
+            >
+              <X size={14} />
+              {lang === 'ru' ? 'Вернуться в приложение' : 'Back to app'}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+    </>
   );
 }
