@@ -518,7 +518,7 @@ export default function App() {
   const lastClickRef = useRef(0);
   const lastToastRef = useRef(0);
   const playChime = (type: 'click' | 'alert' | 'reset' | 'victory' | 'toast' = 'click') => {
-    if (!isSoundEnabled || soundVolume === 0) return;
+    if (!isSoundEnabled || soundVolume === 0 || isMobileLayout) return;
     const now = Date.now();
     
     if (type === 'click') {
@@ -1533,7 +1533,7 @@ export default function App() {
           
           <div
             className="group relative overflow-hidden rounded-[2rem] p-8 cursor-pointer active:scale-[0.98] transition-all shadow-xl bg-[var(--surface-dim)] border border-[var(--outline)]"
-            onClick={() => { playChime('click'); openLisyanWindow(); }}
+            onClick={() => { openLisyanWindow(); }}
           >
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
             
@@ -1826,7 +1826,7 @@ export default function App() {
               <button
                 className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center"
                 style={{ backgroundColor: activePalette.primary }}
-                onClick={() => { playChime('click'); openLisyanWindow(); }}
+                onClick={() => { openLisyanWindow(); }}
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
               </button>
@@ -2499,7 +2499,7 @@ export default function App() {
 
 
       {/* OS-style window manager layer (popup apps) */}
-      <WindowManagerLayer wm={wm} lang={lang} isOptimizedEngine={isOptimizedEngine} />
+      <WindowManagerLayer wm={wm} lang={lang} isOptimizedEngine={isOptimizedEngine} isMobileLayout={isMobileLayout} />
 
       {/* Login screen PREVIEW overlay (dev tool — does NOT log out) */}
       <AnimatePresence>

@@ -386,29 +386,47 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   </p>
                 </motion.div>
 
+                {/* Mobile top segmented quick selector */}
+                <div className="flex sm:hidden w-full max-w-sm p-1.5 rounded-2xl bg-[var(--surface)] border border-[var(--outline)] shadow-sm mb-6">
+                  <button
+                    onClick={() => setSelection('login')}
+                    className="flex-1 py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 bg-[var(--accent)] text-[var(--on-accent)] shadow-sm cursor-pointer"
+                  >
+                    <Mail size={16} />
+                    <span>{lang === 'ru' ? 'Войти' : 'Sign In'}</span>
+                  </button>
+                  <button
+                    onClick={() => setSelection('signup')}
+                    className="flex-1 py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+                  >
+                    <User size={16} />
+                    <span>{lang === 'ru' ? 'Регистрация' : 'Sign Up'}</span>
+                  </button>
+                </div>
+
                 {/* Choice cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full max-w-3xl">
                   {/* LOGIN CHOICE CARD */}
                   <motion.div
                     whileHover={{ y: -6, scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setSelection('login')}
-                    className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[300px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
+                    className="bg-[var(--surface)] border border-[var(--outline)] rounded-[1.75rem] sm:rounded-[2rem] p-5 sm:p-8 flex flex-col justify-between h-auto sm:h-[300px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
                     style={{ boxShadow: 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.06))' }}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-all duration-300">
-                        <Mail size={22} />
+                    <div className="flex justify-between items-center sm:items-start mb-4 sm:mb-0">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-all duration-300">
+                        <Mail size={20} />
                       </div>
                       <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
                         01 / SIGN IN
                       </span>
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black tracking-tight mb-2 text-[var(--on-surface)]">
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight mb-1 sm:mb-2 text-[var(--on-surface)]">
                         {lang === 'ru' ? 'Войти в профиль' : 'Sign In to Profile'}
                       </h2>
-                      <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
+                      <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs font-medium">
                         {lang === 'ru' ? 'Авторизуйтесь, чтобы синхронизировать свои виджеты и настройки.' : 'Log in to synchronize your customized widgets and user workspace settings.'}
                       </p>
                     </div>
@@ -419,22 +437,22 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     whileHover={{ y: -6, scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setSelection('signup')}
-                    className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 flex flex-col justify-between h-[300px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
+                    className="bg-[var(--surface)] border border-[var(--outline)] rounded-[1.75rem] sm:rounded-[2rem] p-5 sm:p-8 flex flex-col justify-between h-auto sm:h-[300px] cursor-pointer group transition-colors hover:border-[var(--on-surface)] duration-300"
                     style={{ boxShadow: 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.06))' }}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-all duration-300">
-                        <User size={22} />
+                    <div className="flex justify-between items-center sm:items-start mb-4 sm:mb-0">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-all duration-300">
+                        <User size={20} />
                       </div>
                       <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-surface-var)] opacity-60">
                         02 / SIGN UP
                       </span>
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black tracking-tight mb-2 text-[var(--on-surface)]">
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight mb-1 sm:mb-2 text-[var(--on-surface)]">
                         {lang === 'ru' ? 'Зарегистрироваться' : 'Create Account'}
                       </h2>
-                      <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs">
+                      <p className="text-xs text-[var(--on-surface-var)] leading-relaxed max-w-xs font-medium">
                         {lang === 'ru' ? 'Создайте новый цифровой аккаунт и откройте весь потенциал платформы.' : 'Create a fresh account to unlock the full potential of your unified hub.'}
                       </p>
                     </div>
@@ -476,21 +494,42 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   <span>{t.backBtn}</span>
                 </button>
 
-                <div className="w-full bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
+                <div className="w-full bg-[var(--surface)] border border-[var(--outline)] rounded-[1.75rem] sm:rounded-[2rem] p-6 sm:p-8 shadow-xl relative overflow-hidden">
                   {!isSuccess ? (
                     <div className="flex flex-col h-full justify-between">
-                      {/* Header */}
-                      <div className="mb-6 text-center md:text-left">
-                        <div className="w-14 h-14 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center mb-4 mx-auto md:mx-0">
-                          <img 
-                            src={effectiveTheme === 'dark'
-                              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-                              : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
-                            } 
-                            alt="Logo" 
-                            className="w-9 h-9 object-contain rounded-full" 
-                          />
+                      {/* Header + Mode Switcher */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                          <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center">
+                            <img 
+                              src={effectiveTheme === 'dark'
+                                ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
+                                : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
+                              } 
+                              alt="Logo" 
+                              className="w-8 h-8 object-contain rounded-full" 
+                            />
+                          </div>
+
+                          {/* Quick mode switcher tab */}
+                          <div className="flex items-center p-1 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline)] text-[11px] font-bold">
+                            <button
+                              type="button"
+                              onClick={() => { setSelection('login'); setErrorField(null); }}
+                              className={`px-3 py-1.5 rounded-lg transition-all ${selection === 'login' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}
+                            >
+                              {lang === 'ru' ? 'Вход' : 'Login'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setSelection('signup'); setErrorField(null); }}
+                              className={`px-3 py-1.5 rounded-lg transition-all ${selection === 'signup' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}
+                            >
+                              {lang === 'ru' ? 'Регистрация' : 'Register'}
+                            </button>
+                          </div>
                         </div>
+
                         <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
                           {selection === 'login' ? t.loginTitle : t.signupTitle}
                         </h2>

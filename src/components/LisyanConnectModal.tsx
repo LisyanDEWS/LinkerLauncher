@@ -104,10 +104,12 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
   };
 
   const handleCreateRoom = async () => {
-    if (!deviceName || !deviceType) {
-      alert(lang === 'ru' ? 'Выберите устройство и введите имя' : 'Select device and enter name');
+    const targetType = deviceType || (isMobile ? 'phone' : null);
+    if (!deviceName || !targetType) {
+      alert(lang === 'ru' ? 'Выберите имя устройства' : 'Enter device name');
       return;
     }
+    if (!deviceType) setDeviceType(targetType);
     const id = await createRoom();
     setRoomId(id);
     setView('host');

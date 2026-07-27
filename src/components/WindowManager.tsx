@@ -105,28 +105,34 @@ export function useWindows(): WindowManager {
       }
       zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
       const nextZ = zCounter.current;
-      const w = Math.min(opts.initialWidth ?? 720, window.innerWidth - 80);
-      const h = Math.min(opts.initialHeight ?? 560, window.innerHeight - 140);
+      const isMobileScreen = window.innerWidth < 640;
+      
+      const w = isMobileScreen 
+        ? Math.max(300, window.innerWidth - 16) 
+        : Math.min(opts.initialWidth ?? 720, window.innerWidth - 80);
+      const h = isMobileScreen 
+        ? Math.max(400, window.innerHeight - 72) 
+        : Math.min(opts.initialHeight ?? 560, window.innerHeight - 140);
 
       // Smart window placement:
-      // - First window: centered on screen
-      // - Subsequent windows: cascaded offset from previous windows
-      // - If too many windows, allow small overlap but keep it minimal
+      // - Mobile: auto-fill viewport cleanly
+      // - First desktop window: centered on screen
+      // - Subsequent desktop windows: cascaded offset from previous windows
       const visibleWindows = prev.filter((win) => !win.isMinimized);
       const offsetCount = visibleWindows.length;
-      const cascadeX = 32;  // horizontal offset per window
-      const cascadeY = 28;  // vertical offset per window
-      const maxOffsetX = 160;  // cap horizontal drift
-      const maxOffsetY = 120;  // cap vertical drift
+      const cascadeX = 32;
+      const cascadeY = 28;
+      const maxOffsetX = 160;
+      const maxOffsetY = 120;
 
       const centerX = (window.innerWidth - w) / 2;
       const centerY = (window.innerHeight - h) / 2;
-      const rawX = centerX + Math.min(offsetCount * cascadeX, maxOffsetX);
-      const rawY = centerY + Math.min(offsetCount * cascadeY, maxOffsetY);
+      const rawX = isMobileScreen ? 8 : centerX + Math.min(offsetCount * cascadeX, maxOffsetX);
+      const rawY = isMobileScreen ? 8 : centerY + Math.min(offsetCount * cascadeY, maxOffsetY);
 
       // Clamp to viewport with a small margin
-      const x = Math.max(12, Math.min(rawX, window.innerWidth - w - 12));
-      const y = Math.max(12, Math.min(rawY, window.innerHeight - h - 60));
+      const x = Math.max(4, Math.min(rawX, window.innerWidth - w - 4));
+      const y = Math.max(4, Math.min(rawY, window.innerHeight - h - 50));
       const instance: WindowInstance = {
         id: opts.id,
         title: opts.title,
@@ -134,13 +140,13 @@ export function useWindows(): WindowManager {
         render: opts.render,
         initialWidth: opts.initialWidth ?? 720,
         initialHeight: opts.initialHeight ?? 560,
-        minWidth: opts.minWidth ?? 360,
-        minHeight: opts.minHeight ?? 280,
+        minWidth: isMobileScreen ? 280 : (opts.minWidth ?? 360),
+        minHeight: isMobileScreen ? 320 : (opts.minHeight ?? 280),
         x,
         y,
         width: w,
         height: h,
-        isMaximized: false,
+        isMaximized: isMobileScreen,
         isMinimized: false,
         zIndex: nextZ,
         renderKey: 0,
@@ -209,9 +215,10 @@ interface WindowManagerLayerProps {
   wm: WindowManager;
   lang: Language;
   isOptimizedEngine?: boolean;
+  isMobileLayout?: boolean;
 }
 
-export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false }: WindowManagerLayerProps) {
+export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false, isMobileLayout = false }: WindowManagerLayerProps) {
   const isRu = lang === 'ru';
   const updateGeometry = (wm as any).__updateGeometry as (id: string, patch: Partial<WindowInstance>) => void;
   // Taskbar shows ALL open windows (not just minimized)
@@ -256,14 +263,15 @@ export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false }: Wind
               onFocus={() => wm.focus(win.id)}
               onGeometryChange={(patch) => updateGeometry(win.id, patch)}
               isOptimizedEngine={isOptimizedEngine}
+              isMobileLayout={isMobileLayout}
             />
           </React.Fragment>
         ))}
       </AnimatePresence>
 
-      {/* Persistent taskbar — always visible when at least one window is open */}
+      {/* Persistent taskbar — only on desktop layouts */}
       <AnimatePresence>
-        {taskbarItems.length > 0 && (
+        {!isMobileLayout && taskbarItems.length > 0 && (
           <motion.div
             initial={{ y: 60, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -454,6 +462,7 @@ interface WindowFrameProps {
   onFocus: () => void;
   onGeometryChange: (patch: Partial<WindowInstance>) => void;
   isOptimizedEngine?: boolean;
+  isMobileLayout?: boolean;
 }
 
 function WindowFrame({
@@ -466,6 +475,7 @@ function WindowFrame({
   onFocus,
   onGeometryChange,
   isOptimizedEngine = false,
+  isMobileLayout = false,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -483,7 +493,7 @@ function WindowFrame({
   // Reset visibility when maximize state changes — always show on enter,
   // start the auto-hide countdown.
   useEffect(() => {
-    if (win.isMaximized) {
+    if (win.isMaximized && !isMobileLayout) {
       setTitleBarVisible(true);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       hideTimerRef.current = setTimeout(() => setTitleBarVisible(false), 5000);
@@ -492,28 +502,28 @@ function WindowFrame({
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     }
     return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
-  }, [win.isMaximized]);
+  }, [win.isMaximized, isMobileLayout]);
 
   // Top-edge hover zone: when the mouse enters the top 4px of the viewport
   // while maximized, reveal the title bar and reset the auto-hide timer.
   const onTopHoverEnter = () => {
-    if (!win.isMaximized) return;
+    if (!win.isMaximized || isMobileLayout) return;
     setTitleBarVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   };
   const onTitleBarEnter = () => {
-    if (!win.isMaximized) return;
+    if (!win.isMaximized || isMobileLayout) return;
     setTitleBarVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   };
   const onTitleBarLeave = () => {
-    if (!win.isMaximized) return;
+    if (!win.isMaximized || isMobileLayout) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => setTitleBarVisible(false), 5000);
   };
 
   const onTitleMouseDown = (e: React.MouseEvent) => {
-    if (win.isMaximized) return;
+    if (win.isMaximized || isMobileLayout) return;
     if ((e.target as HTMLElement).closest('button')) return;
     onFocus();
     dragState.current = { startX: e.clientX, startY: e.clientY, origX: win.x, origY: win.y };
@@ -523,7 +533,9 @@ function WindowFrame({
 
   // Double-click title bar to toggle maximize
   const onTitleDoubleClick = () => {
-    onToggleMaximize();
+    if (!isMobileLayout) {
+      onToggleMaximize();
+    }
   };
 
   useEffect(() => {
@@ -557,7 +569,7 @@ function WindowFrame({
   }, [win.minWidth, win.minHeight, onGeometryChange]);
 
   const onResizeMouseDown = (e: React.MouseEvent) => {
-    if (win.isMaximized) return;
+    if (win.isMaximized || isMobileLayout) return;
     onFocus();
     resizeState.current = { startX: e.clientX, startY: e.clientY, origW: win.width, origH: win.height };
     setIsInteracting(true);
@@ -565,14 +577,13 @@ function WindowFrame({
     e.stopPropagation();
   };
 
-  // Geometry target — maximized covers the viewport, otherwise uses stored rect.
-  const frameStyle: React.CSSProperties = win.isMaximized
+  // Geometry target — maximized or mobile covers full viewport
+  const isFullScreen = win.isMaximized || isMobileLayout;
+  const frameStyle: React.CSSProperties = isFullScreen
     ? { left: 0, top: 0, width: '100vw', height: '100vh' }
     : { left: win.x, top: win.y, width: win.width, height: win.height };
 
   // Minimize flies towards the taskbar (bottom-center of screen).
-  // x/y are transform offsets applied on top of left/top, so we compute
-  // the delta from the window's center to the taskbar anchor point.
   const taskbarX = window.innerWidth / 2;
   const taskbarY = window.innerHeight - 24;
   const winCenterX = win.x + win.width / 2;
@@ -582,7 +593,7 @@ function WindowFrame({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.82, y: 36, filter: isOptimizedEngine ? 'none' : 'blur(10px)' }}
+      initial={{ opacity: 0, scale: isMobileLayout ? 0.98 : 0.82, y: isMobileLayout ? 20 : 36, filter: isOptimizedEngine ? 'none' : 'blur(10px)' }}
       animate={
         win.isMinimized
           ? {
@@ -602,11 +613,11 @@ function WindowFrame({
       }
       exit={{
         opacity: 0,
-        scale: 0.82,
-        y: 36,
+        scale: isMobileLayout ? 0.98 : 0.82,
+        y: isMobileLayout ? 20 : 36,
         filter: isOptimizedEngine ? 'none' : 'blur(10px)',
         transition: {
-          duration: 0.4,
+          duration: 0.3,
           ease: [0.4, 0, 1, 1],
         },
       }}
@@ -619,26 +630,25 @@ function WindowFrame({
             }
           : {
               type: 'spring',
-              damping: 18,
-              stiffness: 280,
+              damping: isMobileLayout ? 24 : 18,
+              stiffness: isMobileLayout ? 320 : 280,
               restDelta: 0.01,
             }
       }
       onMouseDown={onFocus}
-      className="fixed z-[100] flex flex-col overflow-hidden border bg-[var(--surface)]"
+      className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)] ${isFullScreen ? 'border-none' : 'border'}`}
       style={{
         ...frameStyle,
         zIndex: win.zIndex,
-        borderRadius: win.isMaximized ? 0 : '1.25rem',
+        borderRadius: isFullScreen ? 0 : '1.25rem',
         borderColor: isActive
           ? 'color-mix(in srgb, var(--accent) 40%, var(--outline))'
           : 'var(--outline)',
-        boxShadow: isActive
-          ? '0 20px 50px -12px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent)'
-          : 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.15))',
-        // Smoothly animate geometry changes (maximize/restore) unless the
-        // user is actively dragging or resizing — in that case we want
-        // 1:1 pointer tracking with no transition lag.
+        boxShadow: isFullScreen
+          ? 'none'
+          : isActive
+            ? '0 20px 50px -12px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent)'
+            : 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.15))',
         transition: isInteracting
           ? 'none'
           : 'left 0.32s cubic-bezier(0.16, 1, 0.3, 1), top 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -646,74 +656,71 @@ function WindowFrame({
       }}
     >
       {/* Top hover zone — invisible 4px strip at the very top of a maximized
-          window. Entering it reveals the auto-hidden title bar. */}
-      {win.isMaximized && !titleBarVisible && (
+          desktop window. Entering it reveals the auto-hidden title bar. */}
+      {win.isMaximized && !isMobileLayout && !titleBarVisible && (
         <div
           className="absolute top-0 left-0 right-0 h-1 z-50"
           onMouseEnter={onTopHoverEnter}
         />
       )}
 
-      {/* Title bar — M3 Expressive with rounded top + divider.
-          When maximized, auto-hides after 5s and slides up out of view.
-          Hovering the top edge or the bar itself reveals it again. */}
+      {/* Header bar — adapt clean mobile view vs desktop window bar */}
       <div
         onMouseDown={onTitleMouseDown}
         onDoubleClick={onTitleDoubleClick}
         onMouseEnter={onTitleBarEnter}
         onMouseLeave={onTitleBarLeave}
-        className="flex h-11 shrink-0 cursor-grab items-center justify-between px-3.5 active:cursor-grabbing relative"
+        className={`flex ${isMobileLayout ? 'h-14 px-4' : 'h-11 px-3.5 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
         style={{
           background: isActive
             ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
             : 'var(--surface)',
-          transform: win.isMaximized && !titleBarVisible ? 'translateY(-100%)' : 'translateY(0)',
+          transform: win.isMaximized && !isMobileLayout && !titleBarVisible ? 'translateY(-100%)' : 'translateY(0)',
           transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        {/* Divider line at bottom of title bar */}
-        <div className="absolute bottom-0 left-3 right-3 h-px" style={{ background: 'var(--outline-var)' }} />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {win.icon}
-          <span className="text-xs font-bold text-[var(--on-surface)]">{win.title}</span>
+          <span className={`${isMobileLayout ? 'text-sm font-black' : 'text-xs font-bold'} text-[var(--on-surface)] tracking-tight`}>
+            {win.title}
+          </span>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); onMinimize(); }}
-            title={isRu ? 'Свернуть' : 'Minimize'}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            <Minus size={14} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-            title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            {/* Windows-style: single square = maximize, two overlapping squares = restore */}
-            {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
-          </button>
+        <div className="flex items-center gap-1.5">
+          {!isMobileLayout && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+                title={isRu ? 'Свернуть' : 'Minimize'}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Minus size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
+                title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
+              </button>
+            </>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             title={isRu ? 'Закрыть' : 'Close'}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-all active:scale-95 cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'}`}
           >
-            <X size={14} />
+            <X size={isMobileLayout ? 16 : 14} />
           </button>
         </div>
       </div>
 
-      {/* Content — acts as a container for container queries (@container)
-          so child components can respond to the window's dimensions instead of
-          the browser viewport. The .wm-content class enables container-type.
-          The key={win.renderKey} forces React to re-mount the content when
-          reload is called, without closing/reopening the window. */}
+      {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
         {win.render()}
       </div>
 
-      {/* Resize handle — bottom-right corner, M3 styled */}
-      {!win.isMaximized && (
+      {/* Resize handle */}
+      {!win.isMaximized && !isMobileLayout && (
         <div
           onMouseDown={onResizeMouseDown}
           className="absolute bottom-0 right-0 h-5 w-5 cursor-se-resize"
