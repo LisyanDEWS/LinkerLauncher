@@ -25,7 +25,7 @@ import {
   Loader2,
   KeyRound,
 } from 'lucide-react';
-import { Shield, Wind, AlertTriangle, LogOut } from 'lucide-react';
+import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
 import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
@@ -83,6 +83,8 @@ interface FullSettingsModalProps {
   onLinksChange: (links: QuickLink[]) => void;
   activeToggles: ToggleId[];
   onTogglesChange: (toggles: ToggleId[]) => void;
+  isOptimizedEngine: boolean;
+  onOptimizedEngineToggle: () => void;
   initialTab?: Tab;
   embedded?: boolean;
 }
@@ -130,6 +132,8 @@ export default function FullSettingsModal({
   onLinksChange,
   activeToggles,
   onTogglesChange,
+  isOptimizedEngine,
+  onOptimizedEngineToggle,
   initialTab,
   embedded = false,
 }: FullSettingsModalProps) {
@@ -1377,19 +1381,51 @@ export default function FullSettingsModal({
                       <div className="flex flex-col gap-6 animate-fade-in pb-10" id="dev-options-tab">
                         <div className="flex items-center gap-4 mb-2">
                           <div className="w-12 h-12 rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)]">
-                            <AlertTriangle size={24} className="text-red-500" />
+                            <Cpu size={24} className="text-[var(--accent)]" />
                           </div>
                           <div>
                             <h3 className="text-2xl font-black text-[var(--on-surface)] uppercase tracking-tight">
                               {lang === 'ru' ? 'Опции разработчика' : 'Developer Options'}
                             </h3>
                             <p className="text-xs font-bold text-[var(--on-surface-var)] mt-1">
-                              {lang === 'ru' ? 'Опасные действия' : 'Dangerous actions'}
+                              {lang === 'ru' ? 'Инструменты разработчика и оптимизация производительности' : 'Developer tools and performance optimization'}
                             </p>
+                          </div>
+                        </div>
+
+                        {/* Performance Optimizations Section */}
+                        <div className="space-y-3" id="dev-performance-section">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
+                            {lang === 'ru' ? 'Оптимизация производительности' : 'Performance Optimization'}
+                          </h4>
+                          <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Cpu size={18} className="text-[var(--accent)] animate-pulse" />
+                                  <h4 className="text-sm font-black text-[var(--on-surface)]">
+                                    {lang === 'ru' ? 'Оптимизированный движок' : 'Optimized Engine'}
+                                  </h4>
+                                </div>
+                                <p className="text-xs font-bold text-[var(--on-surface-var)] pr-4">
+                                  {lang === 'ru' 
+                                    ? 'Оптимизирует работу интерфейса на слабых устройствах. Отключает тяжелые backdrop-blur эффекты, размытие окон, сложные тени и движущуюся фоновую аврору, при этом сохраняя все стандартные переходы и Framer Motion анимации.' 
+                                    : 'Optimizes interface performance on low-end devices. Disables heavy backdrop-blur effects, glass styling, complex shadows, and animated background auroras, while keeping all standard transitions and Framer Motion animations.'}
+                                </p>
+                              </div>
+                              <SquashToggle
+                                checked={isOptimizedEngine}
+                                onChange={onOptimizedEngineToggle}
+                                color={activePalette.primary}
+                              />
+                            </div>
                           </div>
                         </div>
                         
                         <div className="space-y-3" id="dev-danger-zone">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-red-500 pl-1.5">
+                            {lang === 'ru' ? 'Опасная зона' : 'Danger Zone'}
+                          </h4>
                           {/* Force Login Screen Card */}
                           <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
                              <div className="flex flex-col gap-2">

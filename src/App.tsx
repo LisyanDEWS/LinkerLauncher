@@ -39,7 +39,8 @@ import {
   Languages,
   Edit2,
   Calculator,
-  StickyNote
+  StickyNote,
+  Server
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from './types';
@@ -64,6 +65,7 @@ import StandbyClock from './components/StandbyClock';
 import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
+import { SpaceProxyApp } from './components/SpaceProxyApp';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -101,6 +103,10 @@ export default function App() {
 
   const [isContrast, setIsContrast] = useState<boolean>(() => {
     return localStorage.getItem('linkerru_contrast') === 'true';
+  });
+
+  const [isOptimizedEngine, setIsOptimizedEngine] = useState<boolean>(() => {
+    return localStorage.getItem('linkerru_optimized_engine') === 'true';
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -343,7 +349,8 @@ export default function App() {
           clock_type: clockType,
           clock_variation: clockVariation,
           links: customLinks,
-          toggles: activeToggles
+          toggles: activeToggles,
+          optimized_engine: isOptimizedEngine
         },
         updatedAt: Date.now()
       };
@@ -406,10 +413,15 @@ export default function App() {
               if (s.toggles) {
                 const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
                 if (Array.isArray(parsedToggles)) {
-                  const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
-                  setActiveToggles(valid);
-                  localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
+                   const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
+                   setActiveToggles(valid);
+                   localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
                 }
+              }
+              if (s.optimized_engine !== undefined) {
+                const opt = s.optimized_engine === true || s.optimized_engine === 'true';
+                setIsOptimizedEngine(opt);
+                localStorage.setItem('linkerru_optimized_engine', String(opt));
               }
               
               isSyncingFromCloud.current = false;
@@ -469,7 +481,8 @@ export default function App() {
     clockVariation,
     customLinks,
     activeToggles,
-    nickname
+    nickname,
+    isOptimizedEngine
   ]);
 
   useEffect(() => {
@@ -715,6 +728,15 @@ export default function App() {
       : (theme === 'dark' ? '#09090b' : '#fafafa');
   }, [theme, activePaletteId, isContrast, fontFamily]);
 
+  // --- Optimized Engine Effects ---
+  useEffect(() => {
+    if (isOptimizedEngine) {
+      document.documentElement.classList.add('linkerru-optimized');
+    } else {
+      document.documentElement.classList.remove('linkerru-optimized');
+    }
+  }, [isOptimizedEngine]);
+
   // --- Notifications Setup ---
   useEffect(() => {
     const defaultNotifs = [
@@ -943,6 +965,7 @@ export default function App() {
   const settingsMinimized = isMinimized('settings');
   const calculatorMinimized = isMinimized('calculator');
   const keepsMinimized = isMinimized('keeps');
+  const proxyMinimized = isMinimized('proxy');
 
   const openAgnoWindow = () => {
     wm.open({
@@ -1019,6 +1042,12 @@ export default function App() {
             onLinksChange={handleLinksChange}
             activeToggles={activeToggles}
             onTogglesChange={handleTogglesChange}
+            isOptimizedEngine={isOptimizedEngine}
+            onOptimizedEngineToggle={() => {
+              const n = !isOptimizedEngine;
+              setIsOptimizedEngine(n);
+              localStorage.setItem('linkerru_optimized_engine', String(n));
+            }}
             initialTab={tab}
           />
         </div>
@@ -1077,6 +1106,28 @@ export default function App() {
     });
   };
 
+  const openProxyWindow = () => {
+    wm.open({
+      id: 'proxy',
+      title: lang === 'ru' ? 'Прокси-сервер' : 'Space Proxy Hub',
+      icon: <Globe size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 900,
+      initialHeight: 650,
+      minWidth: 480,
+      minHeight: 380,
+      render: () => (
+        <SpaceProxyApp
+          lang={lang}
+          selectedServer={selectedServer}
+          onSelectServer={handleServerSelection}
+          activePalette={activePalette}
+          theme={theme}
+        />
+      ),
+    });
+  };
+
   useEffect(() => {
     localStorage.setItem('linkerru_palette', activePalette.primary);
   }, [activePalette]);
@@ -1128,6 +1179,10 @@ export default function App() {
     setSelectedServer(srv);
     localStorage.setItem('linkerru_server', srv);
     triggerToast(`${t.selected_label}: ${srv}`);
+    setIsServerOpen(false);
+    setTimeout(() => {
+      openProxyWindow();
+    }, 100);
   };
 
   // --- Reset All Settings (Destroy Session) ---
@@ -1663,6 +1718,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
         {/* WIDGET 1: Proxy Server Hub selector */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-proxy-space">
+          {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
               <Globe size={20} className="text-white" />
@@ -1674,17 +1730,17 @@ export default function App() {
               {t.multi_server_desc}
             </p>
           </div>
-          <div className="mt-4 flex items-end">
+          <div className="mt-4 flex gap-2 items-end">
             <button
               onClick={() => {
                 playChime('click');
                 setIsServerOpen(true);
               }}
-              className="w-full py-3 rounded-full text-xs font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
+              className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
               style={{ backgroundColor: activePalette.primary }}
-              id="proxy-card-action-btn"
+              id="proxy-card-open-btn"
             >
-              {t.select_server_label}
+              {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
           </div>
         </div>
@@ -1706,16 +1762,17 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-xs font-bold text-[var(--on-surface-var)] mr-2">{lang === 'ru' ? 'Отрыть в:' : 'Open:'}</span>
             <div className="flex gap-2 flex-1">
               <button
                 onClick={() => {
                   playChime('click');
                   openAgnoWindow();
                 }}
-                className="flex-1 py-3 bg-[var(--container)] hover:bg-[var(--container-high)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-full text-[10px] font-black cursor-pointer shadow-sm transition-all hover:scale-[1.02] active:scale-95 px-1"
+                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center"
+                style={{ backgroundColor: activePalette.primary }}
+                id="agno-card-open-btn"
               >
-                Linker.Ru
+                {lang === 'ru' ? 'Открыть' : 'Open'}
               </button>
             </div>
           </div>
@@ -2442,7 +2499,7 @@ export default function App() {
 
 
       {/* OS-style window manager layer (popup apps) */}
-      <WindowManagerLayer wm={wm} lang={lang} />
+      <WindowManagerLayer wm={wm} lang={lang} isOptimizedEngine={isOptimizedEngine} />
 
       {/* Login screen PREVIEW overlay (dev tool — does NOT log out) */}
       <AnimatePresence>

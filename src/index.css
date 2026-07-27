@@ -576,3 +576,43 @@ input[type="range"]::-moz-range-thumb {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* --- LinkerRu Optimized Engine (Performance Mode) --- */
+.linkerru-optimized {
+  /* Keep background active but optimized */
+}
+
+/* Optimize backdrop blurs instead of disabling them, making low powered mode look virtually identical to normal mode */
+.linkerru-optimized * {
+  /* Overwrite heavy transitions/filters for smoother animations */
+  filter: none;
+}
+
+/* Hardware-accelerate and lighten backdrop-blur for glassmorphic elements in optimized mode */
+.linkerru-optimized [style*="backdropFilter"],
+.linkerru-optimized [style*="WebkitBackdropFilter"],
+.linkerru-optimized .panel-gradient,
+.linkerru-optimized .panel-bg-gradient,
+.linkerru-optimized .card,
+.linkerru-optimized .panel,
+.linkerru-optimized [class*="backdrop-blur"],
+.linkerru-optimized .glass-panel {
+  backdrop-filter: blur(8px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  
+  /* Force GPU rendering layers */
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  
+  /* Slightly higher opacity for a cleaner look with less blur depth */
+  background-color: var(--surface-dim) !important;
+}
+
+.linkerru-optimized .card,
+.linkerru-optimized .panel {
+  /* Use lightweight sharp shadows instead of dynamic, large blurred ones */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--outline-var) !important;
+}
+
+
+

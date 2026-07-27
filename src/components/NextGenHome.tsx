@@ -68,6 +68,7 @@ export interface NextGenHomeProps {
   onOpenChangelog: () => void;
   onOpenProfile: () => void;
   onSearch: (query: string) => void;
+  isOptimizedEngine?: boolean;
 }
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -98,6 +99,7 @@ export function NextGenHome(props: NextGenHomeProps) {
     onOpenChangelog,
     onOpenProfile,
     onSearch,
+    isOptimizedEngine = false,
   } = props;
 
   const isDark = theme === 'dark';
@@ -155,17 +157,29 @@ export function NextGenHome(props: NextGenHomeProps) {
     } as React.CSSProperties;
   }, [activePalette]);
 
-  const glassSurface: React.CSSProperties = {
-    background: isDark
-      ? 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)'
-      : 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.45) 100%)',
-    backdropFilter: 'blur(24px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-    border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.9)',
-    boxShadow: isDark
-      ? '0 24px 60px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)'
-      : '0 24px 60px -20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
-  };
+  const glassSurface: React.CSSProperties = isOptimizedEngine
+    ? {
+        background: isDark
+          ? 'linear-gradient(135deg, rgba(20,23,19,0.85) 0%, rgba(20,23,19,0.7) 100%)'
+          : 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.75) 100%)',
+        backdropFilter: 'blur(8px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(8px) saturate(140%)',
+        border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+        transform: 'translate3d(0, 0, 0)',
+        willChange: 'transform, opacity',
+      }
+    : {
+        background: isDark
+          ? 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)'
+          : 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.45) 100%)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.9)',
+        boxShadow: isDark
+          ? '0 24px 60px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)'
+          : '0 24px 60px -20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
+      };
 
   // Stagger entrance variants
   const container = {
@@ -173,8 +187,8 @@ export function NextGenHome(props: NextGenHomeProps) {
     show: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
   };
   const item = {
-    hidden: { opacity: 0, y: 18, filter: 'blur(8px)' },
-    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.6, ease: easeOut } },
+    hidden: { opacity: 0, y: 18, filter: isOptimizedEngine ? 'none' : 'blur(8px)' },
+    show: { opacity: 1, y: 0, filter: 'none', transition: { duration: 0.6, ease: easeOut } },
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -189,30 +203,61 @@ export function NextGenHome(props: NextGenHomeProps) {
     >
       {/* === AURORA BACKGROUND === */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isDark ? 0.35 : 0.5 }}
-          transition={{ duration: 1.2 }}
-          className="absolute -top-1/3 -left-1/4 h-[80vh] w-[80vh] rounded-full blur-[120px]"
-          style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 60%)' }}
-        />
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isDark ? 0.3 : 0.45, x: [0, 40, 0], y: [0, -30, 0] }}
-          transition={{ opacity: { duration: 1.2 }, x: { duration: 18, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 22, repeat: Infinity, ease: 'easeInOut' } }}
-          className="absolute top-1/4 -right-1/4 h-[70vh] w-[70vh] rounded-full blur-[120px]"
-          style={{ background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 60%)' }}
-        />
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isDark ? 0.25 : 0.4, x: [0, -30, 0], y: [0, 40, 0] }}
-          transition={{ opacity: { duration: 1.2 }, x: { duration: 26, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 20, repeat: Infinity, ease: 'easeInOut' } }}
-          className="absolute -bottom-1/4 left-1/3 h-[60vh] w-[60vh] rounded-full blur-[120px]"
-          style={{ background: 'radial-gradient(circle, var(--aurora-3) 0%, transparent 60%)' }}
-        />
+        {isOptimizedEngine ? (
+          <>
+            <div
+              aria-hidden
+              className="absolute -top-1/3 -left-1/4 h-[80vh] w-[80vh] rounded-full blur-[120px]"
+              style={{
+                background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 60%)',
+                opacity: isDark ? 0.35 : 0.5,
+              }}
+            />
+            <div
+              aria-hidden
+              className="absolute top-1/4 -right-1/4 h-[70vh] w-[70vh] rounded-full blur-[120px]"
+              style={{
+                background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 60%)',
+                opacity: isDark ? 0.3 : 0.45,
+              }}
+            />
+            <div
+              aria-hidden
+              className="absolute -bottom-1/4 left-1/3 h-[60vh] w-[60vh] rounded-full blur-[120px]"
+              style={{
+                background: 'radial-gradient(circle, var(--aurora-3) 0%, transparent 60%)',
+                opacity: isDark ? 0.25 : 0.4,
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <motion.div
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isDark ? 0.35 : 0.5 }}
+              transition={{ duration: 1.2 }}
+              className="absolute -top-1/3 -left-1/4 h-[80vh] w-[80vh] rounded-full blur-[120px]"
+              style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 60%)' }}
+            />
+            <motion.div
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isDark ? 0.3 : 0.45, x: [0, 40, 0], y: [0, -30, 0] }}
+              transition={{ opacity: { duration: 1.2 }, x: { duration: 18, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 22, repeat: Infinity, ease: 'easeInOut' } }}
+              className="absolute top-1/4 -right-1/4 h-[70vh] w-[70vh] rounded-full blur-[120px]"
+              style={{ background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 60%)' }}
+            />
+            <motion.div
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isDark ? 0.25 : 0.4, x: [0, -30, 0], y: [0, 40, 0] }}
+              transition={{ opacity: { duration: 1.2 }, x: { duration: 26, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 20, repeat: Infinity, ease: 'easeInOut' } }}
+              className="absolute -bottom-1/4 left-1/3 h-[60vh] w-[60vh] rounded-full blur-[120px]"
+              style={{ background: 'radial-gradient(circle, var(--aurora-3) 0%, transparent 60%)' }}
+            />
+          </>
+        )}
         {/* Subtle grain */}
         <div className={`absolute inset-0 bg-[radial-gradient(${isDark ? '#3f3f46' : '#e5e5e5'}_1px,transparent_1px)] [background-size:18px_18px] opacity-40`} />
       </div>

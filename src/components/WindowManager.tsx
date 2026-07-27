@@ -87,7 +87,16 @@ export function useWindows(): WindowManager {
           zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
           const nextZ = zCounter.current;
           return prev.map((w) =>
-            w.id === opts.id ? { ...w, zIndex: nextZ, isMinimized: false } : w,
+            w.id === opts.id
+              ? {
+                  ...w,
+                  zIndex: nextZ,
+                  isMinimized: false,
+                  render: opts.render,
+                  title: opts.title,
+                  icon: opts.icon,
+                }
+              : w,
           );
         }
       }
@@ -199,9 +208,10 @@ export function useWindows(): WindowManager {
 interface WindowManagerLayerProps {
   wm: WindowManager;
   lang: Language;
+  isOptimizedEngine?: boolean;
 }
 
-export function WindowManagerLayer({ wm, lang }: WindowManagerLayerProps) {
+export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false }: WindowManagerLayerProps) {
   const isRu = lang === 'ru';
   const updateGeometry = (wm as any).__updateGeometry as (id: string, patch: Partial<WindowInstance>) => void;
   // Taskbar shows ALL open windows (not just minimized)
@@ -245,6 +255,7 @@ export function WindowManagerLayer({ wm, lang }: WindowManagerLayerProps) {
               onToggleMaximize={() => wm.toggleMaximize(win.id)}
               onFocus={() => wm.focus(win.id)}
               onGeometryChange={(patch) => updateGeometry(win.id, patch)}
+              isOptimizedEngine={isOptimizedEngine}
             />
           </React.Fragment>
         ))}
@@ -442,6 +453,7 @@ interface WindowFrameProps {
   onToggleMaximize: () => void;
   onFocus: () => void;
   onGeometryChange: (patch: Partial<WindowInstance>) => void;
+  isOptimizedEngine?: boolean;
 }
 
 function WindowFrame({
@@ -453,6 +465,7 @@ function WindowFrame({
   onToggleMaximize,
   onFocus,
   onGeometryChange,
+  isOptimizedEngine = false,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -569,7 +582,7 @@ function WindowFrame({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.82, y: 36, filter: 'blur(10px)' }}
+      initial={{ opacity: 0, scale: 0.82, y: 36, filter: isOptimizedEngine ? 'none' : 'blur(10px)' }}
       animate={
         win.isMinimized
           ? {
@@ -577,21 +590,25 @@ function WindowFrame({
               scale: [1, 0.85, 0.45, 0.08],
               x: [0, minimizeX * 0.3, minimizeX * 0.7, minimizeX],
               y: [0, minimizeY * 0.4, minimizeY * 0.75, minimizeY],
-              filter: ['blur(0px)', 'blur(1px)', 'blur(3px)', 'blur(6px)'],
+              filter: isOptimizedEngine ? 'none' : ['blur(0px)', 'blur(1px)', 'blur(3px)', 'blur(6px)'],
             }
           : {
               opacity: 1,
               scale: 1,
               x: 0,
               y: 0,
-              filter: 'blur(0px)',
+              filter: 'none',
             }
       }
       exit={{
         opacity: 0,
         scale: 0.82,
         y: 36,
-        filter: 'blur(10px)',
+        filter: isOptimizedEngine ? 'none' : 'blur(10px)',
+        transition: {
+          duration: 0.4,
+          ease: [0.4, 0, 1, 1],
+        },
       }}
       transition={
         win.isMinimized
@@ -607,10 +624,6 @@ function WindowFrame({
               restDelta: 0.01,
             }
       }
-      exitTransition={{
-        duration: 0.4,
-        ease: [0.4, 0, 1, 1],
-      }}
       onMouseDown={onFocus}
       className="fixed z-[100] flex flex-col overflow-hidden border bg-[var(--surface)]"
       style={{

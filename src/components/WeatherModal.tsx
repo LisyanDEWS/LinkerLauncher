@@ -109,10 +109,11 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor }: We
       const hourly = response.hourly()!;
       const utcOffsetSeconds = response.utcOffsetSeconds();
 
-      // Just taking the next 8 hours
+      // Taking 24 hours for full hourly scroll
       const hData = [];
+      const totalHours = Math.min(24, hourly.variables(0)!.valuesArray()?.length || 24);
       const timesArray = Array.from(
-        { length: 8 },
+        { length: totalHours },
         (_, i) => new Date((Number(hourly.time()) + i * hourly.interval() + utcOffsetSeconds) * 1000)
       );
       const tempsArray = hourly.variables(0)!.valuesArray();
@@ -122,7 +123,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor }: We
         setHumidity(humidArray[0]);
       }
 
-      for(let i=0; i<8; i++) {
+      for(let i=0; i<totalHours; i++) {
         const timeStr = `${String(timesArray[i].getHours()).padStart(2, '0')}:00`;
         hData.push({
           time: timeStr,
@@ -351,12 +352,12 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor }: We
                     ))}
                   </div>
                 ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth select-none scrollbar-thin">
+                  <div className="flex gap-2.5 overflow-x-auto pb-3 pt-1 scroll-smooth select-none scrollbar-thin max-w-full touch-pan-x cursor-grab active:cursor-grabbing">
                     {hourlyData.map((h, idx) => (
                       <div
                         key={idx}
-                        className="min-w-[76px] flex-shrink-0 flex flex-col items-center justify-center gap-2 p-3 bg-[var(--container)] border border-[var(--outline-var)] rounded-[1.25rem] m3-card-enter"
-                        style={{ animationDelay: `${idx * 50}ms` }}
+                        className="min-w-[80px] flex-shrink-0 flex flex-col items-center justify-center gap-2 p-3 bg-[var(--container)] border border-[var(--outline-var)] rounded-[1.25rem] m3-card-enter hover:border-[var(--accent)] transition-colors"
+                        style={{ animationDelay: `${idx * 25}ms` }}
                       >
                         <span className="text-[10px] font-black text-[var(--on-surface-var)]">
                           {h.time}

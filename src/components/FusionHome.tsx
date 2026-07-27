@@ -68,6 +68,7 @@ export interface FusionHomeProps {
   onOpenProfile: () => void;
   onOpenHomePicker: () => void;
   onSearch: (q: string) => void;
+  isOptimizedEngine?: boolean;
 }
 
 const spring = { type: 'spring' as const, damping: 18, stiffness: 260 };
@@ -79,6 +80,7 @@ export function FusionHome(props: FusionHomeProps) {
     onOpenClock, onOpenCalendar, onOpenWeather, onOpenServer, onOpenAgno,
     onOpenLisyan, onOpenCalculator, onOpenNotifications, onOpenSettings,
     onOpenChangelog, onOpenProfile, onOpenHomePicker, onSearch,
+    isOptimizedEngine = false,
   } = props;
 
   const isDark = theme === 'dark';
@@ -132,41 +134,84 @@ export function FusionHome(props: FusionHomeProps) {
     '--aurora-3': accent3,
   } as React.CSSProperties), [accent, accent2, accent3]);
 
-  const glass: React.CSSProperties = {
-    background: isDark
-      ? 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)'
-      : 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.5) 100%)',
-    backdropFilter: 'blur(28px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-    border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(255,255,255,0.95)',
-  };
+  const glass: React.CSSProperties = isOptimizedEngine
+    ? {
+        background: isDark
+          ? 'linear-gradient(135deg, rgba(20,23,19,0.85) 0%, rgba(20,23,19,0.7) 100%)'
+          : 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.75) 100%)',
+        backdropFilter: 'blur(8px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(8px) saturate(140%)',
+        border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+        transform: 'translate3d(0, 0, 0)',
+        willChange: 'transform, opacity',
+      }
+    : {
+        background: isDark
+          ? 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)'
+          : 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.5) 100%)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(255,255,255,0.95)',
+      };
 
   return (
     <div style={aurora} className="relative min-h-screen w-full overflow-hidden font-sans text-[var(--on-surface)]">
       {/* Aurora background */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isDark ? 0.35 : 0.5 }}
-          transition={{ duration: 1.2 }}
-          className="absolute -top-1/4 -left-1/4 h-[70vh] w-[70vh] rounded-full blur-[140px]"
-          style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 60%)' }}
-        />
-        <motion.div
-          aria-hidden
-          animate={{ x: [0, 50, 0], y: [0, -40, 0] }}
-          transition={{ x: { duration: 20, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 24, repeat: Infinity, ease: 'easeInOut' } }}
-          className="absolute top-1/3 -right-1/4 h-[60vh] w-[60vh] rounded-full blur-[140px]"
-          style={{ background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 60%)', opacity: isDark ? 0.3 : 0.45 }}
-        />
-        <motion.div
-          aria-hidden
-          animate={{ x: [0, -40, 0], y: [0, 50, 0] }}
-          transition={{ x: { duration: 28, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 22, repeat: Infinity, ease: 'easeInOut' } }}
-          className="absolute -bottom-1/4 left-1/3 h-[50vh] w-[50vh] rounded-full blur-[140px]"
-          style={{ background: 'radial-gradient(circle, var(--aurora-3) 0%, transparent 60%)', opacity: isDark ? 0.25 : 0.4 }}
-        />
+        {isOptimizedEngine ? (
+          <>
+            <div
+              aria-hidden
+              className="absolute -top-1/4 -left-1/4 h-[70vh] w-[70vh] rounded-full blur-[140px]"
+              style={{
+                background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 60%)',
+                opacity: isDark ? 0.35 : 0.5,
+              }}
+            />
+            <div
+              aria-hidden
+              className="absolute top-1/3 -right-1/4 h-[60vh] w-[60vh] rounded-full blur-[140px]"
+              style={{
+                background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 60%)',
+                opacity: isDark ? 0.3 : 0.45,
+              }}
+            />
+            <div
+              aria-hidden
+              className="absolute -bottom-1/4 left-1/3 h-[50vh] w-[50vh] rounded-full blur-[140px]"
+              style={{
+                background: 'radial-gradient(circle, var(--aurora-3) 0%, transparent 60%)',
+                opacity: isDark ? 0.25 : 0.4,
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <motion.div
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isDark ? 0.35 : 0.5 }}
+              transition={{ duration: 1.2 }}
+              className="absolute -top-1/4 -left-1/4 h-[70vh] w-[70vh] rounded-full blur-[140px]"
+              style={{ background: 'radial-gradient(circle, var(--aurora-1) 0%, transparent 60%)' }}
+            />
+            <motion.div
+              aria-hidden
+              animate={{ x: [0, 50, 0], y: [0, -40, 0] }}
+              transition={{ x: { duration: 20, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 24, repeat: Infinity, ease: 'easeInOut' } }}
+              className="absolute top-1/3 -right-1/4 h-[60vh] w-[60vh] rounded-full blur-[140px]"
+              style={{ background: 'radial-gradient(circle, var(--aurora-2) 0%, transparent 60%)', opacity: isDark ? 0.3 : 0.45 }}
+            />
+            <motion.div
+              aria-hidden
+              animate={{ x: [0, -40, 0], y: [0, 50, 0] }}
+              transition={{ x: { duration: 28, repeat: Infinity, ease: 'easeInOut' }, y: { duration: 22, repeat: Infinity, ease: 'easeInOut' } }}
+              className="absolute -bottom-1/4 left-1/3 h-[50vh] w-[50vh] rounded-full blur-[140px]"
+              style={{ background: 'radial-gradient(circle, var(--aurora-3) 0%, transparent 60%)', opacity: isDark ? 0.25 : 0.4 }}
+            />
+          </>
+        )}
       </div>
 
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-5 md:px-8 md:py-6">

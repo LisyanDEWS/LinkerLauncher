@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor } from 'lucide-react';
+import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -66,6 +66,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
   // Privacy modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWhyGuestModalOpen, setIsWhyGuestModalOpen] = useState(false);
 
   // Error shake triggers
   const [errorField, setErrorField] = useState<string | null>(null);
@@ -369,7 +370,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                 >
                   <div className="w-16 h-16 rounded-3xl bg-[var(--accent)] flex items-center justify-center mb-5 shadow-lg overflow-hidden" style={{ boxShadow: '0 12px 32px -8px var(--accent)' }}>
                     <img
-                      src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8"
+                      src={effectiveTheme === 'dark'
+                        ? "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
+                        : "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
+                      }
                       alt="LinkerRu Logo"
                       className="w-12 h-12 object-contain rounded-full"
                     />
@@ -436,6 +440,22 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     </div>
                   </motion.div>
                 </div>
+
+                {/* Why guest removed button */}
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  onClick={() => setIsWhyGuestModalOpen(true)}
+                  className="mt-8 px-5 py-2.5 rounded-full bg-[var(--surface)] border border-[var(--outline)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] hover:border-[var(--accent)] text-xs font-extrabold transition-all flex items-center gap-2 shadow-sm hover:scale-[1.03] active:scale-95 cursor-pointer"
+                >
+                  <HelpCircle size={15} className="text-[var(--accent)]" />
+                  <span>
+                    {lang === 'ru'
+                      ? 'Почему мы убрали «Продолжить как гость»?'
+                      : 'Why was "Continue as Guest" removed?'}
+                  </span>
+                </motion.button>
               </motion.div>
             ) : (
               // STEP 2: ACTIVE FORM PANELS
@@ -445,38 +465,55 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full max-w-md bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 shadow-xl relative overflow-hidden"
+                className="w-full max-w-md flex flex-col items-start"
               >
-                {/* Back button */}
+                {/* Separated Go Back button above the card in top corner */}
                 <button
                   onClick={resetSelection}
-                  className="absolute top-6 left-6 flex items-center gap-2 text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] transition-colors py-2 px-3 rounded-xl bg-[var(--container)] border border-[var(--outline)]"
+                  className="mb-4 flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface)] hover:text-[var(--accent)] transition-all py-2.5 px-4 rounded-2xl bg-[var(--surface)] border border-[var(--outline)] shadow-md hover:scale-[1.03] active:scale-95 cursor-pointer"
                 >
-                  <ArrowLeft size={14} />
+                  <ArrowLeft size={16} />
                   <span>{t.backBtn}</span>
                 </button>
 
-                {!isSuccess ? (
-                  <div className="mt-8 flex flex-col h-full justify-between">
-                    {/* Header */}
-                    <div className="mb-8 text-center md:text-left">
-                      <div className="w-14 h-14 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center mb-4 mx-auto md:mx-0">
-                        <img 
-                          src="https://github.com/user-attachments/assets/32281ac0-dadc-4bc4-b254-8c97f9d30bd8" 
-                          alt="Logo" 
-                          className="w-9 h-9 object-contain rounded-full" 
-                        />
+                <div className="w-full bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
+                  {!isSuccess ? (
+                    <div className="flex flex-col h-full justify-between">
+                      {/* Header */}
+                      <div className="mb-6 text-center md:text-left">
+                        <div className="w-14 h-14 rounded-2xl bg-[var(--container)] border border-[var(--outline)] flex items-center justify-center mb-4 mx-auto md:mx-0">
+                          <img 
+                            src={effectiveTheme === 'dark'
+                              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
+                              : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
+                            } 
+                            alt="Logo" 
+                            className="w-9 h-9 object-contain rounded-full" 
+                          />
+                        </div>
+                        <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
+                          {selection === 'login' ? t.loginTitle : t.signupTitle}
+                        </h2>
+                        <p className="text-xs text-[var(--on-surface-var)] mt-1 font-medium">
+                          {selection === 'login' ? t.loginSubtitle : t.signupSubtitle}
+                        </p>
                       </div>
-                      <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
-                        {selection === 'login' ? t.loginTitle : t.signupTitle}
-                      </h2>
-                      <p className="text-xs text-[var(--on-surface-var)] mt-1 font-medium">
-                        {selection === 'login' ? t.loginSubtitle : t.signupSubtitle}
-                      </p>
-                    </div>
 
-                    {/* LOGIN FORM */}
-                    {selection === 'login' && (
+                      {/* Fake email warning notice */}
+                      <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2.5 leading-relaxed">
+                        <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-500" />
+                        <div>
+                          <span className="font-extrabold block uppercase tracking-wider text-[10px] text-amber-600 dark:text-amber-400 mb-0.5">
+                            {lang === 'ru' ? 'Предупреждение по почте' : 'Email Verification Warning'}
+                          </span>
+                          {lang === 'ru'
+                            ? 'Вы можете войти с недействительной или временной почтой, но учтите: при планируемой ежемесячной проверке адресов (раз в месяц) аккаунты с недействительными e-mail будут заблокированы навсегда.'
+                            : 'You can log in using a temporary or fake email, but note: when monthly email verification runs (once a month), accounts with invalid emails will be permanently banned.'}
+                        </div>
+                      </div>
+
+                      {/* LOGIN FORM */}
+                      {selection === 'login' && (
                       <form onSubmit={handleLogin} className="space-y-4">
                         {/* Email Field */}
                         <div className="flex flex-col gap-1.5">
@@ -696,6 +733,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     </div>
                   </div>
                 )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -746,6 +784,62 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                 className="bg-[var(--accent)] text-[var(--on-accent)] rounded-xl py-3.5 font-bold text-xs tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all"
               >
                 Понятно / Got it
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Why Guest Removed Explanation Modal */}
+      <AnimatePresence>
+        {isWhyGuestModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2rem] max-w-md w-full p-8 flex flex-col gap-5 shadow-2xl relative"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] flex items-center justify-center shadow-md">
+                  <HelpCircle size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[var(--on-surface)] leading-tight">
+                    {lang === 'ru'
+                      ? 'Почему убран гостевой вход?'
+                      : 'Why was Guest Mode removed?'}
+                  </h3>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--on-surface-var)]">
+                    LinkerRu Architecture
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-xs text-[var(--on-surface-var)] leading-relaxed space-y-3 font-medium">
+                <p>
+                  {lang === 'ru'
+                    ? 'Мы отключили гостевой вход («Продолжить как гость»), чтобы обеспечить полную сохранность ваших персонализированных виджетов, заметок и сетевых соединений.'
+                    : 'We disabled guest mode ("Continue as Guest") to ensure complete safety and preservation of your personalized widgets, notes, and network links.'}
+                </p>
+                <p>
+                  {lang === 'ru'
+                    ? 'При гостевом режиме все локальные данные (виджеты, заметки Keeps, выбранные темы, история сессий и соединения Lisyan Connect P2P) безвозвратно терялись при любой очистке кэша или истории браузера.'
+                    : 'In guest mode, all local data (widgets, Keeps notes, selected themes, session histories, and Lisyan Connect P2P links) were permanently lost whenever browser cache or history was cleared.'}
+                </p>
+                <p>
+                  {lang === 'ru'
+                    ? 'Единая авторизация связывает ваше рабочее пространство с защищенным облаком Firebase, гарантируя стабильную работу на всех ваших устройствах.'
+                    : 'A single authenticated profile links your workspace with encrypted Firebase cloud storage, guaranteeing seamless experience across all your devices.'}
+                </p>
+              </div>
+
+              <button 
+                onClick={() => setIsWhyGuestModalOpen(false)} 
+                className="mt-2 bg-[var(--accent)] text-[var(--on-accent)] rounded-xl py-3.5 font-bold text-xs tracking-widest uppercase cursor-pointer hover:opacity-90 transition-all shadow-md"
+              >
+                {lang === 'ru' ? 'Понятно / Закрыть' : 'Got it / Close'}
               </button>
             </motion.div>
           </div>
