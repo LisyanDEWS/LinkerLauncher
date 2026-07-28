@@ -2,10 +2,7 @@
  * Time-based greeting messages for LinkerRu.
  *
  * Greetings are selected based on the current hour and day of the week.
- * - Morning (1–10), Afternoon (11–20), Evening & Night (21–30): deterministic,
- *   picked by hour so the same hour always gives the same greeting.
- * - Days & General Time (31–40): random selection from the pool.
- * - Holidays & Occasions (41–50): checked by date (month + day).
+ * All greetings are warm, clear, friendly, and easy to understand.
  */
 
 export interface GreetingCategory {
@@ -22,26 +19,26 @@ const morning: GreetingCategory = {
   ru: [
     'Доброе утро, {name}!',
     'С добрым утром, {name}!',
-    'Просыпайся, {name}!',
-    'Время вставать, {name}!',
-    'Ранний старт, {name}?',
-    'Светлое утро, {name}!',
-    'Время для кофе, {name}?',
-    'Готов побеждать, {name}?',
-    'Начинаем день, {name}!',
-    'Утренний настрой, {name}!',
+    'Хорошего утреннего дня, {name}!',
+    'Отличного начала дня, {name}!',
+    'Желаем прекрасного утра, {name}!',
+    'Пусть утро будет добрым, {name}!',
+    'Время для кофе или чая, {name}?',
+    'Удачного дня, {name}!',
+    'Пусть всё получится сегодня, {name}!',
+    'Прекрасное утро, {name}!',
   ],
   en: [
     'Good morning, {name}!',
     'Morning, {name}!',
-    'Rise & shine, {name}!',
-    'Up & at \'em, {name}!',
-    'Early start, {name}?',
-    'Bright & early, {name}!',
-    'Coffee time, {name}?',
-    'Ready to win, {name}?',
-    'Daily start, {name}!',
-    'A.M. hustle, {name}!',
+    'Have a wonderful morning, {name}!',
+    'Great start to your day, {name}!',
+    'Wishing you a bright morning, {name}!',
+    'Hope your morning goes well, {name}!',
+    'Time for some coffee, {name}?',
+    'Have a fantastic day ahead, {name}!',
+    'Ready for a great day, {name}?',
+    'Beautiful morning, {name}!',
   ],
 };
 
@@ -50,27 +47,27 @@ const afternoon: GreetingCategory = {
   id: 'afternoon',
   ru: [
     'Добрый день, {name}!',
-    'День добрый, {name}!',
-    'Половина пути пройдена, {name}!',
-    'Время обеда, {name}?',
-    'Дневная проверка, {name}!',
-    'Продолжаем, {name}!',
-    'Послеобеденный режим, {name}!',
-    'Вечерний рывок, {name}!',
-    'Привет, {name}!',
-    'Всё ещё в деле, {name}?',
+    'Хорошего дня, {name}!',
+    'Надеемся, день проходит отлично, {name}!',
+    'Приятного обеда, {name}!',
+    'Как проходит твой день, {name}?',
+    'Удачного продолжения дня, {name}!',
+    'Отличного дня и хорошего настроения, {name}!',
+    'Пусть день принесёт радость, {name}!',
+    'Привет, {name}! Как успехи?',
+    'Желаем продуктивного дня, {name}!',
   ],
   en: [
     'Good afternoon, {name}!',
-    'Afternoon, {name}!',
-    'Halfway there, {name}!',
-    'Lunch time, {name}?',
-    'Midday check, {name}!',
-    'Keep going, {name}!',
-    'Post-lunch mode, {name}!',
-    'P.M. push, {name}!',
-    'Hey, {name}!',
-    'Still grinding, {name}?',
+    'Have a great afternoon, {name}!',
+    'Hope your day is going well, {name}!',
+    'Enjoy your lunch, {name}?',
+    'How is your day going, {name}?',
+    'Wishing you a productive day, {name}!',
+    'Hope everything is going smoothly, {name}!',
+    'Have a bright and pleasant day, {name}!',
+    'Hey {name}, how are things?',
+    'Keep up the great work, {name}!',
   ],
 };
 
@@ -79,27 +76,27 @@ const evening: GreetingCategory = {
   id: 'evening',
   ru: [
     'Добрый вечер, {name}!',
-    'Вечер добрый, {name}!',
     'Как прошёл твой день, {name}?',
-    'Приятного вечера, {name}!',
-    'Время расслабиться, {name}!',
+    'Приятного и уютного вечера, {name}!',
     'Отличного вечера, {name}!',
+    'Время отдохнуть и расслабиться, {name}!',
+    'Надеемся, день был хорошим, {name}!',
     'Уютного вечера, {name}!',
-    'Что интересного произошло, {name}?',
-    'Отдыхаем после рабочего дня, {name}?',
-    'Прекрасный вечер для великих дел, {name}!',
+    'Как настроение этим вечером, {name}?',
+    'Хорошего отдыха после рабочего дня, {name}!',
+    'Прекрасного вечера, {name}!',
   ],
   en: [
     'Good evening, {name}!',
-    'Evening, {name}!',
     'How was your day, {name}?',
-    'Have a nice evening, {name}!',
-    'Time to relax, {name}!',
-    'Hope you had a great day, {name}!',
-    'Cozy evening, {name}!',
-    'What\'s on your mind this evening, {name}?',
-    'Relaxing after work, {name}?',
-    'Perfect evening for some code, {name}!',
+    'Have a pleasant evening, {name}!',
+    'Hope you had a wonderful day, {name}!',
+    'Time to relax and unwind, {name}!',
+    'Cozy evening to you, {name}!',
+    'How are you doing this evening, {name}?',
+    'Rest up and enjoy your evening, {name}!',
+    'Wishing you a peaceful evening, {name}!',
+    'Hope you accomplished everything today, {name}!',
   ],
 };
 
@@ -108,27 +105,27 @@ const night: GreetingCategory = {
   id: 'night',
   ru: [
     'Доброй ночи, {name}!',
-    'Поздняя ночь, {name}!',
-    'Время сна, {name}!',
+    'Приятных снов, {name}!',
+    'Время отдохнуть, {name}!',
     'Сладких снов, {name}!',
-    'Отдыхай, {name}!',
-    'Тихая ночь, {name}!',
-    'Ложись спать, {name}?',
-    'Глубокая ночь, {name}!',
-    'Почти утро, {name}!',
-    'Не спится, {name}?',
+    'Спокойной ночи, {name}!',
+    'Тихой и спокойной ночи, {name}!',
+    'Набирайся сил перед новым днём, {name}!',
+    'Добрых снов, {name}!',
+    'Не забудь хорошо выспаться, {name}!',
+    'Уютной ночи, {name}!',
   ],
   en: [
-    'Goodnight, {name}!',
-    'Late night, {name}!',
-    'Bedtime, {name}!',
+    'Good night, {name}!',
     'Sweet dreams, {name}!',
-    'Rest up, {name}!',
-    'Quiet night, {name}!',
-    'Time to sleep, {name}?',
-    'Deep night, {name}!',
-    'Almost morning, {name}!',
-    'Can\'t sleep, {name}?',
+    'Time to get some rest, {name}!',
+    'Have a peaceful night, {name}!',
+    'Rest well, {name}!',
+    'Wishing you a quiet night, {name}!',
+    'Get a good night\'s sleep, {name}!',
+    'Cozy night to you, {name}!',
+    'Sleep well, {name}!',
+    'Nighty night, {name}!',
   ],
 };
 
@@ -136,28 +133,28 @@ const night: GreetingCategory = {
 const daysGeneral: GreetingCategory = {
   id: 'days',
   ru: [
-    'Счастливого понедельника, {name}!',
-    'Вторничный фокус, {name}!',
-    'Середина недели, {name}!',
-    'Четверговый ритм, {name}!',
-    'Счастливой пятницы, {name}!',
+    'Отличного понедельника, {name}!',
+    'Удачного вторника, {name}!',
+    'Хорошей среды, {name}!',
+    'Отличного четверга, {name}!',
+    'Прекрасной пятницы, {name}!',
     'С возвращением, {name}!',
-    'Рад тебя видеть, {name}!',
-    'Снова за дело, {name}!',
-    'Цели на сегодня, {name}?',
-    'Погнали, {name}!',
+    'Рады тебя видеть, {name}!',
+    'Снова вместе, {name}!',
+    'Как успехи сегодня, {name}?',
+    'Желаем отличных результатов, {name}!',
   ],
   en: [
-    'Happy Monday, {name}!',
-    'Tuesday focus, {name}!',
-    'Midweek push, {name}!',
-    'Thursday stride, {name}!',
+    'Have a great Monday, {name}!',
+    'Happy Tuesday, {name}!',
+    'Wonderful Wednesday, {name}!',
+    'Terrific Thursday, {name}!',
     'Happy Friday, {name}!',
     'Welcome back, {name}!',
     'Great to see you, {name}!',
-    'Back at it, {name}!',
-    'Today\'s goals, {name}?',
-    'Let\'s do this, {name}!',
+    'Glad you are here, {name}!',
+    'How are your goals coming along, {name}?',
+    'Wishing you a wonderful time, {name}!',
   ],
 };
 
@@ -172,8 +169,8 @@ interface Holiday {
 const holidays: Holiday[] = [
   { month: 1, day: 1, ru: 'С Новым годом, {name}!', en: 'Happy New Year, {name}!' },
   { month: 12, day: 25, ru: 'С Рождеством, {name}!', en: 'Merry Christmas, {name}!' },
-  { month: 12, day: 31, ru: 'С наступающим, {name}!', en: 'Happy New Year\'s Eve, {name}!' },
-  { month: 10, day: 31, ru: 'Жуткого Хэллоуина, {name}!', en: 'Spooky Halloween, {name}!' },
+  { month: 12, day: 31, ru: 'С наступающим Новым годом, {name}!', en: 'Happy New Year\'s Eve, {name}!' },
+  { month: 10, day: 31, ru: 'Счастливого Хэллоуина, {name}!', en: 'Happy Halloween, {name}!' },
   { month: 11, day: 27, ru: 'С Днём благодарения, {name}!', en: 'Happy Thanksgiving, {name}!' },
   { month: 4, day: 20, ru: 'Счастливой Пасхи, {name}!', en: 'Happy Easter, {name}!' },
   { month: 7, day: 4, ru: 'С Днём независимости, {name}!', en: 'Happy 4th of July, {name}!' },
@@ -185,7 +182,7 @@ const holidays: Holiday[] = [
  *
  * Priority:
  * 1. Holiday match (by exact month/day)
- * 2. Day-of-week greeting (random from daysGeneral pool, 30% chance)
+ * 2. Day-of-week greeting (random from daysGeneral pool, 25% chance)
  * 3. Time-of-day greeting (deterministic by hour)
  *
  * @param nickname - the user's nickname (or fallback)
@@ -213,9 +210,7 @@ export function getGreeting(
   //    Only on weekdays (Mon-Fri) to make it feel special
   if (dayOfWeek >= 1 && dayOfWeek <= 5 && Math.random() < 0.25) {
     const pool = daysGeneral[lang];
-    // Pick the day-specific one if it's a weekday (Mon=0, Fri=4 in our array)
     const dayIndex = dayOfWeek - 1; // Mon=0, Tue=1, Wed=2, Thu=3, Fri=4
-    // 50% chance: use the day-specific greeting, 50%: random from the general pool
     if (Math.random() < 0.5) {
       return pool[dayIndex].replace('{name}', name);
     }
@@ -228,21 +223,18 @@ export function getGreeting(
 
   if (hour >= 5 && hour <= 10) {
     category = morning;
-    indexInCategory = hour - 5; // 5→0, 6→1, ..., 10→5
+    indexInCategory = hour - 5;
   } else if (hour >= 11 && hour <= 16) {
     category = afternoon;
-    indexInCategory = hour - 11; // 11→0, ..., 16→5
+    indexInCategory = hour - 11;
   } else if (hour >= 17 && hour <= 22) {
     category = evening;
-    indexInCategory = hour - 17; // 17→0, ..., 22→5
+    indexInCategory = hour - 17;
   } else {
-    // 23-4: night
     category = night;
-    indexInCategory = hour >= 23 ? hour - 23 : hour + 1; // 23→0, 0→1, 1→2, ..., 4→5
+    indexInCategory = hour >= 23 ? hour - 23 : hour + 1;
   }
 
-  // Map the 6-hour range to the 10-message pool by cycling
-  // (each message gets ~1.67 hours, so we use a sub-hour rotation)
   const subHour = date.getMinutes() < 30 ? 0 : 1;
   const poolIndex = (indexInCategory * 2 + subHour) % category[lang].length;
 

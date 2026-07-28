@@ -9,8 +9,6 @@ import {
   Check, 
   ArrowLeft, 
   ArrowRight, 
-  Sparkles,
-  Volume2,
   Type,
   Thermometer,
   SkipForward
@@ -74,7 +72,7 @@ export default function OnboardingModal({
   onTempUnitChange,
 }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
-  const totalSteps = 6;
+  const totalSteps = 5;
 
   // Local state for Panic Button
   const [isPanicEnabled, setIsPanicEnabled] = useState(panicKey !== '');
@@ -122,19 +120,6 @@ export default function OnboardingModal({
       audio.play().catch(console.error);
     }
   };
-
-  const wallpapers = useMemo(() => {
-    const p1 = selectedPalette.primary;
-    const p2 = selectedPalette.secondary;
-    const p3 = selectedPalette.tertiary;
-    return [
-      { id: 'none', nameRu: 'Сплошной цвет', nameEn: 'Solid Neutral', style: 'var(--bg)' },
-      { id: 'gradient-1', nameRu: 'Градиент 1', nameEn: 'Smooth Diagonal', style: `linear-gradient(135deg, ${p1}, ${p2}, ${p3})` },
-      { id: 'gradient-2', nameRu: 'Градиент 2', nameEn: 'Double Radial', style: `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))` },
-      { id: 'gradient-3', nameRu: 'Градиент 3', nameEn: 'Soft Fade', style: `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)` },
-      { id: 'gradient-4', nameRu: 'Градиент 4', nameEn: 'Conic Ambient', style: `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)` },
-    ];
-  }, [selectedPalette]);
 
   const handleNext = () => {
     if (step < totalSteps) {
@@ -269,7 +254,9 @@ export default function OnboardingModal({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">🇷🇺</span>
+                        <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center font-black text-xs text-[var(--on-surface)]">
+                          RU
+                        </div>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">Русский</div>
                           <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Russian</div>
@@ -287,7 +274,9 @@ export default function OnboardingModal({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">🇬🇧</span>
+                        <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center font-black text-xs text-[var(--on-surface)]">
+                          EN
+                        </div>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">English</div>
                           <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Английский</div>
@@ -506,80 +495,10 @@ export default function OnboardingModal({
                 </motion.div>
               )}
 
-              {/* STEP 5: Standby Clock & Wallpaper */}
+              {/* STEP 5: Panic Button */}
               {step === 5 && (
                 <motion.div
                   key="step5"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-5"
-                >
-                  <div className="text-center max-w-md mx-auto space-y-2">
-                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
-                      <Sparkles size={28} />
-                    </div>
-                    <h3 className="text-xl font-black text-[var(--on-surface)]">
-                      {isRu ? 'Обои и Часы Standby' : 'Wallpapers & Standby Clock'}
-                    </h3>
-                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
-                      {isRu ? 'Выберите фоновый градиент и стиль часов в режиме простоя.' : 'Select desktop ambient background gradient and idle standby clock style.'}
-                    </p>
-                  </div>
-
-                  {/* Wallpaper grid */}
-                  <div className="space-y-2 max-w-lg mx-auto">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block">
-                      {isRu ? 'Стиль фона' : 'Wallpaper Background'}
-                    </span>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                      {wallpapers.map((wp) => (
-                        <button
-                          key={wp.id}
-                          onClick={() => onWallpaperChange(wp.id)}
-                          className={`h-16 rounded-2xl border-2 overflow-hidden transition-all hover:scale-105 cursor-pointer relative ${
-                            mainWallpaper === wp.id ? 'border-[var(--accent)] shadow-md' : 'border-[var(--outline-var)]'
-                          }`}
-                          style={{ background: wp.style }}
-                        >
-                          {mainWallpaper === wp.id && (
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                              <Check size={16} className="text-white drop-shadow-md" />
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Clock Style & Variation */}
-                  <div className="space-y-3 max-w-lg mx-auto pt-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block">
-                      {isRu ? 'Формат часов Standby' : 'Standby Clock Variant'}
-                    </span>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[1, 2, 3].map((v) => (
-                        <button
-                          key={v}
-                          onClick={() => onClockVariationChange(v as 1 | 2 | 3)}
-                          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                            clockVariation === v
-                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--on-surface)] font-black'
-                              : 'border-[var(--outline-var)] bg-[var(--surface-dim)] text-[var(--on-surface-var)] font-bold'
-                          }`}
-                        >
-                          <div className="text-xs">{isRu ? `Вариант ${v}` : `Style ${v}`}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* STEP 6: Panic Button */}
-              {step === 6 && (
-                <motion.div
-                  key="step6"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}

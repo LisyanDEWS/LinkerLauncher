@@ -1496,10 +1496,11 @@ export default function App() {
     <>
       <AppLoader
         imageUrls={[
-          theme === 'dark'
-            ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-            : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142",
+          "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6",
+          "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142",
           "https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e",
+          "https://github.com/user-attachments/assets/708555b4-14a6-4f32-9240-5ecd928ec9fd",
+          "https://github.com/user-attachments/assets/6805ef80-9512-4954-9035-1b53133f26c1",
         ]}
         minDuration={2500}
         color={activePalette.primary}
