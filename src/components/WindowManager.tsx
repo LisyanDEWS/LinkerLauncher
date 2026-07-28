@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, RotateCw, Eye, XCircle } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle } from 'lucide-react';
 import { Language } from '../types';
 
 /**
@@ -406,13 +406,6 @@ export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false, isMobi
               onClick={() => { wm.restore(ctxWin.id); setCtxMenu(null); }}
             />
 
-            {/* Reload — re-mounts the app content only, keeps the window */}
-            <CtxItem
-              icon={<RotateCw size={15} />}
-              label={isRu ? 'Перезагрузить' : 'Reload'}
-              onClick={() => { wm.reload(ctxWin.id); setCtxMenu(null); }}
-            />
-
             <div className="mx-2 my-1 h-px" style={{ background: 'var(--outline-var)' }} />
 
             {/* Close — terminates the app */}
@@ -698,18 +691,6 @@ function WindowFrame({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9, rotate: 360 }}
-              transition={{ type: 'spring', damping: 15, stiffness: 300 }}
-              onClick={(e) => { e.stopPropagation(); onReload(); }}
-              title={isRu ? 'Перезагрузить' : 'Reload'}
-              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer ${
-                isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'
-              }`}
-            >
-              <RotateCw size={isMobileLayout ? 14 : 13} />
-            </motion.button>
             {!isMobileLayout && (
               <>
                 <motion.button
