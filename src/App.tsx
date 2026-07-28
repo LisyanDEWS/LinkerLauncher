@@ -2134,61 +2134,68 @@ export default function App() {
         </div>
 
         {/* COLUMN 3: Support channels & contacts */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px]" id="panel-support">
-          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-3">
-            <User size={16} />
-            <span>{t.ph_support}</span>
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] col-span-1 md:col-span-2 lg:col-span-1" id="panel-support">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
+              <User size={16} />
+              <span>{t.ph_support}</span>
+            </div>
+            <span className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase">
+              Helpdesk
+            </span>
           </div>
 
-          <div className="flex gap-4 items-center mb-4">
-            <div className="h-14 w-14 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] shadow-sm overflow-hidden">
-              {activeSupportQr ? (
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(activeSupportQr)}&color=${theme==='dark'?'ffffff':'000000'}&bgcolor=${theme==='dark'?'1a1a1a':'f2f2f2'}`} alt="QR" className="w-full h-full object-cover" />
-              ) : (
-                <QrCode size={24} />
-              )}
-            </div>
-            <div>
-              <div className="text-xs font-black text-[var(--on-surface)]">
-                {activeSupportQr === 'https://t.me/pubertatnyj' ? '@pubertatnyj' : activeSupportQr === 'mailto:lisyandews@gmail.com' ? 'lisyandews@gmail.com' : `/${t.ph_developer}/`}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 items-center my-auto">
+            <div className="flex gap-4 items-center">
+              <div className="h-14 w-14 shrink-0 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] shadow-sm overflow-hidden">
+                {activeSupportQr ? (
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(activeSupportQr)}&color=${theme==='dark'?'ffffff':'000000'}&bgcolor=${theme==='dark'?'1a1a1a':'f2f2f2'}`} alt="QR" className="w-full h-full object-cover" />
+                ) : (
+                  <QrCode size={24} />
+                )}
               </div>
-              <div className="text-[10px] text-[var(--on-surface-var)] font-semibold mt-0.5 leading-tight">
-                {activeSupportQr ? (lang === 'ru' ? 'Отсканируйте код' : 'Scan the code') : 'Lisyan Dews Technologies'}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div
-              onClick={() => {
-                playChime('click');
-                setActiveSupportQr('https://t.me/pubertatnyj');
-              }}
-              className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
-            >
-              <div className="flex items-center gap-3">
-                <Send size={14} className="text-[var(--on-surface-var)]" />
-                <div className="text-xs font-bold text-[var(--on-surface)]">
-                  {t.ph_messenger} <span className="text-[10px] text-[var(--on-surface-var)] font-semibold">@pubertatnyj</span>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-[var(--on-surface)] truncate">
+                  {activeSupportQr === 'https://t.me/pubertatnyj' ? '@pubertatnyj' : activeSupportQr === 'mailto:lisyandews@gmail.com' ? 'lisyandews@gmail.com' : `/${t.ph_developer}/`}
+                </div>
+                <div className="text-[10px] text-[var(--on-surface-var)] font-semibold mt-0.5 leading-tight">
+                  {activeSupportQr ? (lang === 'ru' ? 'Отсканируйте код' : 'Scan the code') : 'Lisyan Dews Technologies'}
                 </div>
               </div>
-              <ChevronRight size={14} className="text-[var(--outline)]" />
             </div>
 
-            <div
-              onClick={() => {
-                playChime('click');
-                setActiveSupportQr('mailto:lisyandews@gmail.com');
-              }}
-              className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
-            >
-              <div className="flex items-center gap-3">
-                <Mail size={14} className="text-[var(--on-surface-var)]" />
-                <div className="text-xs font-bold text-[var(--on-surface)]">
-                  {t.ph_mail} <span className="text-[10px] text-[var(--on-surface-var)] font-semibold">lisyandews@gmail.com</span>
+            <div className="space-y-1.5">
+              <div
+                onClick={() => {
+                  playChime('click');
+                  setActiveSupportQr('https://t.me/pubertatnyj');
+                }}
+                className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Send size={14} className="text-[var(--on-surface-var)] shrink-0" />
+                  <div className="text-xs font-bold text-[var(--on-surface)] truncate">
+                    {t.ph_messenger} <span className="text-[10px] text-[var(--on-surface-var)] font-semibold">@pubertatnyj</span>
+                  </div>
                 </div>
+                <ChevronRight size={14} className="text-[var(--outline)] shrink-0" />
               </div>
-              <ChevronRight size={14} className="text-[var(--outline)]" />
+
+              <div
+                onClick={() => {
+                  playChime('click');
+                  setActiveSupportQr('mailto:lisyandews@gmail.com');
+                }}
+                className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Mail size={14} className="text-[var(--on-surface-var)] shrink-0" />
+                  <div className="text-xs font-bold text-[var(--on-surface)] truncate">
+                    {t.ph_mail} <span className="text-[10px] text-[var(--on-surface-var)] font-semibold">lisyandews@gmail.com</span>
+                  </div>
+                </div>
+                <ChevronRight size={14} className="text-[var(--outline)] shrink-0" />
+              </div>
             </div>
           </div>
         </div>
