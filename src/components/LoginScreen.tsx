@@ -538,11 +538,11 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                         </p>
                       </div>
 
-                      {/* Fake email warning notice */}
-                      <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2.5 leading-relaxed">
-                        <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-500" />
+                      {/* Email verification warning notice styled with active theme colors */}
+                      <div className="mb-5 p-3.5 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--on-surface)] text-xs flex items-start gap-2.5 leading-relaxed shadow-sm">
+                        <AlertTriangle size={18} className="shrink-0 mt-0.5 text-[var(--accent)]" />
                         <div>
-                          <span className="font-extrabold block uppercase tracking-wider text-[10px] text-amber-600 dark:text-amber-400 mb-0.5">
+                          <span className="font-extrabold block uppercase tracking-wider text-[10px] text-[var(--accent)] mb-0.5">
                             {lang === 'ru' ? 'Предупреждение по почте' : 'Email Verification Warning'}
                           </span>
                           {lang === 'ru'

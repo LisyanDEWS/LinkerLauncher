@@ -38,6 +38,7 @@ export interface WindowInstance {
   zIndex: number;
   /** Incremented to force re-mount of the app content (reload). */
   renderKey: number;
+  hideTitleBar?: boolean;
 }
 
 export interface OpenWindowOptions {
@@ -50,6 +51,7 @@ export interface OpenWindowOptions {
   minWidth?: number;
   minHeight?: number;
   singleton?: boolean;
+  hideTitleBar?: boolean;
 }
 
 export interface WindowManager {
@@ -95,6 +97,7 @@ export function useWindows(): WindowManager {
                   render: opts.render,
                   title: opts.title,
                   icon: opts.icon,
+                  hideTitleBar: opts.hideTitleBar,
                 }
               : w,
           );
@@ -150,6 +153,7 @@ export function useWindows(): WindowManager {
         isMinimized: false,
         zIndex: nextZ,
         renderKey: 0,
+        hideTitleBar: opts.hideTitleBar || false,
       };
       return [...prev, instance];
     });
@@ -665,54 +669,56 @@ function WindowFrame({
       )}
 
       {/* Header bar — adapt clean mobile view vs desktop window bar */}
-      <div
-        onMouseDown={onTitleMouseDown}
-        onDoubleClick={onTitleDoubleClick}
-        onMouseEnter={onTitleBarEnter}
-        onMouseLeave={onTitleBarLeave}
-        className={`flex ${isMobileLayout ? 'h-14 px-4' : 'h-11 px-3.5 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
-        style={{
-          background: isActive
-            ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
-            : 'var(--surface)',
-          transform: win.isMaximized && !isMobileLayout && !titleBarVisible ? 'translateY(-100%)' : 'translateY(0)',
-          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
-      >
-        <div className="flex items-center gap-2.5">
-          {win.icon}
-          <span className={`${isMobileLayout ? 'text-sm font-black' : 'text-xs font-bold'} text-[var(--on-surface)] tracking-tight`}>
-            {win.title}
-          </span>
+      {!win.hideTitleBar && (
+        <div
+          onMouseDown={onTitleMouseDown}
+          onDoubleClick={onTitleDoubleClick}
+          onMouseEnter={onTitleBarEnter}
+          onMouseLeave={onTitleBarLeave}
+          className={`flex ${isMobileLayout ? 'h-14 px-4' : 'h-11 px-3.5 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
+          style={{
+            background: isActive
+              ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
+              : 'var(--surface)',
+            transform: win.isMaximized && !isMobileLayout && !titleBarVisible ? 'translateY(-100%)' : 'translateY(0)',
+            transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <div className="flex items-center gap-2.5">
+            {win.icon}
+            <span className={`${isMobileLayout ? 'text-sm font-black' : 'text-xs font-bold'} text-[var(--on-surface)] tracking-tight`}>
+              {win.title}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {!isMobileLayout && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+                  title={isRu ? 'Свернуть' : 'Minimize'}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <Minus size={14} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
+                  title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
+                </button>
+              </>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              title={isRu ? 'Закрыть' : 'Close'}
+              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-all active:scale-95 cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'}`}
+            >
+              <X size={isMobileLayout ? 16 : 14} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {!isMobileLayout && (
-            <>
-              <button
-                onClick={(e) => { e.stopPropagation(); onMinimize(); }}
-                title={isRu ? 'Свернуть' : 'Minimize'}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-                title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              >
-                {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
-              </button>
-            </>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
-            title={isRu ? 'Закрыть' : 'Close'}
-            className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-all active:scale-95 cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'}`}
-          >
-            <X size={isMobileLayout ? 16 : 14} />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>

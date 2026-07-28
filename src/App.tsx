@@ -1128,6 +1128,29 @@ export default function App() {
     });
   };
 
+  const openWeatherWindow = () => {
+    wm.open({
+      id: 'weather',
+      title: lang === 'ru' ? 'Погода' : 'Weather',
+      icon: <CloudSun size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 820,
+      initialHeight: 600,
+      minWidth: 420,
+      minHeight: 400,
+      render: () => (
+        <WeatherModal
+          isOpen={true}
+          onClose={() => wm.close('weather')}
+          lang={lang}
+          primaryColor={activePalette.primary}
+          embeddedInWindow={true}
+        />
+      ),
+    });
+  };
+
+
   useEffect(() => {
     localStorage.setItem('linkerru_palette', activePalette.primary);
   }, [activePalette]);
@@ -1278,9 +1301,22 @@ export default function App() {
       if (e.shiftKey) modifiers.push('Shift');
       if (e.metaKey) modifiers.push('Meta');
       
-      const combo = [...modifiers, key === ' ' ? 'Space' : key].join('+');
+      const keyFormatted = key === ' ' ? 'Space' : key.length === 1 ? key.toUpperCase() : key;
+      const combo = [...modifiers, keyFormatted].join('+');
       
-      if (combo === panicKey || e.key === panicKey) {
+      const isMatch = combo.toLowerCase() === panicKey.toLowerCase() || 
+                      key.toLowerCase() === panicKey.toLowerCase();
+
+      if (isMatch) {
+        const soundId = localStorage.getItem('linkerru_panic_sound');
+        if (soundId) {
+          const found = NOTIFICATION_SOUNDS.find(s => s.id === soundId);
+          if (found) {
+            const audio = new Audio(found.url);
+            audio.volume = 0.8;
+            audio.play().catch(() => {});
+          }
+        }
         window.location.replace(panicUrl);
       }
     };
@@ -1539,7 +1575,7 @@ export default function App() {
             
             <div className="flex flex-col h-full relative z-10">
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md bg-[var(--on-surface)] text-[var(--surface)]">
-                <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect Logo" className="w-10 h-10 object-contain invert-0 dark:invert" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect Logo" className="w-10 h-10 object-contain invert" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
                 <Monitor size={32} className="hidden" />
               </div>
               
@@ -1565,7 +1601,7 @@ export default function App() {
           <button
             onClick={() => {
               playChime('click');
-              setIsWeatherOpen(true);
+              openWeatherWindow();
             }}
             className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer"
             id="topbar-weather-pill"
@@ -1863,14 +1899,15 @@ export default function App() {
           
           <div className="grid grid-cols-4 gap-3 my-auto pt-4" id="app-grid">
             {/* Weather App Shortcut */}
-            <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
+            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
               playChime('click');
-              setIsWeatherOpen(true);
+              openWeatherWindow();
             }}>
+              {isMinimized('weather') && <div className="running-pill-mini" />}
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
                 <CloudSun size={24} className="text-white" />
               </div>
-              <span className="text-[9px] font-bold text-[var(--on-surface)]">Weather</span>
+              <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
             </div>
 
             {/* Settings App Shortcut */}

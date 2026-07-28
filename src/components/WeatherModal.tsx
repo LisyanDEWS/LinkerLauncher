@@ -10,6 +10,7 @@ interface WeatherModalProps {
   onClose: () => void;
   lang: Language;
   primaryColor: string;
+  embeddedInWindow?: boolean;
 }
 
 interface DailyForecast {
@@ -20,7 +21,7 @@ interface DailyForecast {
   desc: string;
 }
 
-export default function WeatherModal({ isOpen, onClose, lang, primaryColor }: WeatherModalProps) {
+export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embeddedInWindow = false }: WeatherModalProps) {
   const [unit, setUnit] = useState<'C' | 'F'>('C');
   const t = translations[lang];
 
@@ -187,53 +188,41 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor }: We
 
   if (!isOpen) return null;
 
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-black/40 backdrop-blur-md"
-        />
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.95, filter: 'blur(10px)' }}
-          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(5px)' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-          className="relative z-10 w-[820px] h-[600px] overflow-hidden rounded-[2rem] border bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-2xl flex flex-col"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--accent) 15%, var(--outline-var))',
-            boxShadow: '0 30px 60px -15px rgba(0,0,0,0.35), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)',
-          }}
-        >
-          {/* Top Bar — M3 Expressive header with gradient */}
-          <div className="flex items-center justify-between p-6 pb-3 relative">
-            <div className="absolute bottom-0 left-6 right-6 h-px" style={{ background: 'var(--outline-var)' }} />
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-[1.25rem]" style={{ background: primaryColor }}>
-                <CloudSun size={22} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-extrabold tracking-tight text-[var(--on-surface)]">
-                  {t.weather_title}
-                </h3>
-                <p className="text-xs text-[var(--on-surface-var)] font-semibold mt-0.5">
-                  {t.weather_desc}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2 relative">
-              <button
-                onClick={onClose}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-red-500 hover:text-white hover:scale-105 active:scale-95"
-              >
-                <X size={18} />
-              </button>
-            </div>
+  const modalContent = (
+    <div className={`relative z-10 w-full h-full overflow-hidden flex flex-col ${embeddedInWindow ? 'bg-[var(--surface)] text-[var(--on-surface)]' : 'rounded-[2rem] border bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-2xl'}`}
+      style={embeddedInWindow ? {} : {
+        borderColor: 'color-mix(in srgb, var(--accent) 15%, var(--outline-var))',
+        boxShadow: '0 30px 60px -15px rgba(0,0,0,0.35), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)',
+      }}
+    >
+      {/* Top Bar — M3 Expressive header with gradient */}
+      <div className="flex items-center justify-between p-6 pb-3 relative shrink-0">
+        <div className="absolute bottom-0 left-6 right-6 h-px" style={{ background: 'var(--outline-var)' }} />
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[1.25rem]" style={{ background: primaryColor }}>
+            <CloudSun size={22} className="text-white" />
           </div>
+          <div>
+            <h3 className="text-xl font-extrabold tracking-tight text-[var(--on-surface)]">
+              {t.weather_title}
+            </h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold mt-0.5">
+              {t.weather_desc}
+            </p>
+          </div>
+        </div>
+        
+        {!embeddedInWindow && (
+          <div className="flex gap-2 relative">
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-red-500 hover:text-white hover:scale-105 active:scale-95"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
+      </div>
 
           {/* Content — split horizontally into 2 sections on wide screens */}
           <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
@@ -410,6 +399,31 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor }: We
               )}
             </div>
           </div>
+    </div>
+  );
+
+  if (embeddedInWindow) {
+    return modalContent;
+  }
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/40 backdrop-blur-md"
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 40, scale: 0.95, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(5px)' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+          className="relative z-10 w-[820px] h-[600px] overflow-hidden rounded-[2rem]"
+        >
+          {modalContent}
         </motion.div>
       </div>
     </AnimatePresence>

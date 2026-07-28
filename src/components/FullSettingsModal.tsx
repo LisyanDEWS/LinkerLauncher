@@ -1393,35 +1393,6 @@ export default function FullSettingsModal({
                           </div>
                         </div>
 
-                        {/* Performance Optimizations Section */}
-                        <div className="space-y-3" id="dev-performance-section">
-                          <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
-                            {lang === 'ru' ? 'Оптимизация производительности' : 'Performance Optimization'}
-                          </h4>
-                          <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Cpu size={18} className="text-[var(--accent)] animate-pulse" />
-                                  <h4 className="text-sm font-black text-[var(--on-surface)]">
-                                    {lang === 'ru' ? 'Оптимизированный движок' : 'Optimized Engine'}
-                                  </h4>
-                                </div>
-                                <p className="text-xs font-bold text-[var(--on-surface-var)] pr-4">
-                                  {lang === 'ru' 
-                                    ? 'Оптимизирует работу интерфейса на слабых устройствах. Отключает тяжелые backdrop-blur эффекты, размытие окон, сложные тени и движущуюся фоновую аврору, при этом сохраняя все стандартные переходы и Framer Motion анимации.' 
-                                    : 'Optimizes interface performance on low-end devices. Disables heavy backdrop-blur effects, glass styling, complex shadows, and animated background auroras, while keeping all standard transitions and Framer Motion animations.'}
-                                </p>
-                              </div>
-                              <SquashToggle
-                                checked={isOptimizedEngine}
-                                onChange={onOptimizedEngineToggle}
-                                color={activePalette.primary}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        
                         <div className="space-y-3" id="dev-danger-zone">
                           <h4 className="text-xs font-black uppercase tracking-widest text-red-500 pl-1.5">
                             {lang === 'ru' ? 'Опасная зона' : 'Danger Zone'}
@@ -1492,20 +1463,88 @@ export default function FullSettingsModal({
                       </div>
                     )}
 
+                        {/* About Tab View */}
                     {activeTab === 'about' && (
                       <div className="space-y-6" id="page-about-view">
-                        <div className="p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl flex flex-col items-center justify-center text-center gap-4 py-12">
-                          <div className="w-20 h-20 rounded-3xl bg-[var(--accent)] text-white flex items-center justify-center shadow-lg mb-2">
-                            <Wind size={40} />
-                          </div>
+                        <div className="p-6 bg-[var(--surface)] border border-[var(--outline-var)] rounded-3xl flex flex-col items-center justify-center text-center gap-4 py-10 shadow-sm">
+                          <img 
+                            src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" 
+                            alt="LinkerRu Logo" 
+                            className="w-20 h-20 object-contain drop-shadow-md rounded-2xl p-2 bg-[var(--surface-dim)] border border-[var(--outline-var)]" 
+                          />
                           <div>
-                            <h3 className="text-2xl font-black text-[var(--on-surface)]">Linker R Launcher</h3>
-                            <p className="text-sm font-bold text-[var(--accent)] mt-1">Version 1.0.0 (Build 42)</p>
+                            <h3 className="text-2xl font-black text-[var(--on-surface)] tracking-tight">LinkerRu :Re</h3>
+                            <p className="text-xs font-extrabold text-[var(--accent)] mt-1 tracking-widest uppercase bg-[var(--accent)]/10 px-3 py-1 rounded-full inline-block">
+                              v1/262608
+                            </p>
                           </div>
-                          <p className="text-sm text-[var(--on-surface-var)] max-w-sm mt-2">
-                            {lang === 'ru' ? 'Linker R Launcher - это экспериментальная операционная система в браузере, созданная с фокусом на дизайн и удобство.' : 'Linker R Launcher is an experimental browser-based operating system built with a focus on design and usability.'}
+                          <p className="text-xs text-[var(--on-surface-var)] max-w-md font-semibold leading-relaxed">
+                            {lang === 'ru' 
+                              ? 'LinkerRu :Re — экспрессивная веб-операционная система Material 3 с интеграцией приложений, гибкой многооконной средой и возможностью кастомизации.' 
+                              : 'LinkerRu :Re — Material 3 Expressive web operating system featuring windowed app manager, modular homes, and seamless customization.'}
                           </p>
-                          
+
+                          <div className="w-full pt-4 border-t border-[var(--outline-var)] mt-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-3">
+                              {lang === 'ru' ? 'Разработчик и Технологии' : 'Developer & Technologies'}
+                            </span>
+                            
+                            <div className="p-3 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl flex items-center justify-center gap-3 mb-4">
+                              <span className="text-xs font-black text-[var(--on-surface)]">
+                                {lang === 'ru' ? 'Разработка:' : 'Developer:'} <span className="text-[var(--accent)]">Lisyan Tech Technologies</span>
+                              </span>
+                            </div>
+
+                            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-3">
+                              {lang === 'ru' ? 'Благодарности и Сервисы (Credits)' : 'Credits & Integrated Services'}
+                            </span>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                              {/* Space Proxy Credit */}
+                              <a 
+                                href="https://gointospace.app/" 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="p-3.5 bg-[var(--surface-dim)] hover:bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] rounded-2xl flex items-center gap-3 transition-all group"
+                              >
+                                <img 
+                                  src="https://gointospace.app/assets/logo.webp" 
+                                  alt="Space Proxy" 
+                                  className="w-8 h-8 rounded-lg object-contain bg-black/80 p-1 shrink-0" 
+                                />
+                                <div>
+                                  <div className="text-xs font-black text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
+                                    Space Proxy
+                                  </div>
+                                  <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
+                                    gointospace.app
+                                  </div>
+                                </div>
+                              </a>
+
+                              {/* Agno GPT Credit */}
+                              <a 
+                                href="https://agno.com/" 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="p-3.5 bg-[var(--surface-dim)] hover:bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] rounded-2xl flex items-center gap-3 transition-all group"
+                              >
+                                <img 
+                                  src="https://mintcdn.com/agno-v2/SgkhZ8Fg5uYnD8iq/logo/black.svg?fit=max&auto=format&n=SgkhZ8Fg5uYnD8iq&q=85&s=fbe4dbb306f50c4d379aff3861e202fa" 
+                                  alt="Agno GPT" 
+                                  className="w-8 h-8 rounded-lg object-contain bg-white p-1 shrink-0 border border-black/10" 
+                                />
+                                <div>
+                                  <div className="text-xs font-black text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
+                                    Agno (for Agno GPT)
+                                  </div>
+                                  <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
+                                    agno.com
+                                  </div>
+                                </div>
+                              </a>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
