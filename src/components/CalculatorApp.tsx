@@ -154,6 +154,11 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
     const inputValue = parseFloat(display);
     if (isNaN(inputValue)) return;
 
+    if (waitingForOperand && op !== null) {
+      setOp(nextOp);
+      return;
+    }
+
     if (previous === null) {
       setPrevious(inputValue);
     } else if (op) {
@@ -169,6 +174,17 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
     setWaitingForOperand(true);
     setJustEvaluated(false);
     setOp(nextOp);
+  };
+
+  const sqrt = () => {
+    const v = parseFloat(display);
+    if (isNaN(v) || v < 0) {
+      setDisplay('Error');
+      return;
+    }
+    const res = Math.sqrt(v);
+    setDisplay(formatNumber(res));
+    setJustEvaluated(true);
   };
 
   const equals = () => {
@@ -201,6 +217,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
       else if (k === 'Backspace') deleteLast();
       else if (k === 'Escape') clearAll();
       else if (k === '%') percent();
+      else if (k === 'r' || k === 'R') sqrt();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -220,7 +237,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
   const buttons: { label: string; type: 'num' | 'op' | 'fn' | 'eq'; action: () => void; span?: boolean }[][] = [
     [
       { label: t.clear, type: 'fn', action: clearAll },
-      { label: '±', type: 'fn', action: toggleSign },
+      { label: '√', type: 'fn', action: sqrt },
       { label: '%', type: 'fn', action: percent },
       { label: '÷', type: 'op', action: () => performOp('÷') },
     ],
@@ -243,8 +260,9 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
       { label: '+', type: 'op', action: () => performOp('+') },
     ],
     [
-      { label: '0', type: 'num', action: () => inputDigit('0'), span: true },
+      { label: '0', type: 'num', action: () => inputDigit('0') },
       { label: '.', type: 'num', action: inputDot },
+      { label: '±', type: 'fn', action: toggleSign },
       { label: '=', type: 'eq', action: equals },
     ],
   ];
@@ -303,7 +321,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
             initial={{ opacity: 0.6, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="text-right text-5xl md:text-6xl font-light tabular-nums tracking-tight text-[var(--on-surface)] truncate"
+            className="text-right text-5xl md:text-6xl font-semibold tabular-nums tracking-tight text-[var(--on-surface)] truncate"
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
             {formattedDisplay}
@@ -324,7 +342,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
                     whileHover={{ scale: 1.03 }}
                     transition={{ type: 'spring', damping: 20, stiffness: 400 }}
                     onClick={btn.action}
-                    className={`relative flex items-center justify-center rounded-[1.5rem] text-2xl font-medium transition-colors cursor-pointer ${
+                    className={`relative flex items-center justify-center rounded-[1.5rem] text-2xl font-semibold font-sans transition-colors cursor-pointer ${
                       btn.span ? 'col-span-2' : ''
                     }`}
                     style={getButtonStyle(btn.type, isActiveOp, accent)}
@@ -422,9 +440,14 @@ function getButtonStyle(
   isActiveOp: boolean,
   accent: string,
 ): React.CSSProperties {
+  const commonStyle: React.CSSProperties = {
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+  };
+
   // Numbers — surface container, subtle
   if (type === 'num') {
     return {
+      ...commonStyle,
       background: 'var(--surface)',
       color: 'var(--on-surface)',
       border: '1px solid var(--outline)',
@@ -434,6 +457,7 @@ function getButtonStyle(
   // Functions (C, ±, %) — dimmed container
   if (type === 'fn') {
     return {
+      ...commonStyle,
       background: 'var(--container)',
       color: 'var(--on-surface-var)',
       border: '1px solid var(--outline)',
@@ -443,6 +467,7 @@ function getButtonStyle(
   // Operators — accent fill when active, otherwise accent-tinted
   if (type === 'op') {
     return {
+      ...commonStyle,
       background: isActiveOp ? accent : `color-mix(in srgb, ${accent} 15%, var(--surface))`,
       color: isActiveOp ? '#ffffff' : accent,
       border: isActiveOp ? 'none' : `1px solid color-mix(in srgb, ${accent} 30%, transparent)`,
@@ -452,6 +477,7 @@ function getButtonStyle(
   }
   // Equals — solid accent
   return {
+    ...commonStyle,
     background: accent,
     color: '#ffffff',
     border: 'none',

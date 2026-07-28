@@ -268,6 +268,7 @@ export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false, isMobi
               onClose={() => wm.close(win.id)}
               onMinimize={() => wm.minimize(win.id)}
               onToggleMaximize={() => wm.toggleMaximize(win.id)}
+              onReload={() => wm.reload(win.id)}
               onFocus={() => wm.focus(win.id)}
               onGeometryChange={(patch) => updateGeometry(win.id, patch)}
               isOptimizedEngine={isOptimizedEngine}
@@ -467,6 +468,7 @@ interface WindowFrameProps {
   onClose: () => void;
   onMinimize: () => void;
   onToggleMaximize: () => void;
+  onReload: () => void;
   onFocus: () => void;
   onGeometryChange: (patch: Partial<WindowInstance>) => void;
   isOptimizedEngine?: boolean;
@@ -480,6 +482,7 @@ function WindowFrame({
   onClose,
   onMinimize,
   onToggleMaximize,
+  onReload,
   onFocus,
   onGeometryChange,
   isOptimizedEngine = false,
@@ -695,33 +698,51 @@ function WindowFrame({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9, rotate: 360 }}
+              transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+              onClick={(e) => { e.stopPropagation(); onReload(); }}
+              title={isRu ? 'Перезагрузить' : 'Reload'}
+              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer ${
+                isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'
+              }`}
+            >
+              <RotateCw size={isMobileLayout ? 14 : 13} />
+            </motion.button>
             {!isMobileLayout && (
               <>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); onMinimize(); }}
                   title={isRu ? 'Свернуть' : 'Minimize'}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
                 >
                   <Minus size={14} />
-                </button>
+                </motion.button>
                 {win.allowMaximize !== false && (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
                     title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
                   >
                     {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
-                  </button>
+                  </motion.button>
                 )}
               </>
             )}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               title={isRu ? 'Закрыть' : 'Close'}
-              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-all active:scale-95 cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'}`}
+              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'}`}
             >
               <X size={isMobileLayout ? 16 : 14} />
-            </button>
+            </motion.button>
           </div>
         </div>
       )}

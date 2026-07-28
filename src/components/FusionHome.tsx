@@ -349,7 +349,23 @@ export function FusionHome(props: FusionHomeProps) {
             style={{ ...glass, borderRadius: '1.5rem' }}
             springDelay={0.46}
           >
-            <TileContent icon={<img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan" className="w-5 h-5 object-contain" />} label={t.lisyan} sub={t.lisyanSub} status="live" statusColor={accent} />
+            <TileContent 
+              icon={
+                <div className={`w-7 h-7 rounded-xl border overflow-hidden flex items-center justify-center p-1 transition-colors ${
+                  isDark ? 'bg-white border-white/20' : 'bg-black border-black/10'
+                }`}>
+                  <img 
+                    src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                    alt="Lisyan" 
+                    className={`w-full h-full object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`} 
+                  />
+                </div>
+              } 
+              label={t.lisyan} 
+              sub={t.lisyanSub} 
+              status="live" 
+              statusColor={accent} 
+            />
           </BentoTile>
 
           {/* Calculator tile — 2 cols x 1 row, distinct squircle */}
@@ -444,7 +460,21 @@ export function FusionHome(props: FusionHomeProps) {
         <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8, ...spring }} className="sticky bottom-4 z-20 mt-5">
           <div className="mx-auto flex max-w-md items-center justify-between gap-2 rounded-[2rem] p-2.5" style={glass}>
             {[
-              { icon: <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan" className="w-5 h-5 object-contain" />, onClick: onOpenLisyan, label: t.lisyan },
+              { 
+                icon: (
+                  <div className={`w-6 h-6 rounded-lg border overflow-hidden flex items-center justify-center p-0.5 transition-colors ${
+                    isDark ? 'bg-white border-white/20' : 'bg-black border-black/10'
+                  }`}>
+                    <img 
+                      src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                      alt="Lisyan" 
+                      className={`w-full h-full object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`} 
+                    />
+                  </div>
+                ), 
+                onClick: onOpenLisyan, 
+                label: t.lisyan 
+              },
               { icon: <Bot size={20} />, onClick: onOpenAgno, label: t.agno },
               { icon: <Calculator size={20} />, onClick: onOpenCalculator, label: t.calc },
               { icon: <SettingsIcon size={20} />, onClick: onOpenSettings, label: t.settings },

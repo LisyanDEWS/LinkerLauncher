@@ -1,5 +1,6 @@
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from '../data/sounds';
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { useContainerSize } from '../hooks/useContainerSize';
 import {
   X,
@@ -194,9 +195,6 @@ export default function FullSettingsModal({
   const [customPrimary, setCustomPrimary] = useState('#8B5CF6');
   const [customSecondary, setCustomSecondary] = useState('#A78BFA');
   const [customTertiary, setCustomTertiary] = useState('#6D28D9');
-  const [weatherNotifEnabled, setWeatherNotifEnabled] = useState(
-    localStorage.getItem('linkerru_weather_notif') !== 'false'
-  );
 
   const createCustomTheme = () => {
     const customPalette = {
@@ -292,24 +290,28 @@ export default function FullSettingsModal({
         icon: <Languages size={18} />,
         control: (
           <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-0.5 gap-0.5">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => onLangChange('en')}
-              className={`px-3 py-1 rounded-full text-[10px] font-black transition-all ${
+              className={`px-3 py-1 rounded-full text-[10px] font-black transition-all cursor-pointer ${
                 lang === 'en' ? 'text-[var(--surface)] shadow' : 'text-[var(--on-surface-var)]'
               }`}
               style={{ backgroundColor: lang === 'en' ? activePalette.primary : undefined }}
             >
               EN
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => onLangChange('ru')}
-              className={`px-3 py-1 rounded-full text-[10px] font-black transition-all ${
+              className={`px-3 py-1 rounded-full text-[10px] font-black transition-all cursor-pointer ${
                 lang === 'ru' ? 'text-[var(--surface)] shadow' : 'text-[var(--on-surface-var)]'
               }`}
               style={{ backgroundColor: lang === 'ru' ? activePalette.primary : undefined }}
             >
               RU
-            </button>
+            </motion.button>
           </div>
         ),
       },
@@ -991,23 +993,35 @@ export default function FullSettingsModal({
                             </div>
                           </div>
 
-                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1" id="language-tab-switcher">
+                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative" id="language-tab-switcher">
                             <button
                               onClick={() => onLangChange('en')}
-                              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                                lang === 'en' ? 'text-[var(--surface)] shadow-md' : 'text-[var(--on-surface-var)]'
+                              className={`relative z-10 px-4 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                lang === 'en' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
-                              style={{ backgroundColor: lang === 'en' ? activePalette.primary : undefined }}
                             >
+                              {lang === 'en' && (
+                                <motion.div
+                                  layoutId="lang-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
                               English
                             </button>
                             <button
                               onClick={() => onLangChange('ru')}
-                              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                                lang === 'ru' ? 'text-[var(--surface)] shadow-md' : 'text-[var(--on-surface-var)]'
+                              className={`relative z-10 px-4 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                lang === 'ru' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
-                              style={{ backgroundColor: lang === 'ru' ? activePalette.primary : undefined }}
                             >
+                              {lang === 'ru' && (
+                                <motion.div
+                                  layoutId="lang-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
                               Русский
                             </button>
                           </div>
@@ -1029,23 +1043,35 @@ export default function FullSettingsModal({
                             </div>
                           </div>
 
-                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1">
+                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative">
                             <button
                               onClick={() => onTimeFormatChange?.('24h')}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                timeFormat === '24h' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                timeFormat === '24h' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
-                              style={{ backgroundColor: timeFormat === '24h' ? activePalette.primary : undefined }}
                             >
+                              {timeFormat === '24h' && (
+                                <motion.div
+                                  layoutId="time-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
                               24h
                             </button>
                             <button
                               onClick={() => onTimeFormatChange?.('12h')}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                timeFormat === '12h' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                timeFormat === '12h' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
-                              style={{ backgroundColor: timeFormat === '12h' ? activePalette.primary : undefined }}
                             >
+                              {timeFormat === '12h' && (
+                                <motion.div
+                                  layoutId="time-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
                               12h AM/PM
                             </button>
                           </div>
@@ -1067,23 +1093,35 @@ export default function FullSettingsModal({
                             </div>
                           </div>
 
-                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1">
+                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative">
                             <button
                               onClick={() => onTempUnitChange?.('C')}
-                              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                tempUnit === 'C' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                tempUnit === 'C' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
-                              style={{ backgroundColor: tempUnit === 'C' ? activePalette.primary : undefined }}
                             >
+                              {tempUnit === 'C' && (
+                                <motion.div
+                                  layoutId="temp-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
                               °C
                             </button>
                             <button
                               onClick={() => onTempUnitChange?.('F')}
-                              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                tempUnit === 'F' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                tempUnit === 'F' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
-                              style={{ backgroundColor: tempUnit === 'F' ? activePalette.primary : undefined }}
                             >
+                              {tempUnit === 'F' && (
+                                <motion.div
+                                  layoutId="temp-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
                               °F
                             </button>
                           </div>
@@ -1116,33 +1154,6 @@ export default function FullSettingsModal({
                           <SquashToggle 
                             checked={isToastEnabled} 
                             onChange={onToastToggle} 
-                            color={activePalette.primary} 
-                          />
-                        </div>
-
-                        {/* Weather Notifications toggle */}
-                        <div className="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl">
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
-                              <CloudSun size={18} />
-                            </div>
-                            <div>
-                              <div className="text-sm font-bold text-[var(--on-surface)]">
-                                {lang === 'ru' ? 'Уведомления погоды' : 'Weather Notifications'}
-                              </div>
-                              <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
-                                {lang === 'ru' ? 'Получать сводку погоды при запуске' : 'Receive weather summary on startup'}
-                              </div>
-                            </div>
-                          </div>
-                          <SquashToggle 
-                            checked={weatherNotifEnabled} 
-                            onChange={() => {
-                              const next = !weatherNotifEnabled;
-                              setWeatherNotifEnabled(next);
-                              localStorage.setItem('linkerru_weather_notif', String(next));
-                              window.dispatchEvent(new Event('weather_notif_changed'));
-                            }} 
                             color={activePalette.primary} 
                           />
                         </div>

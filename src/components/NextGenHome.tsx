@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
+import { getGreeting } from '../data/greetings';
+import { LogoWithLoader } from './LogoWithLoader';
 import {
   Sun,
   Moon,
@@ -104,7 +106,6 @@ export function NextGenHome(props: NextGenHomeProps) {
 
   const isDark = theme === 'dark';
   const t = useMemo(() => ({
-    greeting: lang === 'ru' ? greetRu(nickname) : greetEn(nickname),
     subtitle: lang === 'ru' ? 'Ваше единое цифровое пространство' : 'Your unified digital space',
     search: lang === 'ru' ? 'Поиск виджетов, приложений и ссылок…' : 'Search widgets, apps and links…',
     quickSettings: lang === 'ru' ? 'Быстрые настройки' : 'Quick settings',
@@ -129,6 +130,7 @@ export function NextGenHome(props: NextGenHomeProps) {
     unread: lang === 'ru' ? 'непрочитанных' : 'unread',
     online: lang === 'ru' ? 'Онлайн' : 'Online',
     version: 'v1/262608',
+    greeting: getGreeting(nickname, lang),
   }), [lang, isDark, nickname]);
 
   // Live clock
@@ -398,8 +400,12 @@ export function NextGenHome(props: NextGenHomeProps) {
           >
             <div className="flex h-full flex-col justify-between">
               <div className="flex items-start justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--outline)] overflow-hidden p-1.5" style={{ background: 'var(--surface)' }}>
-                  <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan Connect" className="w-full h-full object-contain" />
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border overflow-hidden transition-colors bg-black border-white/10`}>
+                  <LogoWithLoader 
+                    src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                    alt="Lisyan Connect" 
+                    className="w-8 h-8 object-contain brightness-0 invert" 
+                  />
                 </div>
                 <StatusDot color={activePalette.primary} />
               </div>

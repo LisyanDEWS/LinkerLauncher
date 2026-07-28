@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
+import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -51,8 +51,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
+  const [showLoginPass, setShowLoginPass] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPass, setSignupPass] = useState('');
+  const [showSignupPass, setShowSignupPass] = useState(false);
   const [signupUser, setSignupUser] = useState('');
 
   // Success states
@@ -331,15 +333,36 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
             <span className="text-[11px] font-bold tracking-wider uppercase">{themeLabel}</span>
           </motion.button>
 
-          <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm">
+          <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm relative overflow-hidden h-9 items-center">
+            {/* The sliding pill */}
+            <motion.div
+              className="absolute bg-[var(--accent)] rounded-xl shadow-sm"
+              initial={false}
+              animate={{
+                x: lang === 'en' ? 0 : 40, // rough estimate, will refine
+                width: lang === 'en' ? 38 : 38,
+              }}
+              style={{
+                height: 'calc(100% - 8px)',
+                left: 4,
+              }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+
             <button
               onClick={() => onLangChange('en')}
-              className={`px-4 py-1.5 rounded-xl text-[11px] font-bold tracking-wider cursor-pointer transition-all ${lang === 'en' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}>
+              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-bold tracking-wider cursor-pointer transition-colors ${
+                lang === 'en' ? 'text-white' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              }`}
+            >
               EN
             </button>
             <button
               onClick={() => onLangChange('ru')}
-              className={`px-4 py-1.5 rounded-xl text-[11px] font-bold tracking-wider cursor-pointer transition-all ${lang === 'ru' ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}>
+              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-bold tracking-wider cursor-pointer transition-colors ${
+                lang === 'ru' ? 'text-white' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              }`}
+            >
               RU
             </button>
           </div>
@@ -579,12 +602,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                           <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'login-pass' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
                             <Lock size={16} className="text-[var(--on-surface-var)] shrink-0" />
                             <input 
-                              type="password" 
+                              type={showLoginPass ? "text" : "password"} 
                               value={loginPass} 
                               onChange={e => setLoginPass(e.target.value)} 
                               placeholder={t.plPass}
                               className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
                             />
+                            <button
+                              type="button"
+                              onClick={() => setShowLoginPass(!showLoginPass)}
+                              className="text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
+                            >
+                              {showLoginPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
                           </div>
                         </div>
 
@@ -630,12 +660,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                               <div className={`flex items-center gap-3 bg-[var(--surface-dim)] border rounded-2xl px-4 py-3.5 transition-all ${errorField === 'signup-pass' ? 'border-red-500 animate-shake' : 'border-[var(--outline)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10'}`}>
                                 <Lock size={16} className="text-[var(--on-surface-var)] shrink-0" />
                                 <input 
-                                  type="password" 
+                                  type={showSignupPass ? "text" : "password"} 
                                   value={signupPass} 
                                   onChange={e => setSignupPass(e.target.value)} 
                                   placeholder="min 7 characters"
                                   className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full placeholder:text-[var(--on-surface-var)]/40 font-medium" 
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSignupPass(!showSignupPass)}
+                                  className="text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
+                                >
+                                  {showSignupPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                               </div>
                             </div>
 

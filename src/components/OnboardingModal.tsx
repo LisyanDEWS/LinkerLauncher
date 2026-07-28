@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { 
   Languages, 
   Sun, 
@@ -72,7 +72,7 @@ export default function OnboardingModal({
   onTempUnitChange,
 }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 4;
 
   // Local state for Panic Button
   const [isPanicEnabled, setIsPanicEnabled] = useState(panicKey !== '');
@@ -245,7 +245,10 @@ export default function OnboardingModal({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       onClick={() => onLangChange('ru')}
                       className={`p-5 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
                         lang === 'ru'
@@ -254,18 +257,18 @@ export default function OnboardingModal({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center font-black text-xs text-[var(--on-surface)]">
-                          RU
-                        </div>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">Русский</div>
                           <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Russian</div>
                         </div>
                       </div>
                       {lang === 'ru' && <Check size={18} className="text-[var(--accent)]" />}
-                    </button>
+                    </motion.button>
 
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       onClick={() => onLangChange('en')}
                       className={`p-5 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
                         lang === 'en'
@@ -274,16 +277,13 @@ export default function OnboardingModal({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center font-black text-xs text-[var(--on-surface)]">
-                          EN
-                        </div>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">English</div>
                           <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Английский</div>
                         </div>
                       </div>
                       {lang === 'en' && <Check size={18} className="text-[var(--accent)]" />}
-                    </button>
+                    </motion.button>
                   </div>
                 </motion.div>
               )}
@@ -335,95 +335,10 @@ export default function OnboardingModal({
                 </motion.div>
               )}
 
-              {/* STEP 3: Time Format & Temp Unit */}
+              {/* STEP 3: Theme Mode & Palette */}
               {step === 3 && (
                 <motion.div
                   key="step3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-6"
-                >
-                  <div className="text-center max-w-md mx-auto space-y-2">
-                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
-                      <Clock size={28} />
-                    </div>
-                    <h3 className="text-xl font-black text-[var(--on-surface)]">
-                      {isRu ? 'Формат времени и Единицы' : 'Time & Unit Preferences'}
-                    </h3>
-                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
-                      {isRu ? 'Настройте отображение времени и температуры в системе.' : 'Configure default time presentation and temperature measurement.'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-4 max-w-md mx-auto">
-                    {/* Time Format */}
-                    <div className="p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-black uppercase text-[var(--on-surface-var)] tracking-wider">
-                        <Clock size={14} />
-                        <span>{isRu ? 'Формат времени' : 'Time Format'}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => onTimeFormatChange('24h')}
-                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
-                            timeFormat === '24h'
-                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
-                          }`}
-                        >
-                          24-Hour (14:30)
-                        </button>
-                        <button
-                          onClick={() => onTimeFormatChange('12h')}
-                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
-                            timeFormat === '12h'
-                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
-                          }`}
-                        >
-                          12-Hour AM/PM (2:30 PM)
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Temp Unit */}
-                    <div className="p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-black uppercase text-[var(--on-surface-var)] tracking-wider">
-                        <Thermometer size={14} />
-                        <span>{isRu ? 'Единица температуры' : 'Temperature Unit'}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => onTempUnitChange('C')}
-                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
-                            tempUnit === 'C'
-                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
-                          }`}
-                        >
-                          Celsius (°C)
-                        </button>
-                        <button
-                          onClick={() => onTempUnitChange('F')}
-                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
-                            tempUnit === 'F'
-                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
-                          }`}
-                        >
-                          Fahrenheit (°F)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* STEP 4: Theme Mode & Palette */}
-              {step === 4 && (
-                <motion.div
-                  key="step4"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -442,27 +357,37 @@ export default function OnboardingModal({
                   </div>
 
                   {/* Mode switcher */}
-                  <div className="flex items-center justify-center gap-3 max-w-md mx-auto">
+                  <div className="flex items-center justify-center bg-[var(--container)] border border-[var(--outline-var)] rounded-2xl p-1 gap-1 max-w-md mx-auto relative">
                     <button
                       onClick={() => onThemeChange('light')}
-                      className={`flex-1 py-3.5 rounded-2xl border-2 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                        theme === 'light'
-                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--on-surface)] shadow-md'
-                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] text-[var(--on-surface-var)]'
+                      className={`relative z-10 flex-1 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                        theme === 'light' ? 'text-white' : 'text-[var(--on-surface-var)]'
                       }`}
                     >
+                      {theme === 'light' && (
+                        <motion.div
+                          layoutId="onboarding-theme-pill"
+                          className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                        />
+                      )}
                       <Sun size={16} />
                       <span>{isRu ? 'Светлая' : 'Light'}</span>
                     </button>
 
                     <button
                       onClick={() => onThemeChange('dark')}
-                      className={`flex-1 py-3.5 rounded-2xl border-2 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                        theme === 'dark'
-                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--on-surface)] shadow-md'
-                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] text-[var(--on-surface-var)]'
+                      className={`relative z-10 flex-1 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                        theme === 'dark' ? 'text-white' : 'text-[var(--on-surface-var)]'
                       }`}
                     >
+                      {theme === 'dark' && (
+                        <motion.div
+                          layoutId="onboarding-theme-pill"
+                          className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                        />
+                      )}
                       <Moon size={16} />
                       <span>{isRu ? 'Тёмная' : 'Dark'}</span>
                     </button>
@@ -495,10 +420,10 @@ export default function OnboardingModal({
                 </motion.div>
               )}
 
-              {/* STEP 5: Panic Button */}
-              {step === 5 && (
+              {/* STEP 4: Panic Button */}
+              {step === 4 && (
                 <motion.div
-                  key="step5"
+                  key="step4"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}

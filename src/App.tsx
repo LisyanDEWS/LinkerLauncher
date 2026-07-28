@@ -830,65 +830,6 @@ export default function App() {
     });
   }, [lang]);
 
-  // --- Weather Startup Notification ---
-  useEffect(() => {
-    let mounted = true;
-    const fetchWeatherForNotification = async () => {
-      if (localStorage.getItem('linkerru_weather_notif') === 'false') return;
-      
-      const customLoc = localStorage.getItem('linkerru_weather_loc');
-      let lat = '55.7558';
-      let lon = '37.6173'; // Default Moscow
-      
-      if (customLoc) {
-        try {
-          const parsed = JSON.parse(customLoc);
-          lat = parsed.lat;
-          lon = parsed.lon;
-        } catch (e) {}
-      } else if (userLocation) {
-        lat = userLocation.lat;
-        lon = userLocation.lon;
-      }
-      
-      try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const currentTemp = Math.round(data.current.temperature_2m);
-        const maxTemp = Math.round(data.daily.temperature_2m_max[0]);
-        const minTemp = Math.round(data.daily.temperature_2m_min[0]);
-        
-        if (mounted) {
-          const message = lang === 'ru' 
-            ? `Температура сейчас: ${currentTemp}°C. Сегодня от ${minTemp}°C до ${maxTemp}°C.`
-            : `Temperature now: ${currentTemp}°C. Today from ${minTemp}°C to ${maxTemp}°C.`;
-            
-          triggerToast(message);
-          setNotifications(prev => [
-            {
-              id: `weather-${Date.now()}`,
-              title: lang === 'ru' ? 'Сводка погоды' : 'Weather Summary',
-              message,
-              read: false
-            },
-            ...prev
-          ]);
-        }
-      } catch (err) {
-        // Silent catch
-      }
-    };
-    
-    // Slight delay so it doesn't overlap with welcome toast if any
-    const timer = setTimeout(fetchWeatherForNotification, 2500);
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [lang, userLocation]);
-
-
   // --- Idle Timer (5 minutes) ---
   useEffect(() => {
     let idleTimeout: NodeJS.Timeout;
@@ -1107,7 +1048,15 @@ export default function App() {
     wm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
-      icon: <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan Connect" className="w-3.5 h-3.5 object-contain" />,
+      icon: (
+        <div className={`w-4 h-4 rounded flex items-center justify-center p-0.5 ${theme === 'dark' ? 'bg-white' : 'bg-black'}`}>
+          <img 
+            src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+            alt="Lisyan Connect" 
+            className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
+          />
+        </div>
+      ),
       singleton: true,
       initialWidth: 880,
       initialHeight: 680,
@@ -1119,6 +1068,7 @@ export default function App() {
             isOpen={true}
             onClose={() => wm.close('lisyan')}
             lang={lang}
+            theme={theme}
             isMobileLayout={isMobileLayout}
           />
         </div>
@@ -1623,14 +1573,16 @@ export default function App() {
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
             
             <div className="flex flex-col h-full relative z-10">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--outline-var)] overflow-hidden p-2 bg-[var(--surface-dim)]">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border overflow-hidden p-2.5 transition-colors ${
+                theme === 'dark' ? 'bg-white border-white/20' : 'bg-black border-black/10'
+              }`}>
                 <img 
                   src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
                   alt="Lisyan Connect Logo" 
-                  className="w-full h-full object-contain" 
+                  className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
                   onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} 
                 />
-                <Monitor size={32} className="hidden" />
+                <Monitor size={32} className={`hidden ${theme === 'dark' ? 'text-black' : 'text-white'}`} />
               </div>
               
               <h3 className="text-3xl font-black text-[var(--on-surface)] mb-2 tracking-tight">Lisyan Connect</h3>
@@ -1901,11 +1853,13 @@ export default function App() {
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner p-1 bg-[var(--surface-dim)]">
+            <div className={`w-11 h-11 rounded-2xl border overflow-hidden flex items-center justify-center shadow-inner p-1.5 transition-colors ${
+              theme === 'dark' ? 'bg-white border-white/20' : 'bg-black border-black/10'
+            }`}>
               <img 
                 src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
                 alt="Lisyan Connect" 
-                className="w-full h-full object-contain" 
+                className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
               />
             </div>
           </div>

@@ -10,6 +10,7 @@ interface LisyanConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
   lang: 'ru' | 'en';
+  theme?: 'light' | 'dark';
   isMobileLayout?: boolean;
 }
 
@@ -27,7 +28,7 @@ const QrScanner = ({ onScan }: { onScan: (text: string) => void }) => {
   return <div id="qr-reader" className="w-full bg-white rounded-2xl overflow-hidden text-black" />;
 };
 
-export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: LisyanConnectModalProps) {
+export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isMobileLayout }: LisyanConnectModalProps) {
   const [view, setView] = useState<'landing' | 'host' | 'guest' | 'connected'>('landing');
   const [roomId, setRoomId] = useState<string | null>(null);
   const [deviceName, setDeviceName] = useState('');
@@ -143,8 +144,14 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
             >
               {!isMobile && (
                 <div className="flex-1 p-8 flex flex-col items-center justify-center text-center overflow-y-auto">
-                  <div className="w-20 h-20 bg-[var(--surface-dim)] rounded-3xl flex items-center justify-center text-[var(--on-surface)] mb-8 shadow-sm border border-[var(--outline)] overflow-hidden p-3">
-                    <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan Connect" className="w-full h-full object-contain" />
+                  <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-8 shadow-sm border overflow-hidden p-3 transition-colors ${
+                    theme === 'dark' ? 'bg-white border-white/20' : 'bg-black border-black/10'
+                  }`}>
+                    <img 
+                      src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                      alt="Lisyan Connect" 
+                      className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
+                    />
                   </div>
                   <h2 className="text-3xl font-black text-[var(--on-surface)] mb-4 tracking-tight">
                     {lang === 'ru' ? 'Откройте LinkerRu везде' : 'Open LinkerRu anywhere'}
