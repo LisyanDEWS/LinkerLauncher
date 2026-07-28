@@ -349,7 +349,7 @@ export function FusionHome(props: FusionHomeProps) {
             style={{ ...glass, borderRadius: '1.5rem' }}
             springDelay={0.46}
           >
-            <TileContent icon={<Monitor size={20} style={{ color: accent }} />} label={t.lisyan} sub={t.lisyanSub} status="live" statusColor={accent} />
+            <TileContent icon={<img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan" className="w-5 h-5 object-contain" />} label={t.lisyan} sub={t.lisyanSub} status="live" statusColor={accent} />
           </BentoTile>
 
           {/* Calculator tile — 2 cols x 1 row, distinct squircle */}
@@ -444,7 +444,7 @@ export function FusionHome(props: FusionHomeProps) {
         <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8, ...spring }} className="sticky bottom-4 z-20 mt-5">
           <div className="mx-auto flex max-w-md items-center justify-between gap-2 rounded-[2rem] p-2.5" style={glass}>
             {[
-              { icon: <Monitor size={20} />, onClick: onOpenLisyan, label: t.lisyan },
+              { icon: <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan" className="w-5 h-5 object-contain" />, onClick: onOpenLisyan, label: t.lisyan },
               { icon: <Bot size={20} />, onClick: onOpenAgno, label: t.agno },
               { icon: <Calculator size={20} />, onClick: onOpenCalculator, label: t.calc },
               { icon: <SettingsIcon size={20} />, onClick: onOpenSettings, label: t.settings },

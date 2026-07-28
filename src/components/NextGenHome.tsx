@@ -398,8 +398,8 @@ export function NextGenHome(props: NextGenHomeProps) {
           >
             <div className="flex h-full flex-col justify-between">
               <div className="flex items-start justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--outline)]" style={{ background: 'var(--surface)' }}>
-                  <Monitor size={22} style={{ color: activePalette.primary }} />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--outline)] overflow-hidden p-1.5" style={{ background: 'var(--surface)' }}>
+                  <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan Connect" className="w-full h-full object-contain" />
                 </div>
                 <StatusDot color={activePalette.primary} />
               </div>

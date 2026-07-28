@@ -143,8 +143,8 @@ export function LisyanConnectModal({ isOpen, onClose, lang, isMobileLayout }: Li
             >
               {!isMobile && (
                 <div className="flex-1 p-8 flex flex-col items-center justify-center text-center overflow-y-auto">
-                  <div className="w-20 h-20 bg-[var(--surface-dim)] rounded-3xl flex items-center justify-center text-[var(--on-surface)] mb-8 shadow-sm border border-[var(--outline)]">
-                    <Monitor size={40} />
+                  <div className="w-20 h-20 bg-[var(--surface-dim)] rounded-3xl flex items-center justify-center text-[var(--on-surface)] mb-8 shadow-sm border border-[var(--outline)] overflow-hidden p-3">
+                    <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan Connect" className="w-full h-full object-contain" />
                   </div>
                   <h2 className="text-3xl font-black text-[var(--on-surface)] mb-4 tracking-tight">
                     {lang === 'ru' ? 'Откройте LinkerRu везде' : 'Open LinkerRu anywhere'}

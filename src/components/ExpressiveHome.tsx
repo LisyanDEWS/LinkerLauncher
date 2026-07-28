@@ -152,7 +152,7 @@ export function ExpressiveHome(props: ExpressiveHomeProps) {
       key: 'comm',
       label: t.sections.comm,
       apps: [
-        { id: 'lisyan', icon: <Monitor size={26} />, label: t.apps.lisyan, sub: t.apps.lisyanSub, onClick: onOpenLisyan, accent: true, status: 'live' },
+        { id: 'lisyan', icon: <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan" className="w-6.5 h-6.5 object-contain" />, label: t.apps.lisyan, sub: t.apps.lisyanSub, onClick: onOpenLisyan, accent: true, status: 'live' },
         { id: 'messenger', icon: <MessageSquare size={26} />, label: t.apps.messenger, sub: t.apps.messengerSub, onClick: () => {}, disabled: true, badge: t.comingSoon },
       ],
     },
@@ -185,7 +185,7 @@ export function ExpressiveHome(props: ExpressiveHomeProps) {
 
   // Dock apps (primary, always visible)
   const dockApps: AppDef[] = [
-    { id: 'lisyan', icon: <Monitor size={24} />, label: t.apps.lisyan, onClick: onOpenLisyan },
+    { id: 'lisyan', icon: <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan" className="w-6 h-6 object-contain" />, label: t.apps.lisyan, onClick: onOpenLisyan },
     { id: 'agno', icon: <Bot size={24} />, label: t.apps.agno, onClick: onOpenAgno },
     { id: 'proxy', icon: <Globe size={24} />, label: t.apps.proxy, onClick: onOpenServer },
     { id: 'settings', icon: <SettingsIcon size={24} />, label: t.apps.settings, onClick: onOpenSettings },

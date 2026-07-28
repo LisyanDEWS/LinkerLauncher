@@ -1107,7 +1107,7 @@ export default function App() {
     wm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
-      icon: <Monitor size={14} className="text-[var(--on-surface)]" />,
+      icon: <img src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" alt="Lisyan Connect" className="w-3.5 h-3.5 object-contain" />,
       singleton: true,
       initialWidth: 880,
       initialHeight: 680,
@@ -1499,7 +1499,7 @@ export default function App() {
           theme === 'dark'
             ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
             : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142",
-          "https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3",
+          "https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e",
         ]}
         minDuration={2500}
         color={activePalette.primary}
@@ -1622,12 +1622,10 @@ export default function App() {
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
             
             <div className="flex flex-col h-full relative z-10">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--outline-var)] overflow-hidden p-2 ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--outline-var)] overflow-hidden p-2 bg-[var(--surface-dim)]">
                 <img 
-                  src={theme === 'dark'
-                    ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-                    : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"} 
-                  alt="LinkerRu Logo" 
+                  src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                  alt="Lisyan Connect Logo" 
                   className="w-full h-full object-contain" 
                   onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} 
                 />
@@ -1902,12 +1900,10 @@ export default function App() {
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className={`w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner p-1 ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner p-1 bg-[var(--surface-dim)]">
               <img 
-                src={theme === 'dark'
-                  ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-                  : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"} 
-                alt="LinkerRu" 
+                src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                alt="Lisyan Connect" 
                 className="w-full h-full object-contain" 
               />
             </div>
