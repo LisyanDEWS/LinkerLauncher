@@ -11,7 +11,8 @@ import {
   ArrowRight, 
   Sparkles,
   Volume2,
-  Play,
+  Type,
+  Thermometer,
   SkipForward
 } from 'lucide-react';
 import { materialPalettes } from '../data/themes';
@@ -37,6 +38,13 @@ interface OnboardingModalProps {
   onPanicKeyChange: (key: string) => void;
   panicUrl: string;
   onPanicUrlChange: (url: string) => void;
+  // Font, Time Format & Temp Unit settings
+  fontFamily: string;
+  onFontFamilyChange: (font: string) => void;
+  timeFormat: '12h' | '24h';
+  onTimeFormatChange: (tf: '12h' | '24h') => void;
+  tempUnit: 'C' | 'F';
+  onTempUnitChange: (tu: 'C' | 'F') => void;
 }
 
 export default function OnboardingModal({
@@ -58,11 +66,17 @@ export default function OnboardingModal({
   onPanicKeyChange,
   panicUrl,
   onPanicUrlChange,
+  fontFamily,
+  onFontFamilyChange,
+  timeFormat,
+  onTimeFormatChange,
+  tempUnit,
+  onTempUnitChange,
 }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 6;
 
-  // Local state for Panic Button to avoid immediate global binding until next/finish
+  // Local state for Panic Button
   const [isPanicEnabled, setIsPanicEnabled] = useState(panicKey !== '');
   const [localPanicKey, setLocalPanicKey] = useState(panicKey || 'Ctrl+0');
   const [localPanicUrl, setLocalPanicUrl] = useState(panicUrl || 'https://google.com');
@@ -72,7 +86,18 @@ export default function OnboardingModal({
     return materialPalettes.find(p => p.id === activePaletteId) || materialPalettes[0];
   }, [activePaletteId]);
 
-  // Key combination capture (e.g. Ctrl+0, Shift+Escape, Alt+1)
+  const linkerLogo = theme === 'dark' 
+    ? 'https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6' 
+    : 'https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142';
+
+  const fonts = [
+    { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans', preview: 'Modern & Clean' },
+    { id: 'Inter', name: 'Inter', preview: 'Crisp & Technical' },
+    { id: 'Outfit', name: 'Outfit', preview: 'Expressive & Rounded' },
+    { id: 'Playfair Display', name: 'Playfair Display', preview: 'Serif & Elegant' },
+    { id: 'system-ui', name: 'System Sans', preview: 'Native OS Default' },
+  ];
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -98,7 +123,6 @@ export default function OnboardingModal({
     }
   };
 
-  // Previews for wallpapers based on selected palette
   const wallpapers = useMemo(() => {
     const p1 = selectedPalette.primary;
     const p2 = selectedPalette.secondary;
@@ -116,7 +140,6 @@ export default function OnboardingModal({
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      // Save Panic button states upon finishing
       if (isPanicEnabled) {
         onPanicKeyChange(localPanicKey);
         onPanicUrlChange(localPanicUrl);
@@ -148,569 +171,521 @@ export default function OnboardingModal({
 
   if (!isOpen) return null;
 
-  const t = {
-    ru: {
-      welcome: 'Первичная настройка LinkerRu',
-      subtitle: 'Быстрая адаптация интерфейса Material 3 Expressive.',
-      next: 'Продолжить',
-      back: 'Назад',
-      skipStep: 'Пропустить шаг',
-      finish: 'Завершить настройку',
-      step: 'Шаг',
-      of: 'из',
-      
-      // Step 1: Lang
-      step1Title: 'Выберите язык интерфейса',
-      step1Desc: 'Вы можете изменить язык в любое время в настройках.',
-      langRu: 'Русский (RU)',
-      langEn: 'English (EN)',
-
-      // Step 2: Theme & Palette
-      step2Title: 'Оформление и палитра',
-      step2Desc: 'Выберите тему оформления и динамическую акцентную палитру.',
-      themeMode: 'Режим интерфейса',
-      themeLight: 'Светлая тема',
-      themeDark: 'Тёмная тема',
-      colorPalette: 'Цветовая палитра',
-
-      // Step 3: Wallpapers
-      step3Title: 'Фоновые обои',
-      step3Desc: 'Выберите фоновое оформление для рабочего стола.',
-      preview: 'Предпросмотр',
-
-      // Step 4: Standby clock
-      step4Title: 'Режим ожидания (Standby)',
-      step4Desc: 'Выберите интерактивный вариант отображения часов.',
-      clockStyle: 'Стиль часов',
-      digital: 'Цифровые',
-      analog: 'Аналоговые',
-      clockVar: 'Вариант отображения (Визуальный предпросмотр)',
-      var1: 'Классический контейнер',
-      var2: 'Минималистичные тонкие цифры',
-      var3: 'Акцентный крупный формат',
-
-      // Step 5: Panic button
-      step5Title: 'Тревожная кнопка (Panic Button)',
-      step5Desc: 'Позволяет мгновенно скрыть содержимое экрана и перенаправить вкладку при нажатии комбинации клавиш.',
-      enablePanic: 'Активировать тревожную кнопку',
-      panicKeyLabel: 'Комбинация клавиш (например, Ctrl+0 или Alt+P)',
-      panicKeyPlaceholder: 'Нажмите клавиши (напр. Ctrl+0)...',
-      panicUrlLabel: 'Безопасный URL для перенаправления',
-      panicUrlPlaceholder: 'https://google.com',
-      panicSoundLabel: 'Звуковое оповещение / Сигнал',
-      testSound: 'Прослушать',
-    },
-    en: {
-      welcome: 'Initial Setup LinkerRu',
-      subtitle: 'Tailor your Material 3 Expressive experience.',
-      next: 'Continue',
-      back: 'Back',
-      skipStep: 'Skip step',
-      finish: 'Finish Setup',
-      step: 'Step',
-      of: 'of',
-
-      // Step 1: Lang
-      step1Title: 'Select interface language',
-      step1Desc: 'You can change the language anytime in settings.',
-      langRu: 'Russian (RU)',
-      langEn: 'English (EN)',
-
-      // Step 2: Theme & Palette
-      step2Title: 'Theme & Accent Palette',
-      step2Desc: 'Choose interface mode and dynamic accent palette.',
-      themeMode: 'Interface Mode',
-      themeLight: 'Light Theme',
-      themeDark: 'Dark Theme',
-      colorPalette: 'Color Palette',
-
-      // Step 3: Wallpapers
-      step3Title: 'Desktop Wallpaper',
-      step3Desc: 'Select background styling for your screen.',
-      preview: 'Preview',
-
-      // Step 4: Standby clock
-      step4Title: 'Standby Clock Setup',
-      step4Desc: 'Select an interactive preview style for your standby clock.',
-      clockStyle: 'Clock Style',
-      digital: 'Digital',
-      analog: 'Analog',
-      clockVar: 'Visual Variant Options',
-      var1: 'Classic Info Card',
-      var2: 'Minimalist Thin Typography',
-      var3: 'Accent Ultra Large Digits',
-
-      // Step 5: Panic button
-      step5Title: 'Panic Button Emergency Exit',
-      step5Desc: 'Instantly redirects the tab to a safe website when your panic hotkey combo is pressed.',
-      enablePanic: 'Enable Panic Button functionality',
-      panicKeyLabel: 'Hotkey Combination (e.g., Ctrl+0 or Alt+P)',
-      panicKeyPlaceholder: 'Press key combination (e.g. Ctrl+0)...',
-      panicUrlLabel: 'Safe Redirect Destination URL',
-      panicUrlPlaceholder: 'https://google.com',
-      panicSoundLabel: 'Chime Sound Effect',
-      testSound: 'Test Sound',
-    }
-  }[lang];
+  const isRu = lang === 'ru';
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-center justify-center p-4 overflow-y-auto">
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 15 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-        className="bg-[var(--surface)] border border-[var(--outline)] rounded-[2.5rem] w-full max-w-2xl overflow-hidden flex flex-col relative my-8 shadow-2xl"
-      >
-        {/* Expressive Header with Logo */}
-        <div 
-          className="relative px-8 pt-8 pb-6 overflow-hidden transition-all duration-500" 
-          style={{ background: `linear-gradient(135deg, ${selectedPalette.primary} 0%, ${selectedPalette.tertiary} 100%)` }}
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xl"
+        />
+
+        {/* Modal Window */}
+        <motion.div
+          initial={{ scale: 0.94, y: 20, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.94, y: 20, opacity: 0 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+          className="relative z-10 w-full max-w-2xl bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-[2.5rem] p-6 sm:p-8 shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]"
         >
-          <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10 blur-xl" />
-          <div className="pointer-events-none absolute -right-12 -bottom-12 h-44 w-44 rounded-full bg-white/5 blur-2xl" />
-          
-          <div className="relative z-10 flex justify-between items-center text-white">
-            <div className="flex items-center gap-4">
+          {/* Top Bar with Logo & Progress Indicators */}
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-[var(--outline-var)] shrink-0">
+            <div className="flex items-center gap-3">
               <img 
-                src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" 
+                src={linkerLogo} 
                 alt="LinkerRu Logo" 
-                className="w-12 h-12 object-contain drop-shadow-md rounded-2xl bg-black/20 p-1.5 border border-white/20 shrink-0" 
+                className={`w-10 h-10 object-contain drop-shadow-sm rounded-xl p-1 border border-[var(--outline-var)] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`} 
               />
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black tracking-widest uppercase bg-white/20 px-2.5 py-0.5 rounded-full border border-white/20">
-                    {t.step} {step} {t.of} {totalSteps}
-                  </span>
-                </div>
-                <h2 className="text-xl font-black mt-1 flex items-center gap-2 tracking-tight">
-                  <span>{t.welcome}</span>
-                </h2>
-                <p className="text-xs font-medium opacity-90 mt-0.5">{t.subtitle}</p>
+                <h2 className="text-base font-black tracking-tight text-[var(--on-surface)]">LinkerRu :Re</h2>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">
+                  {isRu ? 'Первичная настройка M3' : 'Material 3 Initial Setup'}
+                </p>
               </div>
             </div>
 
-            <div className="hidden sm:flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold border border-white/20 shadow-sm">
-              <Sparkles size={14} />
-              <span>LinkerRu :Re</span>
+            {/* Step Counter Pills */}
+            <div className="flex items-center gap-1.5 bg-[var(--surface-dim)] px-3 py-1.5 rounded-full border border-[var(--outline-var)]">
+              {Array.from({ length: totalSteps }).map((_, i) => {
+                const stepNum = i + 1;
+                const isActive = stepNum === step;
+                const isPassed = stepNum < step;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setStep(stepNum)}
+                    className={`h-2 rounded-full cursor-pointer transition-all duration-300 ${
+                      isActive
+                        ? 'w-7 bg-[var(--accent)]'
+                        : isPassed
+                          ? 'w-2.5 bg-[var(--accent)]/50'
+                          : 'w-2.5 bg-[var(--outline-var)]'
+                    }`}
+                    title={`${isRu ? 'Шаг' : 'Step'} ${stepNum}`}
+                  />
+                );
+              })}
+              <span className="text-[10px] font-black text-[var(--on-surface-var)] ml-1 tabular-nums">
+                {step}/{totalSteps}
+              </span>
             </div>
           </div>
 
-          {/* M3 Progress Bar */}
-          <div className="relative z-10 mt-6 h-2 w-full bg-black/20 rounded-full overflow-hidden p-0.5 border border-white/20">
-            <motion.div
-              animate={{ width: `${(step / totalSteps) * 100}%` }}
-              transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-              className="h-full bg-white rounded-full shadow-sm"
-            />
-          </div>
-        </div>
-
-        {/* Scrollable Step Content */}
-        <div className="p-8 flex-1 min-h-[260px] sm:min-h-[360px] max-h-[55vh] overflow-y-auto scrollbar-thin">
-          <AnimatePresence mode="wait">
-            {/* Step 1: Language */}
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">{t.step1Title}</h3>
-                  <p className="text-xs font-medium text-[var(--on-surface-var)] mt-1">{t.step1Desc}</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => {
-                      onLangChange('ru');
-                      localStorage.setItem('linkerru_lang', 'ru');
-                    }}
-                    className={`p-6 rounded-3xl border-2 text-left transition-all flex flex-col justify-between h-[130px] cursor-pointer ${lang === 'ru' ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-sm' : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <Languages size={24} className={lang === 'ru' ? 'text-[var(--accent)]' : 'text-[var(--on-surface-var)]'} />
-                      {lang === 'ru' && <div className="w-6 h-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center"><Check size={14} strokeWidth={3} /></div>}
+          {/* STEP CONTENT BODY */}
+          <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin space-y-6 min-h-[320px] flex flex-col justify-center">
+            <AnimatePresence mode="wait">
+              {/* STEP 1: Language */}
+              {step === 1 && (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center max-w-md mx-auto space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Languages size={28} />
                     </div>
-                    <div>
-                      <div className="text-sm font-black text-[var(--on-surface)]">{t.langRu}</div>
-                      <div className="text-[10px] font-semibold text-[var(--on-surface-var)] mt-0.5">Русский язык по умолчанию</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onLangChange('en');
-                      localStorage.setItem('linkerru_lang', 'en');
-                    }}
-                    className={`p-6 rounded-3xl border-2 text-left transition-all flex flex-col justify-between h-[130px] cursor-pointer ${lang === 'en' ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-sm' : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <Languages size={24} className={lang === 'en' ? 'text-[var(--accent)]' : 'text-[var(--on-surface-var)]'} />
-                      {lang === 'en' && <div className="w-6 h-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center"><Check size={14} strokeWidth={3} /></div>}
-                    </div>
-                    <div>
-                      <div className="text-sm font-black text-[var(--on-surface)]">{t.langEn}</div>
-                      <div className="text-[10px] font-semibold text-[var(--on-surface-var)] mt-0.5">English language default</div>
-                    </div>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 2: Theme & Palette */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">{t.step2Title}</h3>
-                  <p className="text-xs font-medium text-[var(--on-surface-var)] mt-1">{t.step2Desc}</p>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Theme toggles */}
-                  <div className="p-5 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-3xl">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)]">{t.themeMode}</span>
-                    <div className="grid grid-cols-2 gap-3 mt-2.5">
-                      <button
-                        onClick={() => {
-                          onThemeChange('light');
-                          localStorage.setItem('linkerru_theme', 'light');
-                        }}
-                        className={`py-3.5 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${theme === 'light' ? 'bg-white text-black border-black shadow-md' : 'bg-transparent text-[var(--on-surface-var)] border-[var(--outline-var)] hover:text-[var(--on-surface)]'}`}
-                      >
-                        <Sun size={16} />
-                        <span>{t.themeLight}</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          onThemeChange('dark');
-                          localStorage.setItem('linkerru_theme', 'dark');
-                        }}
-                        className={`py-3.5 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${theme === 'dark' ? 'bg-black text-white border-white shadow-md' : 'bg-transparent text-[var(--on-surface-var)] border-[var(--outline-var)] hover:text-[var(--on-surface)]'}`}
-                      >
-                        <Moon size={16} />
-                        <span>{t.themeDark}</span>
-                      </button>
-                    </div>
+                    <h3 className="text-xl font-black text-[var(--on-surface)]">
+                      {isRu ? 'Выберите язык интерфейса' : 'Select interface language'}
+                    </h3>
+                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
+                      {isRu ? 'Вы сможете переключить язык в любой момент в настройках.' : 'You can switch the language anytime in settings.'}
+                    </p>
                   </div>
 
-                  {/* Accents Grid */}
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] pl-1">{t.colorPalette}</span>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-2">
-                      {materialPalettes.map((palette) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
+                    <button
+                      onClick={() => onLangChange('ru')}
+                      className={`p-5 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
+                        lang === 'ru'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md scale-[1.02]'
+                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🇷🇺</span>
+                        <div>
+                          <div className="text-sm font-black text-[var(--on-surface)]">Русский</div>
+                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Russian</div>
+                        </div>
+                      </div>
+                      {lang === 'ru' && <Check size={18} className="text-[var(--accent)]" />}
+                    </button>
+
+                    <button
+                      onClick={() => onLangChange('en')}
+                      className={`p-5 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
+                        lang === 'en'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md scale-[1.02]'
+                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🇬🇧</span>
+                        <div>
+                          <div className="text-sm font-black text-[var(--on-surface)]">English</div>
+                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Английский</div>
+                        </div>
+                      </div>
+                      {lang === 'en' && <Check size={18} className="text-[var(--accent)]" />}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* STEP 2: Fonts Selection */}
+              {step === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-5"
+                >
+                  <div className="text-center max-w-md mx-auto space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Type size={28} />
+                    </div>
+                    <h3 className="text-xl font-black text-[var(--on-surface)]">
+                      {isRu ? 'Системный шрифт' : 'System Typography'}
+                    </h3>
+                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
+                      {isRu ? 'Выберите основной гарнитурный шрифт для рабочего стола и приложений.' : 'Select the primary typeface family for desktop UI and apps.'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
+                    {fonts.map((f) => {
+                      const isSelected = fontFamily === f.id;
+                      return (
                         <button
-                          key={palette.id}
-                          onClick={() => {
-                            onPaletteChange(palette.id);
-                            localStorage.setItem('linkerru_accent', palette.id);
-                          }}
-                          className={`p-3 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer text-left ${activePaletteId === palette.id ? 'border-[var(--accent)] bg-[var(--accent)]/10 font-black' : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'}`}
+                          key={f.id}
+                          onClick={() => onFontFamilyChange(f.id)}
+                          className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md'
+                              : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
+                          }`}
+                          style={{ fontFamily: f.id }}
                         >
-                          <div 
-                            className="w-6 h-6 rounded-full border border-black/10 shrink-0 shadow-sm" 
-                            style={{ backgroundColor: palette.primary }}
-                          />
-                          <span className="text-xs truncate font-bold text-[var(--on-surface)]">
-                            {lang === 'ru' ? palette.nameRu : palette.nameEn}
-                          </span>
+                          <div>
+                            <div className="text-sm font-bold text-[var(--on-surface)]">{f.name}</div>
+                            <div className="text-[10px] font-medium text-[var(--on-surface-var)]">{f.preview}</div>
+                          </div>
+                          {isSelected && <Check size={16} className="text-[var(--accent)] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* STEP 3: Time Format & Temp Unit */}
+              {step === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center max-w-md mx-auto space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Clock size={28} />
+                    </div>
+                    <h3 className="text-xl font-black text-[var(--on-surface)]">
+                      {isRu ? 'Формат времени и Единицы' : 'Time & Unit Preferences'}
+                    </h3>
+                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
+                      {isRu ? 'Настройте отображение времени и температуры в системе.' : 'Configure default time presentation and temperature measurement.'}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 max-w-md mx-auto">
+                    {/* Time Format */}
+                    <div className="p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase text-[var(--on-surface-var)] tracking-wider">
+                        <Clock size={14} />
+                        <span>{isRu ? 'Формат времени' : 'Time Format'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => onTimeFormatChange('24h')}
+                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
+                            timeFormat === '24h'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
+                          }`}
+                        >
+                          24-Hour (14:30)
+                        </button>
+                        <button
+                          onClick={() => onTimeFormatChange('12h')}
+                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
+                            timeFormat === '12h'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
+                          }`}
+                        >
+                          12-Hour AM/PM (2:30 PM)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Temp Unit */}
+                    <div className="p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase text-[var(--on-surface-var)] tracking-wider">
+                        <Thermometer size={14} />
+                        <span>{isRu ? 'Единица температуры' : 'Temperature Unit'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => onTempUnitChange('C')}
+                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
+                            tempUnit === 'C'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
+                          }`}
+                        >
+                          Celsius (°C)
+                        </button>
+                        <button
+                          onClick={() => onTempUnitChange('F')}
+                          className={`py-3 rounded-xl text-xs font-black transition-all border ${
+                            tempUnit === 'F'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                              : 'bg-[var(--surface)] text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container)]'
+                          }`}
+                        >
+                          Fahrenheit (°F)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* STEP 4: Theme Mode & Palette */}
+              {step === 4 && (
+                <motion.div
+                  key="step4"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-5"
+                >
+                  <div className="text-center max-w-md mx-auto space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Sun size={28} />
+                    </div>
+                    <h3 className="text-xl font-black text-[var(--on-surface)]">
+                      {isRu ? 'Тема и Цветовая палитра' : 'Theme & Accent Palette'}
+                    </h3>
+                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
+                      {isRu ? 'Выберите режим оформления и Material 3 палитру акцентов.' : 'Choose visual mode and dynamic Material 3 accent color palette.'}
+                    </p>
+                  </div>
+
+                  {/* Mode switcher */}
+                  <div className="flex items-center justify-center gap-3 max-w-md mx-auto">
+                    <button
+                      onClick={() => onThemeChange('light')}
+                      className={`flex-1 py-3.5 rounded-2xl border-2 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        theme === 'light'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--on-surface)] shadow-md'
+                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] text-[var(--on-surface-var)]'
+                      }`}
+                    >
+                      <Sun size={16} />
+                      <span>{isRu ? 'Светлая' : 'Light'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => onThemeChange('dark')}
+                      className={`flex-1 py-3.5 rounded-2xl border-2 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        theme === 'dark'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--on-surface)] shadow-md'
+                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] text-[var(--on-surface-var)]'
+                      }`}
+                    >
+                      <Moon size={16} />
+                      <span>{isRu ? 'Тёмная' : 'Dark'}</span>
+                    </button>
+                  </div>
+
+                  {/* Palette selector */}
+                  <div className="space-y-2 max-w-md mx-auto pt-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block text-center">
+                      {isRu ? 'Материальные акценты' : 'Material Accent Tokens'}
+                    </span>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                      {materialPalettes.map((p) => {
+                        const isSelected = p.id === activePaletteId;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => onPaletteChange(p.id)}
+                            className={`h-11 rounded-2xl border-2 transition-all hover:scale-110 cursor-pointer flex items-center justify-center ${
+                              isSelected ? 'border-[var(--on-surface)] shadow-lg scale-105' : 'border-transparent'
+                            }`}
+                            style={{ backgroundColor: p.primary }}
+                            title={isRu ? p.nameRu : p.nameEn}
+                          >
+                            {isSelected && <Check size={14} className="text-white drop-shadow-md" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* STEP 5: Standby Clock & Wallpaper */}
+              {step === 5 && (
+                <motion.div
+                  key="step5"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-5"
+                >
+                  <div className="text-center max-w-md mx-auto space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <Sparkles size={28} />
+                    </div>
+                    <h3 className="text-xl font-black text-[var(--on-surface)]">
+                      {isRu ? 'Обои и Часы Standby' : 'Wallpapers & Standby Clock'}
+                    </h3>
+                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
+                      {isRu ? 'Выберите фоновый градиент и стиль часов в режиме простоя.' : 'Select desktop ambient background gradient and idle standby clock style.'}
+                    </p>
+                  </div>
+
+                  {/* Wallpaper grid */}
+                  <div className="space-y-2 max-w-lg mx-auto">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block">
+                      {isRu ? 'Стиль фона' : 'Wallpaper Background'}
+                    </span>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {wallpapers.map((wp) => (
+                        <button
+                          key={wp.id}
+                          onClick={() => onWallpaperChange(wp.id)}
+                          className={`h-16 rounded-2xl border-2 overflow-hidden transition-all hover:scale-105 cursor-pointer relative ${
+                            mainWallpaper === wp.id ? 'border-[var(--accent)] shadow-md' : 'border-[var(--outline-var)]'
+                          }`}
+                          style={{ background: wp.style }}
+                        >
+                          {mainWallpaper === wp.id && (
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                              <Check size={16} className="text-white drop-shadow-md" />
+                            </div>
+                          )}
                         </button>
                       ))}
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
 
-            {/* Step 3: Wallpapers */}
-            {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">{t.step3Title}</h3>
-                  <p className="text-xs font-medium text-[var(--on-surface-var)] mt-1">{t.step3Desc}</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {wallpapers.map((wp) => (
-                    <button
-                      key={wp.id}
-                      onClick={() => {
-                        onWallpaperChange(wp.id);
-                        localStorage.setItem('linkerru_wallpaper', wp.id);
-                      }}
-                      className={`p-4 rounded-3xl border-2 flex flex-col gap-3 transition-all text-left cursor-pointer ${mainWallpaper === wp.id ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-sm' : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'}`}
-                    >
-                      <div 
-                        className="w-full h-24 rounded-2xl border border-black/10 relative overflow-hidden flex items-center justify-center shadow-inner"
-                        style={{ background: wp.style }}
-                      >
-                        {mainWallpaper === wp.id && (
-                          <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shadow">
-                            <Check size={13} strokeWidth={3} />
-                          </div>
-                        )}
-                        <span className="text-[10px] font-black tracking-wider uppercase bg-black/50 text-white px-2.5 py-0.5 rounded-full backdrop-blur-sm">
-                          {t.preview}
-                        </span>
-                      </div>
-                      <div className="text-xs font-black text-[var(--on-surface)] pl-1">
-                        {lang === 'ru' ? wp.nameRu : wp.nameEn}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 4: Standby clock with Visual Previews */}
-            {step === 4 && (
-              <motion.div
-                key="step4"
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">{t.step4Title}</h3>
-                  <p className="text-xs font-medium text-[var(--on-surface-var)] mt-1">{t.step4Desc}</p>
-                </div>
-
-                <div className="space-y-5">
-                  {/* Clock type style selection */}
-                  <div className="p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-3xl">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] pl-1">{t.clockStyle}</span>
-                    <div className="grid grid-cols-2 gap-3 mt-2">
-                      <button
-                        type="button"
-                        onClick={() => onClockTypeChange('digital')}
-                        className={`py-3 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${clockType === 'digital' ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-md' : 'bg-[var(--surface)] text-[var(--on-surface-var)] border-[var(--outline-var)]'}`}
-                      >
-                        <Clock size={16} />
-                        <span>{t.digital}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onClockTypeChange('analog')}
-                        className={`py-3 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${clockType === 'analog' ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-md' : 'bg-[var(--surface)] text-[var(--on-surface-var)] border-[var(--outline-var)]'}`}
-                      >
-                        <Clock size={16} />
-                        <span>{t.analog}</span>
-                      </button>
+                  {/* Clock Style & Variation */}
+                  <div className="space-y-3 max-w-lg mx-auto pt-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block">
+                      {isRu ? 'Формат часов Standby' : 'Standby Clock Variant'}
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => onClockVariationChange(v as 1 | 2 | 3)}
+                          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                            clockVariation === v
+                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--on-surface)] font-black'
+                              : 'border-[var(--outline-var)] bg-[var(--surface-dim)] text-[var(--on-surface-var)] font-bold'
+                          }`}
+                        >
+                          <div className="text-xs">{isRu ? `Вариант ${v}` : `Style ${v}`}</div>
+                        </button>
+                      ))}
                     </div>
                   </div>
+                </motion.div>
+              )}
 
-                  {/* Clock visual variations preview cards */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] pl-1">{t.clockVar}</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {/* Variant 1 Card: Classic Info Container */}
-                      <button
-                        type="button"
-                        onClick={() => onClockVariationChange(1)}
-                        className={`p-4 rounded-3xl border-2 text-left flex flex-col justify-between h-36 transition-all cursor-pointer ${clockVariation === 1 ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md ring-2 ring-[var(--accent)]/20' : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'}`}
-                      >
-                        <div className="w-full h-16 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] p-2.5 flex flex-col justify-center items-center shadow-inner">
-                          <span className="text-xl font-black tracking-tight text-[var(--on-surface)] tabular-nums">12:45</span>
-                          <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-widest mt-0.5">MON • 28 JUL</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-xs font-black text-[var(--on-surface)]">{t.var1}</span>
-                          {clockVariation === 1 && <div className="w-5 h-5 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} /></div>}
-                        </div>
-                      </button>
-
-                      {/* Variant 2 Card: Minimalist Thin Typography */}
-                      <button
-                        type="button"
-                        onClick={() => onClockVariationChange(2)}
-                        className={`p-4 rounded-3xl border-2 text-left flex flex-col justify-between h-36 transition-all cursor-pointer ${clockVariation === 2 ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md ring-2 ring-[var(--accent)]/20' : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'}`}
-                      >
-                        <div className="w-full h-16 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] p-2.5 flex items-center justify-center shadow-inner">
-                          <span className="text-2xl font-light tracking-widest text-[var(--on-surface)] tabular-nums">12<span className="text-[var(--accent)] animate-pulse">:</span>45</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-xs font-black text-[var(--on-surface)]">{t.var2}</span>
-                          {clockVariation === 2 && <div className="w-5 h-5 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} /></div>}
-                        </div>
-                      </button>
-
-                      {/* Variant 3 Card: Accent Ultra Large Digits */}
-                      <button
-                        type="button"
-                        onClick={() => onClockVariationChange(3)}
-                        className={`p-4 rounded-3xl border-2 text-left flex flex-col justify-between h-36 transition-all cursor-pointer ${clockVariation === 3 ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md ring-2 ring-[var(--accent)]/20' : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'}`}
-                      >
-                        <div className="w-full h-16 rounded-2xl bg-[var(--accent)] p-2.5 flex items-center justify-center shadow-inner text-white">
-                          <span className="text-3xl font-black tracking-tighter tabular-nums">12:45</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-xs font-black text-[var(--on-surface)]">{t.var3}</span>
-                          {clockVariation === 3 && <div className="w-5 h-5 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} /></div>}
-                        </div>
-                      </button>
+              {/* STEP 6: Panic Button */}
+              {step === 6 && (
+                <motion.div
+                  key="step6"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-5"
+                >
+                  <div className="text-center max-w-md mx-auto space-y-2">
+                    <div className="w-14 h-14 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                      <ShieldAlert size={28} />
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 5: Panic button */}
-            {step === 5 && (
-              <motion.div
-                key="step5"
-                initial={{ opacity: 0, x: 15 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -15 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">{t.step5Title}</h3>
-                  <p className="text-xs font-medium text-[var(--on-surface-var)] mt-1">{t.step5Desc}</p>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Switch to enable */}
-                  <div 
-                    onClick={() => setIsPanicEnabled(!isPanicEnabled)}
-                    className={`p-5 rounded-3xl border-2 flex items-center gap-4 cursor-pointer transition-all ${isPanicEnabled ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-sm' : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'}`}
-                  >
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${isPanicEnabled ? 'bg-[var(--accent)] text-white' : 'border-2 border-[var(--outline-var)]'}`}>
-                      {isPanicEnabled && <Check size={14} strokeWidth={3} />}
-                    </div>
-                    <div className="flex flex-col text-xs leading-relaxed select-none">
-                      <span className="font-black text-[var(--on-surface)]">{t.enablePanic}</span>
-                    </div>
+                    <h3 className="text-xl font-black text-[var(--on-surface)]">
+                      {isRu ? 'Тревожная кнопка (Panic Button)' : 'Panic Button Safety'}
+                    </h3>
+                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
+                      {isRu ? 'Мгновенно скрывает экран и перенаправляет вкладку при нажатии сочетания клавиш.' : 'Instantly hides screen content and redirects tab upon emergency key combination.'}
+                    </p>
                   </div>
 
-                  {/* Expand Panic configurations */}
-                  <AnimatePresence>
+                  <div className="space-y-4 max-w-md mx-auto">
+                    {/* Toggle Panic */}
+                    <div className="flex items-center justify-between p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
+                      <span className="text-xs font-black text-[var(--on-surface)]">
+                        {isRu ? 'Активировать функцию Panic Button' : 'Enable Panic Button Protection'}
+                      </span>
+                      <button
+                        onClick={() => setIsPanicEnabled(!isPanicEnabled)}
+                        className={`w-12 h-7 rounded-full transition-all relative ${
+                          isPanicEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--outline-var)]'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-all absolute top-1 ${
+                            isPanicEnabled ? 'left-6' : 'left-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
                     {isPanicEnabled && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-4 overflow-hidden"
-                      >
-                        {/* Combination Hotkey Field */}
-                        <div className="flex flex-col gap-1.5 p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
-                          <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)]">
-                            {t.panicKeyLabel}
+                      <div className="space-y-3 p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-1">
+                            {isRu ? 'Сочетание клавиш' : 'Hotkey Combination'}
                           </label>
-                          <div className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl px-4 py-3">
-                            <ShieldAlert size={18} className="text-red-500 shrink-0 animate-pulse" />
-                            <input 
-                              type="text" 
-                              value={localPanicKey} 
-                              onKeyDown={handleKeyDown}
-                              onChange={() => {}} // Controlled via KeyDown
-                              placeholder={t.panicKeyPlaceholder}
-                              className="bg-transparent border-none outline-none text-[var(--on-surface)] text-sm w-full font-black focus:ring-0 placeholder:text-[var(--on-surface-var)]/40 tracking-wider" 
-                            />
-                          </div>
-                          <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider pl-1 mt-1">
-                            {lang === 'ru' ? 'Нажмите комбинацию (например Ctrl+0 или Alt+P)' : 'Press combination on keyboard (e.g. Ctrl+0 or Alt+P)'}
-                          </span>
+                          <input
+                            type="text"
+                            value={localPanicKey}
+                            onKeyDown={handleKeyDown}
+                            onChange={() => {}}
+                            className="w-full text-xs font-bold py-2.5 px-3 bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-xl outline-none text-center focus:border-[var(--accent)]"
+                            placeholder="e.g. Ctrl+0"
+                          />
                         </div>
 
-                        {/* Sound Selection */}
-                        <div className="flex flex-col gap-1.5 p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
-                          <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)]">
-                            {t.panicSoundLabel}
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-1">
+                            {isRu ? 'Безопасный адрес для перехода' : 'Redirect Destination URL'}
                           </label>
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={panicSound}
-                              onChange={(e) => setPanicSound(e.target.value)}
-                              className="flex-1 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--on-surface)] outline-none focus:border-[var(--accent)]"
-                            >
-                              {NOTIFICATION_SOUNDS.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={playPanicSoundPreview}
-                              className="px-3.5 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm"
-                            >
-                              <Play size={14} />
-                              <span>{t.testSound}</span>
-                            </button>
-                          </div>
+                          <input
+                            type="text"
+                            value={localPanicUrl}
+                            onChange={(e) => setLocalPanicUrl(e.target.value)}
+                            className="w-full text-xs font-bold py-2.5 px-3 bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline-var)] rounded-xl outline-none focus:border-[var(--accent)]"
+                            placeholder="https://google.com"
+                          />
                         </div>
-
-                        {/* Redirect URL Field */}
-                        <div className="flex flex-col gap-1.5 p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
-                          <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)]">
-                            {t.panicUrlLabel}
-                          </label>
-                          <div className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl px-4 py-3">
-                            <input 
-                              type="url" 
-                              value={localPanicUrl} 
-                              onChange={e => setLocalPanicUrl(e.target.value)} 
-                              placeholder={t.panicUrlPlaceholder}
-                              className="bg-transparent border-none outline-none text-[var(--on-surface)] text-xs w-full font-bold focus:ring-0 placeholder:text-[var(--on-surface-var)]/40" 
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
+                      </div>
                     )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Modal Footer Controls */}
-        <div className="p-6 border-t border-[var(--outline-var)] bg-[var(--surface-dim)] flex items-center justify-between gap-3">
-          <button
-            onClick={handleBack}
-            className={`flex items-center gap-2 text-xs font-black text-[var(--on-surface-var)] py-3 px-5 rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] hover:text-[var(--on-surface)] transition-colors cursor-pointer ${step === 1 ? 'opacity-0 pointer-events-none' : ''}`}
-          >
-            <ArrowLeft size={15} />
-            <span>{t.back}</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSkipStep}
-              className="flex items-center gap-1.5 text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] py-3 px-4 rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] transition-all cursor-pointer"
-            >
-              <SkipForward size={14} />
-              <span>{t.skipStep}</span>
-            </button>
-
-            <button
-              onClick={handleNext}
-              className="flex items-center gap-2 text-xs font-black bg-[var(--accent)] text-white py-3 px-6 rounded-2xl hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer shadow-md"
-            >
-              <span>{step === totalSteps ? t.finish : t.next}</span>
-              <ArrowRight size={15} />
-            </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
-      </motion.div>
-    </div>
+
+          {/* BOTTOM CONTROLS & NAVIGATION */}
+          <div className="flex items-center justify-between pt-6 border-t border-[var(--outline-var)] mt-4 shrink-0 gap-3">
+            <button
+              onClick={handleBack}
+              disabled={step === 1}
+              className="px-4 py-3 rounded-2xl text-xs font-black text-[var(--on-surface-var)] hover:text-[var(--on-surface)] disabled:opacity-30 disabled:hover:text-[var(--on-surface-var)] transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+              <span>{isRu ? 'Назад' : 'Back'}</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              {step < totalSteps && (
+                <button
+                  onClick={handleSkipStep}
+                  className="px-4 py-3 rounded-2xl text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <SkipForward size={14} />
+                  <span>{isRu ? 'Пропустить' : 'Skip'}</span>
+                </button>
+              )}
+
+              <button
+                onClick={handleNext}
+                className="px-6 py-3.5 rounded-2xl text-xs font-black bg-[var(--accent)] text-white hover:opacity-95 active:scale-95 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
+              >
+                <span>{step === totalSteps ? (isRu ? 'Завершить настройку' : 'Finish Setup') : (isRu ? 'Продолжить' : 'Continue')}</span>
+                {step === totalSteps ? <Check size={16} /> : <ArrowRight size={16} />}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
   );
 }

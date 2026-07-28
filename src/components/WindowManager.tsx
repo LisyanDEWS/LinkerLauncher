@@ -39,6 +39,7 @@ export interface WindowInstance {
   /** Incremented to force re-mount of the app content (reload). */
   renderKey: number;
   hideTitleBar?: boolean;
+  allowMaximize?: boolean;
 }
 
 export interface OpenWindowOptions {
@@ -52,6 +53,7 @@ export interface OpenWindowOptions {
   minHeight?: number;
   singleton?: boolean;
   hideTitleBar?: boolean;
+  allowMaximize?: boolean;
 }
 
 export interface WindowManager {
@@ -98,6 +100,7 @@ export function useWindows(): WindowManager {
                   title: opts.title,
                   icon: opts.icon,
                   hideTitleBar: opts.hideTitleBar,
+                  allowMaximize: opts.allowMaximize ?? true,
                 }
               : w,
           );
@@ -154,6 +157,7 @@ export function useWindows(): WindowManager {
         zIndex: nextZ,
         renderKey: 0,
         hideTitleBar: opts.hideTitleBar || false,
+        allowMaximize: opts.allowMaximize ?? true,
       };
       return [...prev, instance];
     });
@@ -537,7 +541,7 @@ function WindowFrame({
 
   // Double-click title bar to toggle maximize
   const onTitleDoubleClick = () => {
-    if (!isMobileLayout) {
+    if (!isMobileLayout && win.allowMaximize !== false) {
       onToggleMaximize();
     }
   };
@@ -700,13 +704,15 @@ function WindowFrame({
                 >
                   <Minus size={14} />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-                  title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
-                </button>
+                {win.allowMaximize !== false && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
+                    title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
+                  </button>
+                )}
               </>
             )}
             <button

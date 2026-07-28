@@ -22,7 +22,20 @@ interface DailyForecast {
 }
 
 export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embeddedInWindow = false }: WeatherModalProps) {
-  const [unit, setUnit] = useState<'C' | 'F'>('C');
+  const [unit, setUnit] = useState<'C' | 'F'>(() => {
+    return (localStorage.getItem('linkerru_temp_unit') as 'C' | 'F') || 'C';
+  });
+
+  useEffect(() => {
+    const syncUnit = () => {
+      const saved = (localStorage.getItem('linkerru_temp_unit') as 'C' | 'F') || 'C';
+      setUnit(saved);
+    };
+    syncUnit();
+    window.addEventListener('linkerru_temp_unit_changed', syncUnit);
+    return () => window.removeEventListener('linkerru_temp_unit_changed', syncUnit);
+  }, []);
+
   const t = translations[lang];
 
   // Settings

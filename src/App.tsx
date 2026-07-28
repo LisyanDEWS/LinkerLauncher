@@ -289,6 +289,12 @@ export default function App() {
     return (Number(localStorage.getItem('linkerru_clock_variation')) as 1 | 2 | 3) || 1;
   });
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(() => {
+    return (localStorage.getItem('linkerru_time_format') as '12h' | '24h') || '24h';
+  });
+  const [tempUnit, setTempUnit] = useState<'C' | 'F'>(() => {
+    return (localStorage.getItem('linkerru_temp_unit') as 'C' | 'F') || 'C';
+  });
 
   // Home screen version (hotswappable). Migrated from the old boolean flag.
 
@@ -921,18 +927,41 @@ export default function App() {
   useEffect(() => {
     const tick = () => {
       const d = new Date();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
       const dD = String(d.getDate()).padStart(2, '0');
       const mM = String(d.getMonth() + 1).padStart(2, '0');
 
-      setNowTime(`${hh}:${mm}`);
+      if (timeFormat === '12h') {
+        let hours = d.getHours();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        setNowTime(`${hours}:${mm} ${ampm}`);
+      } else {
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        setNowTime(`${hh}:${mm}`);
+      }
       setNowDate(`${dD}.${mM}`);
     };
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timeFormat]);
+
+  const handleTimeFormatChange = (tf: '12h' | '24h') => {
+    playChime('click');
+    setTimeFormat(tf);
+    localStorage.setItem('linkerru_time_format', tf);
+    window.dispatchEvent(new Event('linkerru_time_format_changed'));
+  };
+
+  const handleTempUnitChange = (tu: 'C' | 'F') => {
+    playChime('click');
+    setTempUnit(tu);
+    localStorage.setItem('linkerru_temp_unit', tu);
+    window.dispatchEvent(new Event('linkerru_temp_unit_changed'));
+  };
 
   // --- State Synced Persisters ---
   const handleLangChange = (newLang: Language) => {
@@ -1049,9 +1078,28 @@ export default function App() {
               localStorage.setItem('linkerru_optimized_engine', String(n));
             }}
             initialTab={tab}
+            timeFormat={timeFormat}
+            onTimeFormatChange={handleTimeFormatChange}
+            tempUnit={tempUnit}
+            onTempUnitChange={handleTempUnitChange}
           />
         </div>
       ),
+    });
+  };
+
+  const openChangelogWindow = () => {
+    wm.open({
+      id: 'changelog',
+      title: lang === 'ru' ? 'Журнал изменений' : 'Changelog',
+      icon: <History size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      allowMaximize: false,
+      initialWidth: 540,
+      initialHeight: 580,
+      minWidth: 360,
+      minHeight: 380,
+      render: () => <ChangelogModal lang={lang} embeddedInWindow={true} />,
     });
   };
 
@@ -1574,8 +1622,15 @@ export default function App() {
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
             
             <div className="flex flex-col h-full relative z-10">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md bg-[var(--on-surface)] text-[var(--surface)]">
-                <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect Logo" className="w-10 h-10 object-contain invert" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--outline-var)] overflow-hidden p-2 ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+                <img 
+                  src={theme === 'dark'
+                    ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
+                    : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"} 
+                  alt="LinkerRu Logo" 
+                  className="w-full h-full object-contain" 
+                  onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} 
+                />
                 <Monitor size={32} className="hidden" />
               </div>
               
@@ -1740,7 +1795,7 @@ export default function App() {
         <button
           onClick={() => {
             playChime('click');
-            setIsChangelogOpen(true);
+            openChangelogWindow();
           }}
           className="inline-flex items-center gap-2 bg-[var(--surface)] border border-[var(--outline-var)] px-4 py-2.5 rounded-full text-xs font-black text-[var(--on-surface-var)] shadow-sm hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
           id="version-pill"
@@ -1847,8 +1902,14 @@ export default function App() {
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: activePalette.primary }}>
-              <img src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" alt="Lisyan Connect" className="w-full h-full object-cover p-1" />
+            <div className={`w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner p-1 ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+              <img 
+                src={theme === 'dark'
+                  ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
+                  : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"} 
+                alt="LinkerRu" 
+                className="w-full h-full object-contain" 
+              />
             </div>
           </div>
           <div className="flex-1 mt-5 flex flex-col pr-8">
@@ -2424,15 +2485,6 @@ export default function App() {
         primaryColor={activePalette.primary}
       />
 
-      <ChangelogModal
-        isOpen={isChangelogOpen}
-        onClose={() => {
-          playChime('click');
-          setIsChangelogOpen(false);
-        }}
-        lang={lang}
-      />
-
       <StandbySetupModal
         isOpen={isStandbySetupOpen}
         onClose={() => {
@@ -2455,8 +2507,6 @@ export default function App() {
         }}
       />
 
-      
-      
       <StandbyClock
         isOpen={isStandbyOpen}
         onClose={() => {
@@ -2531,6 +2581,12 @@ export default function App() {
           setPanicUrl(url);
           localStorage.setItem('linkerru_panic_url', url);
         }}
+        fontFamily={fontFamily}
+        onFontFamilyChange={handleFontChange}
+        timeFormat={timeFormat}
+        onTimeFormatChange={handleTimeFormatChange}
+        tempUnit={tempUnit}
+        onTempUnitChange={handleTempUnitChange}
       />
 
       <div

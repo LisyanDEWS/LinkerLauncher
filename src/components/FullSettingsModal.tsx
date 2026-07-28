@@ -87,6 +87,10 @@ interface FullSettingsModalProps {
   onOptimizedEngineToggle: () => void;
   initialTab?: Tab;
   embedded?: boolean;
+  timeFormat?: '12h' | '24h';
+  onTimeFormatChange?: (tf: '12h' | '24h') => void;
+  tempUnit?: 'C' | 'F';
+  onTempUnitChange?: (tu: 'C' | 'F') => void;
 }
 
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account';
@@ -136,6 +140,10 @@ export default function FullSettingsModal({
   onOptimizedEngineToggle,
   initialTab,
   embedded = false,
+  timeFormat = '24h',
+  onTimeFormatChange,
+  tempUnit = 'C',
+  onTempUnitChange,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
@@ -961,7 +969,7 @@ export default function FullSettingsModal({
                       </div>
                     )}
 
-                    {/* LANGUAGE TAB CONTENT */}
+                    {/* LANGUAGE & REGIONAL FORMATS TAB CONTENT */}
                     {activeTab === 'language' && (
                       <div className="space-y-4" id="page-language-view">
                         <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
@@ -1001,6 +1009,82 @@ export default function FullSettingsModal({
                               style={{ backgroundColor: lang === 'ru' ? activePalette.primary : undefined }}
                             >
                               Русский
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* TIME FORMAT SETTING */}
+                        <div className="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                              <CloudSun size={18} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-[var(--on-surface)]">
+                                {lang === 'ru' ? 'Формат времени' : 'Time Format'}
+                              </div>
+                              <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                {lang === 'ru' ? 'Выбор 24-часового или 12-часового AM/PM формата' : 'Select 24-hour clock or 12-hour AM/PM clock'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1">
+                            <button
+                              onClick={() => onTimeFormatChange?.('24h')}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                                timeFormat === '24h' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              }`}
+                              style={{ backgroundColor: timeFormat === '24h' ? activePalette.primary : undefined }}
+                            >
+                              24h
+                            </button>
+                            <button
+                              onClick={() => onTimeFormatChange?.('12h')}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                                timeFormat === '12h' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              }`}
+                              style={{ backgroundColor: timeFormat === '12h' ? activePalette.primary : undefined }}
+                            >
+                              12h AM/PM
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* TEMPERATURE UNIT SETTING */}
+                        <div className="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                              <Wind size={18} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-[var(--on-surface)]">
+                                {lang === 'ru' ? 'Единица температуры' : 'Temperature Unit'}
+                              </div>
+                              <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                {lang === 'ru' ? 'Шкала измерения температуры (Цельсий / Фаренгейт)' : 'Temperature scale (Celsius °C / Fahrenheit °F)'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1">
+                            <button
+                              onClick={() => onTempUnitChange?.('C')}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                                tempUnit === 'C' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              }`}
+                              style={{ backgroundColor: tempUnit === 'C' ? activePalette.primary : undefined }}
+                            >
+                              °C
+                            </button>
+                            <button
+                              onClick={() => onTempUnitChange?.('F')}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                                tempUnit === 'F' ? 'text-white shadow-md' : 'text-[var(--on-surface-var)]'
+                              }`}
+                              style={{ backgroundColor: tempUnit === 'F' ? activePalette.primary : undefined }}
+                            >
+                              °F
                             </button>
                           </div>
                         </div>
@@ -1468,9 +1552,11 @@ export default function FullSettingsModal({
                       <div className="space-y-6" id="page-about-view">
                         <div className="p-6 bg-[var(--surface)] border border-[var(--outline-var)] rounded-3xl flex flex-col items-center justify-center text-center gap-4 py-10 shadow-sm">
                           <img 
-                            src="https://github.com/user-attachments/assets/939c90aa-0efa-4e50-b886-007111d41fa3" 
+                            src={theme === 'dark' 
+                              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6" 
+                              : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"} 
                             alt="LinkerRu Logo" 
-                            className="w-20 h-20 object-contain drop-shadow-md rounded-2xl p-2 bg-[var(--surface-dim)] border border-[var(--outline-var)]" 
+                            className={`w-20 h-20 object-contain drop-shadow-md rounded-2xl p-2 border border-[var(--outline-var)] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`} 
                           />
                           <div>
                             <h3 className="text-2xl font-black text-[var(--on-surface)] tracking-tight">LinkerRu :Re</h3>
