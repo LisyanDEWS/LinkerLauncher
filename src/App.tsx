@@ -2550,7 +2550,161 @@ export default function App() {
 
 
       {/* OS-style window manager layer (popup apps) */}
-      <WindowManagerLayer wm={wm} lang={lang} isOptimizedEngine={isOptimizedEngine} isMobileLayout={isMobileLayout} />
+      <WindowManagerLayer
+        wm={wm}
+        lang={lang}
+        isOptimizedEngine={isOptimizedEngine}
+        isMobileLayout={isMobileLayout}
+        renderWindowContent={(id) => {
+          switch (id) {
+            case 'settings':
+              return (
+                <div className="h-full w-full">
+                  <FullSettingsModal
+                    isOpen={true}
+                    embedded={true}
+                    onClose={() => wm.close('settings')}
+                    lang={lang}
+                    onLangChange={handleLangChange}
+                    theme={theme}
+                    onThemeToggle={handleThemeToggle}
+                    activePaletteId={activePaletteId}
+                    onPaletteChange={handlePaletteChange}
+                    isContrast={isContrast}
+                    onContrastToggle={handleContrastToggle}
+                    isToastEnabled={isToastEnabled}
+                    onToastToggle={() => {
+                      const n = !isToastEnabled;
+                      setIsToastEnabled(n);
+                      localStorage.setItem('linkerru_toast', String(n));
+                    }}
+                    isSoundEnabled={isSoundEnabled}
+                    onSoundToggle={() => {
+                      const n = !isSoundEnabled;
+                      setIsSoundEnabled(n);
+                      localStorage.setItem('linkerru_sound', String(n));
+                    }}
+                    clickSound={clickSound}
+                    onClickSoundChange={(s) => {
+                      setClickSound(s);
+                      localStorage.setItem('linkerru_click_sound', s);
+                    }}
+                    notifySound={notifySound}
+                    onNotifySoundChange={(s) => {
+                      setNotifySound(s);
+                      localStorage.setItem('linkerru_notify_sound', s);
+                    }}
+                    brightness={brightness}
+                    onBrightnessChange={(v) => {
+                      setBrightness(v);
+                      localStorage.setItem('linkerru_brightness', String(v));
+                    }}
+                    volume={soundVolume}
+                    onVolumeChange={(v) => {
+                      setSoundVolume(v);
+                      localStorage.setItem('linkerru_sound_volume', String(v));
+                    }}
+                    panicKey={panicKey}
+                    onPanicKeyChange={(k) => {
+                      setPanicKey(k);
+                      localStorage.setItem('linkerru_panic_key', k);
+                    }}
+                    panicUrl={panicUrl}
+                    onPanicUrlChange={(u) => {
+                      setPanicUrl(u);
+                      localStorage.setItem('linkerru_panic_url', u);
+                    }}
+                    isMobileLayout={isMobileLayout}
+                    standbyBg={standbyBg}
+                    onStandbyBgChange={(bg) => {
+                      setStandbyBg(bg);
+                      localStorage.setItem('linkerru_standby_bg', bg);
+                    }}
+                    fontFamily={fontFamily}
+                    onFontChange={(f) => {
+                      setFontFamily(f);
+                      localStorage.setItem('linkerru_font', f);
+                    }}
+                    mainWallpaper={mainWallpaper}
+                    onMainWallpaperChange={(wp) => {
+                      setMainWallpaper(wp);
+                      localStorage.setItem('linkerru_wallpaper', wp);
+                    }}
+                    isAuthenticated={isAuthenticated}
+                    nickname={nickname}
+                    onNicknameChange={(n) => {
+                      setNickname(n);
+                      localStorage.setItem('linkerru_nickname', n);
+                    }}
+                    customLinks={customLinks}
+                    onLinksChange={handleLinksChange}
+                    activeToggles={activeToggles}
+                    onTogglesChange={handleTogglesChange}
+                    isOptimizedEngine={isOptimizedEngine}
+                    onOptimizedEngineToggle={() => {
+                      const n = !isOptimizedEngine;
+                      setIsOptimizedEngine(n);
+                      localStorage.setItem('linkerru_optimized_engine', String(n));
+                    }}
+                    initialTab={settingsInitialTab}
+                    timeFormat={timeFormat}
+                    onTimeFormatChange={handleTimeFormatChange}
+                    tempUnit={tempUnit}
+                    onTempUnitChange={handleTempUnitChange}
+                  />
+                </div>
+              );
+            case 'changelog':
+              return <ChangelogModal lang={lang} embeddedInWindow={true} />;
+            case 'lisyan':
+              return (
+                <div className="wm-embedded h-full w-full">
+                  <LisyanConnectModal
+                    isOpen={true}
+                    onClose={() => wm.close('lisyan')}
+                    lang={lang}
+                    theme={theme}
+                    isMobileLayout={isMobileLayout}
+                  />
+                </div>
+              );
+            case 'calculator':
+              return <CalculatorApp lang={lang} theme={theme} activePalette={activePalette} />;
+            case 'keeps':
+              return <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />;
+            case 'proxy':
+              return (
+                <SpaceProxyApp
+                  lang={lang}
+                  selectedServer={selectedServer}
+                  onSelectServer={handleServerSelection}
+                  activePalette={activePalette}
+                  theme={theme}
+                />
+              );
+            case 'weather':
+              return (
+                <WeatherModal
+                  isOpen={true}
+                  onClose={() => wm.close('weather')}
+                  lang={lang}
+                  primaryColor={activePalette.primary}
+                  embeddedInWindow={true}
+                />
+              );
+            case 'agno':
+              return (
+                <iframe
+                  src="https://agno-agent-ui.vercel.app/"
+                  className="h-full w-full border-none"
+                  title="Agno GPT"
+                />
+              );
+            default:
+              return null;
+          }
+        }}
+      />
 
       {/* Login screen PREVIEW overlay (dev tool — does NOT log out) */}
       <AnimatePresence>

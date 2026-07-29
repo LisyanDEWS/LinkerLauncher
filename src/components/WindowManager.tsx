@@ -224,9 +224,16 @@ interface WindowManagerLayerProps {
   lang: Language;
   isOptimizedEngine?: boolean;
   isMobileLayout?: boolean;
+  renderWindowContent?: (id: string) => React.ReactNode;
 }
 
-export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false, isMobileLayout = false }: WindowManagerLayerProps) {
+export function WindowManagerLayer({
+  wm,
+  lang,
+  isOptimizedEngine = false,
+  isMobileLayout = false,
+  renderWindowContent,
+}: WindowManagerLayerProps) {
   const isRu = lang === 'ru';
   const updateGeometry = (wm as any).__updateGeometry as (id: string, patch: Partial<WindowInstance>) => void;
   // Taskbar shows ALL open windows (not just minimized)
@@ -273,6 +280,7 @@ export function WindowManagerLayer({ wm, lang, isOptimizedEngine = false, isMobi
               onGeometryChange={(patch) => updateGeometry(win.id, patch)}
               isOptimizedEngine={isOptimizedEngine}
               isMobileLayout={isMobileLayout}
+              renderWindowContent={renderWindowContent}
             />
           </React.Fragment>
         ))}
@@ -466,6 +474,7 @@ interface WindowFrameProps {
   onGeometryChange: (patch: Partial<WindowInstance>) => void;
   isOptimizedEngine?: boolean;
   isMobileLayout?: boolean;
+  renderWindowContent?: (id: string) => React.ReactNode;
 }
 
 function WindowFrame({
@@ -480,6 +489,7 @@ function WindowFrame({
   onGeometryChange,
   isOptimizedEngine = false,
   isMobileLayout = false,
+  renderWindowContent,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -730,7 +740,7 @@ function WindowFrame({
 
       {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
-        {win.render()}
+        {renderWindowContent ? (renderWindowContent(win.id) ?? win.render()) : win.render()}
       </div>
 
       {/* Resize handle */}
