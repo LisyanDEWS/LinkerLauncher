@@ -25,7 +25,6 @@ import {
   Lock,
   Loader2,
   KeyRound,
-  Edit2
 } from 'lucide-react';
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
@@ -33,7 +32,9 @@ import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
 import SquashToggle from './SquashToggle';
 import { ColorPickerField } from './ColorPickerField';
-import { pb } from '../lib/pocketbase';
+import { userAuth, userDb } from '../lib/userFirebase';
+import { updatePassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
   theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)' },
@@ -79,8 +80,6 @@ interface FullSettingsModalProps {
   isAuthenticated: boolean;
   nickname: string;
   onNicknameChange: (newNick: string) => void;
-  avatarUrl: string | null;
-  onAvatarChange: (url: string | null) => void;
   customLinks: QuickLink[];
   onLinksChange: (links: QuickLink[]) => void;
   activeToggles: ToggleId[];
@@ -134,8 +133,6 @@ export default function FullSettingsModal({
   isAuthenticated,
   nickname,
   onNicknameChange,
-  avatarUrl,
-  onAvatarChange,
   customLinks,
   onLinksChange,
   activeToggles,
@@ -1556,8 +1553,6 @@ export default function FullSettingsModal({
                           lang={lang}
                           nickname={nickname}
                           onNicknameChange={onNicknameChange}
-                          avatarUrl={avatarUrl}
-                          onAvatarChange={onAvatarChange}
                           isAuthenticated={isAuthenticated}
                         />
                       </div>
@@ -1666,22 +1661,17 @@ function AccountTabContent({
   lang,
   nickname,
   onNicknameChange,
-  avatarUrl,
-  onAvatarChange,
   isAuthenticated
 }: {
   lang: Language;
   nickname: string;
   onNicknameChange: (newNick: string) => void;
-  avatarUrl: string | null;
-  onAvatarChange: (url: string | null) => void;
   isAuthenticated: boolean;
 }) {
   const [nickInput, setNickInput] = useState(nickname);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAvatarWorking, setIsAvatarWorking] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -1700,10 +1690,12 @@ function AccountTabContent({
     setMessage(null);
     try {
       onNicknameChange(nickInput.trim());
-      // If user is authenticated, we also update it in PocketBase
-      if (isAuthenticated && pb.authStore.record) {
-        await pb.collection('users').update(pb.authStore.record.id, {
+      // If user is authenticated, we also update it in Firestore
+      if (isAuthenticated && userAuth.currentUser) {
+        const userDocRef = doc(userDb, 'users', userAuth.currentUser.uid);
+        await updateDoc(userDocRef, {
           nickname: nickInput.trim(),
+          updatedAt: Date.now()
         });
       }
       setMessage({
@@ -1718,67 +1710,6 @@ function AccountTabContent({
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAvatarUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !pb.authStore.record) return;
-
-    // 1. Show local preview first (Cache)
-    const localUrl = URL.createObjectURL(file);
-    onAvatarChange(localUrl);
-
-    setIsAvatarWorking(true);
-    setMessage(null);
-    try {
-      const formData = new FormData();
-      formData.append('avatar', file);
-
-      const record = await pb.collection('users').update(pb.authStore.record.id, formData);
-      const url = pb.getFileUrl(record as any, record.avatar);
-      
-      // 2. Update with permanent URL (Cloud)
-      onAvatarChange(url);
-      
-      setMessage({
-        type: 'success',
-        text: lang === 'ru' ? 'Аватар успешно обновлен!' : 'Avatar updated successfully!'
-      });
-    } catch (err) {
-      console.error(err);
-      // Revert to null or old if failed? For now just keep local until refresh if user prefers
-      setMessage({
-        type: 'error',
-        text: lang === 'ru' ? 'Ошибка загрузки аватара' : 'Failed to upload avatar'
-      });
-    } finally {
-      setIsAvatarWorking(false);
-    }
-  };
-
-  const handleAvatarRemove = async () => {
-    if (!pb.authStore.record) return;
-
-    setIsAvatarWorking(true);
-    setMessage(null);
-    try {
-      await pb.collection('users').update(pb.authStore.record.id, {
-        avatar: null
-      });
-      onAvatarChange(null);
-      setMessage({
-        type: 'success',
-        text: lang === 'ru' ? 'Аватар удален' : 'Avatar removed'
-      });
-    } catch (err) {
-      console.error(err);
-      setMessage({
-        type: 'error',
-        text: lang === 'ru' ? 'Ошибка удаления аватара' : 'Failed to remove avatar'
-      });
-    } finally {
-      setIsAvatarWorking(false);
     }
   };
 
@@ -1809,11 +1740,9 @@ function AccountTabContent({
     setIsLoading(true);
     setMessage(null);
     try {
-      if (pb.authStore.record) {
-        await pb.collection('users').update(pb.authStore.record.id, {
-          password: newPassword,
-          passwordConfirm: confirmPassword,
-        });
+      const user = userAuth.currentUser;
+      if (user) {
+        await updatePassword(user, newPassword);
         setMessage({
           type: 'success',
           text: lang === 'ru' ? 'Пароль успешно изменен!' : 'Password updated successfully!'
@@ -1828,9 +1757,15 @@ function AccountTabContent({
       }
     } catch (err: any) {
       console.error(err);
+      let errMsg = lang === 'ru' ? 'Ошибка изменения пароля' : 'Failed to update password';
+      if (err.code === 'auth/requires-recent-login') {
+        errMsg = lang === 'ru' 
+          ? 'Для изменения пароля требуется выйти и войти заново.' 
+          : 'This operation is sensitive and requires recent authentication. Please log out and log back in.';
+      }
       setMessage({
         type: 'error',
-        text: lang === 'ru' ? 'Ошибка изменения пароля' : 'Failed to update password'
+        text: errMsg
       });
     } finally {
       setIsLoading(false);
@@ -1853,44 +1788,18 @@ function AccountTabContent({
       {/* User Profile Info */}
       <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
         <div className="flex items-center gap-4">
-          <div className="relative group">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-[var(--accent)] to-[var(--on-surface)] p-0.5 shadow-sm overflow-hidden border border-[var(--outline)]">
-              <div className="h-full w-full rounded-2xl bg-[var(--surface)] flex items-center justify-center overflow-hidden">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={24} className="text-[var(--on-surface-var)]" />
-                )}
-                {isAvatarWorking && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Loader2 size={20} className="animate-spin text-white" />
-                  </div>
-                )}
-              </div>
+          <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-[var(--accent)] to-[var(--on-surface)] p-0.5 shadow-sm">
+            <div className="h-full w-full rounded-full bg-[var(--surface)] flex items-center justify-center">
+              <User size={20} className="text-[var(--on-surface-var)]" />
             </div>
-            {isAuthenticated && (
-              <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-[var(--surface)] border border-[var(--outline)] shadow-sm flex items-center justify-center cursor-pointer hover:bg-[var(--container)] transition-colors text-[var(--on-surface)]">
-                <Edit2 size={12} />
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpdate} disabled={isAvatarWorking} />
-              </label>
-            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-black text-[var(--on-surface)] leading-tight truncate">
+          <div>
+            <h4 className="text-sm font-black text-[var(--on-surface)] leading-tight">
               {isAuthenticated ? nickname : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
             </h4>
-            <p className="text-[11px] text-[var(--on-surface-var)] font-semibold mt-0.5 truncate">
-              {isAuthenticated ? pb.authStore.record?.email : 'guest@linker.os'}
+            <p className="text-[11px] text-[var(--on-surface-var)] font-semibold mt-0.5">
+              {isAuthenticated ? userAuth.currentUser?.email : 'guest@linker.os'}
             </p>
-            {avatarUrl && (
-              <button 
-                onClick={handleAvatarRemove}
-                disabled={isAvatarWorking}
-                className="mt-2 text-[9px] font-black uppercase tracking-wider text-red-500 opacity-60 hover:opacity-100 transition-opacity"
-              >
-                {lang === 'ru' ? 'Удалить аватар' : 'Remove Avatar'}
-              </button>
-            )}
           </div>
         </div>
 

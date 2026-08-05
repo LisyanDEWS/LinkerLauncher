@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
-import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle, Eye, EyeOff, Image as ImageIcon } from 'lucide-react';
-import { pb } from '../lib/pocketbase';
+import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { userAuth, userDb } from '../lib/userFirebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 type LoginThemeMode = 'light' | 'dark' | 'system';
 
@@ -54,14 +56,11 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const [signupPass, setSignupPass] = useState('');
   const [showSignupPass, setShowSignupPass] = useState(false);
   const [signupUser, setSignupUser] = useState('');
-  const [signupAvatar, setSignupAvatar] = useState<File | null>(null);
-  const [signupAvatarPreview, setSignupAvatarPreview] = useState<string | null>(null);
 
   // Success states
   const [isSuccess, setIsSuccess] = useState(false);
   const [loadingDone, setLoadingDone] = useState(false);
   const [successData, setSuccessData] = useState({ title: '', subtitle: '', letter: '' });
-  const [isWorking, setIsWorking] = useState(false);
 
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -112,10 +111,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       errPass: 'Пароль должен содержать минимум 7 символов',
       errUser: 'Имя пользователя: мин. 6 символов (только буквы и цифры)',
       errCheck: 'Необходимо согласиться с политикой конфиденциальности',
-      redirecting: 'Успешный вход! Загрузка платформы...',
-      lblAvatar: 'Аватар (необязательно)',
-      skipAvatar: 'Пропустить выбор аватара',
-      working: 'Обработка...'
+      redirecting: 'Успешный вход! Загрузка платформы...'
     },
     en: {
       infoText: 'Select action',
@@ -142,10 +138,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       errPass: 'Password must be at least 7 characters long',
       errUser: 'Username must be at least 6 alphanumeric characters',
       errCheck: 'Please accept the privacy policy to proceed',
-      redirecting: 'Welcome back! Loading platform...',
-      lblAvatar: 'Avatar (optional)',
-      skipAvatar: 'Skip avatar selection',
-      working: 'Processing...'
+      redirecting: 'Welcome back! Loading platform...'
     }
   }[lang];
 
@@ -155,19 +148,32 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     if (!loginEmail.trim()) { triggerErr('login-email'); showToast(t.errReq); return; }
     if (!loginPass.trim()) { triggerErr('login-pass'); showToast(t.errReq); return; }
     
-    setIsWorking(true);
     try {
-      const authData = await pb.collection('users').authWithPassword(loginEmail.trim(), loginPass);
-      const user = authData.record;
-      let nick = user.nickname || user.username || loginEmail.split('@')[0] || 'User';
+      const userCredential = await signInWithEmailAndPassword(userAuth, loginEmail.trim(), loginPass);
+      const user = userCredential.user;
+      
+      // Fetch nickname from Firestore
+      const userDocRef = doc(userDb, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      let nick = loginEmail.split('@')[0] || 'User';
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.nickname) {
+          nick = userData.nickname;
+        }
+      }
       
       triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick, false);
     } catch (err: any) {
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка входа: Неверный email или пароль' : 'Login failed: Invalid email or password';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        errMsg = lang === 'ru' ? 'Неверный email или пароль' : 'Invalid email or password';
+      } else if (err.code === 'auth/invalid-credential') {
+        errMsg = lang === 'ru' ? 'Неверные данные для входа' : 'Invalid credentials';
+      }
       showToast(errMsg);
-    } finally {
-      setIsWorking(false);
     }
   };
 
@@ -187,36 +193,31 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     if (!userRegex.test(signupUser)) { triggerErr('signup-user'); showToast(t.errUser); return; }
     if (!accepted) { triggerErr('signup-cb'); showToast(t.errCheck); return; }
 
-    setIsWorking(true);
     try {
-      const formData = new FormData();
-      formData.append('username', signupUser);
-      formData.append('email', signupEmail.trim());
-      formData.append('password', signupPass);
-      formData.append('passwordConfirm', signupPass);
-      formData.append('name', signupUser);
-      formData.append('nickname', signupUser);
-      if (signupAvatar) {
-        formData.append('avatar', signupAvatar);
-      }
-
-      await pb.collection('users').create(formData);
-
-      // Sign in automatically
-      await pb.collection('users').authWithPassword(signupEmail.trim(), signupPass);
+      const userCredential = await createUserWithEmailAndPassword(userAuth, signupEmail.trim(), signupPass);
+      const user = userCredential.user;
+      
+      // Save profile to Firestore under users/{uid}
+      const userDocRef = doc(userDb, 'users', user.uid);
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        nickname: signupUser,
+        email: user.email || signupEmail.trim(),
+        updatedAt: Date.now()
+      });
       
       triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser, true);
     } catch (err: any) {
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка регистрации' : 'Registration failed';
-      if (err.data?.data?.email?.message) {
+      if (err.code === 'auth/email-already-in-use') {
         errMsg = lang === 'ru' ? 'Этот адрес электронной почты уже используется' : 'This email address is already in use';
-      } else if (err.data?.data?.username?.message) {
-        errMsg = lang === 'ru' ? 'Это имя пользователя уже занято' : 'This username is already taken';
+      } else if (err.code === 'auth/invalid-email') {
+        errMsg = lang === 'ru' ? 'Некорректный адрес электронной почты' : 'Invalid email address';
+      } else if (err.code === 'auth/weak-password') {
+        errMsg = lang === 'ru' ? 'Слишком слабый пароль' : 'Weak password';
       }
       showToast(errMsg);
-    } finally {
-      setIsWorking(false);
     }
   };
 
@@ -624,17 +625,9 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.98 }}
                           type="submit" 
-                          disabled={isWorking}
-                          className="w-full mt-6 bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full mt-6 bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all"
                         >
-                          {isWorking ? (
-                            <>
-                              <Loader2 size={16} className="animate-spin" />
-                              <span>{t.working}</span>
-                            </>
-                          ) : (
-                            t.txtLogin
-                          )}
+                          {t.txtLogin}
                         </motion.button>
                       </form>
                     )}
@@ -717,48 +710,6 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                               </div>
                             </div>
 
-                            {/* Avatar (Optional) */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] font-black tracking-wider uppercase text-[var(--on-surface-var)] ml-1">
-                                {t.lblAvatar}
-                              </label>
-                              <div className="flex items-center gap-4 bg-[var(--surface-dim)] border border-[var(--outline)] rounded-2xl p-3">
-                                <div className="w-12 h-12 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center overflow-hidden shrink-0">
-                                  {signupAvatarPreview ? (
-                                    <img src={signupAvatarPreview} alt="Preview" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <ImageIcon size={20} className="text-[var(--on-surface-var)] opacity-30" />
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <label className="block w-full text-center py-2 px-3 rounded-xl bg-[var(--surface)] border border-[var(--outline)] text-[10px] font-black uppercase tracking-wider cursor-pointer hover:bg-[var(--container)] transition-colors">
-                                    {lang === 'ru' ? 'Выбрать фото' : 'Choose Photo'}
-                                    <input 
-                                      type="file" 
-                                      accept="image/*" 
-                                      className="hidden" 
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          setSignupAvatar(file);
-                                          setSignupAvatarPreview(URL.createObjectURL(file));
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                  {signupAvatar && (
-                                    <button 
-                                      type="button"
-                                      onClick={() => { setSignupAvatar(null); setSignupAvatarPreview(null); }}
-                                      className="mt-1 w-full text-center text-[9px] font-bold text-red-500 uppercase tracking-tighter opacity-70 hover:opacity-100"
-                                    >
-                                      {lang === 'ru' ? 'Удалить' : 'Remove'}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
                             {/* Consent Checkbox */}
                             <div 
                               onClick={() => setAccepted(!accepted)}
@@ -791,17 +742,9 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.98 }}
                                 type="submit" 
-                                disabled={isWorking}
-                                className="bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 flex-1 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="bg-[var(--accent)] text-[var(--on-accent)] rounded-2xl py-4 flex-1 font-bold text-xs tracking-widest uppercase cursor-pointer shadow-md hover:opacity-95 transition-all"
                               >
-                                {isWorking ? (
-                                  <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    <span>{t.working}</span>
-                                  </>
-                                ) : (
-                                  t.txtSignup
-                                )}
+                                {t.txtSignup}
                               </motion.button>
                             </div>
                           </form>
