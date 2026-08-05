@@ -38,7 +38,8 @@ import {
   Edit2,
   Calculator,
   StickyNote,
-  Server
+  Server,
+  Loader2
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from './types';
@@ -115,6 +116,12 @@ export default function App() {
   const [nickname, setNickname] = useState<string>(() => {
     return localStorage.getItem('linkerru_nickname') || 'Guest';
   });
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    return localStorage.getItem('linkerru_avatar');
+  });
+
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // ── Animated greeting: shows "LinkerRu:Re" on load, then transitions
   //    to a time-based greeting (e.g. "Good morning, Guest!") with animation.
@@ -362,6 +369,7 @@ export default function App() {
 
   useEffect(() => {
     const handleAuthChange = async () => {
+      setIsInitializing(true);
       const isValid = pb.authStore.isValid;
       setIsAuthenticated(isValid);
       localStorage.setItem('linkerru_auth', String(isValid));
@@ -376,6 +384,15 @@ export default function App() {
           if (data.nickname) {
             setNickname(data.nickname);
             localStorage.setItem('linkerru_nickname', data.nickname);
+          }
+
+          if (data.avatar) {
+            const url = pb.getFileUrl(data as any, data.avatar);
+            setAvatarUrl(url);
+            localStorage.setItem('linkerru_avatar', url);
+          } else {
+            setAvatarUrl(null);
+            localStorage.removeItem('linkerru_avatar');
           }
           
           if (data.settings) {
@@ -430,7 +447,11 @@ export default function App() {
           }
         } catch (err) {
           console.error("Error loading user profile from PocketBase:", err);
+        } finally {
+          setIsInitializing(false);
         }
+      } else {
+        setIsInitializing(false);
       }
     };
 
@@ -1003,6 +1024,8 @@ export default function App() {
             isAuthenticated={isAuthenticated}
             nickname={nickname}
             onNicknameChange={(n) => { setNickname(n); localStorage.setItem('linkerru_nickname', n); }}
+            avatarUrl={avatarUrl}
+            onAvatarChange={(url) => { setAvatarUrl(url); localStorage.setItem('linkerru_avatar', url); }}
             customLinks={customLinks}
             onLinksChange={handleLinksChange}
             activeToggles={activeToggles}
@@ -1430,6 +1453,14 @@ export default function App() {
       default: return 'var(--bg)';
     }
   };
+
+  if (isInitializing) {
+    return (
+      <div className="bg-[#F5F5F5] dark:bg-[#09090b] min-h-screen w-full flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-[var(--accent)]" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated && !isMobileLayout) {
     return (
@@ -2652,6 +2683,11 @@ export default function App() {
                     onNicknameChange={(n) => {
                       setNickname(n);
                       localStorage.setItem('linkerru_nickname', n);
+                    }}
+                    avatarUrl={avatarUrl}
+                    onAvatarChange={(url) => {
+                      setAvatarUrl(url);
+                      localStorage.setItem('linkerru_avatar', url || '');
                     }}
                     customLinks={customLinks}
                     onLinksChange={handleLinksChange}
