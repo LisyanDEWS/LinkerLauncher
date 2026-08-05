@@ -84,6 +84,7 @@ export function useWindows(): WindowManager {
   }, []);
 
   const open = useCallback((opts: OpenWindowOptions) => {
+    window.dispatchEvent(new CustomEvent('linkerru_window_opened'));
     setWindows((prev) => {
       if (opts.singleton) {
         const existing = prev.find((w) => w.id === opts.id);
@@ -224,6 +225,7 @@ interface WindowManagerLayerProps {
   lang: Language;
   isOptimizedEngine?: boolean;
   isMobileLayout?: boolean;
+  isStandbyOpen?: boolean;
   renderWindowContent?: (id: string) => React.ReactNode;
 }
 
@@ -232,6 +234,7 @@ export function WindowManagerLayer({
   lang,
   isOptimizedEngine = false,
   isMobileLayout = false,
+  isStandbyOpen = false,
   renderWindowContent,
 }: WindowManagerLayerProps) {
   const isRu = lang === 'ru';
@@ -247,6 +250,64 @@ export function WindowManagerLayer({
   // Right-click context menu state for taskbar pills
   const [ctxMenu, setCtxMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
+  // Taskbar auto-hide state (hidden by default unless mouse approaches bottom or hovers)
+  const [isTaskbarVisible, setIsTaskbarVisible] = useState(false);
+  const taskbarHoverRef = useRef(false);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isVisibleRef = useRef(false);
+
+  useEffect(() => {
+    isVisibleRef.current = isTaskbarVisible;
+  }, [isTaskbarVisible]);
+
+  const scheduleHide = useCallback((delayMs = 1900) => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      if (!taskbarHoverRef.current) {
+        setIsTaskbarVisible(false);
+      }
+      hideTimerRef.current = null;
+    }, delayMs);
+  }, []);
+
+  const showTaskbar = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setIsTaskbarVisible(true);
+  }, []);
+
+  // Show taskbar temporarily (for 1.9s) whenever window count changes or active window changes
+  useEffect(() => {
+    if (taskbarItems.length === 0) return;
+    showTaskbar();
+    scheduleHide(1900);
+  }, [taskbarItems.length, activeWin?.id, showTaskbar, scheduleHide]);
+
+  // Track mouse position to reveal taskbar when near bottom edge, or schedule hide after 1.9s when leaving
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const distanceFromBottom = window.innerHeight - e.clientY;
+      if (distanceFromBottom <= 55) {
+        showTaskbar();
+      } else if (!taskbarHoverRef.current && distanceFromBottom > 90) {
+        if (isVisibleRef.current && !hideTimerRef.current) {
+          scheduleHide(1900);
+        }
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+    };
+  }, [scheduleHide, showTaskbar]);
+
   // Close context menu on any click elsewhere or Escape
   useEffect(() => {
     if (!ctxMenu) return;
@@ -259,6 +320,11 @@ export function WindowManagerLayer({
       window.removeEventListener('keydown', onKey);
     };
   }, [ctxMenu]);
+
+  // If standby mode is active, do not render windows or taskbar over standby
+  if (isStandbyOpen) {
+    return null;
+  }
 
   const ctxWin = ctxMenu ? wm.windows.find((w) => w.id === ctxMenu.id) : null;
 
@@ -286,14 +352,26 @@ export function WindowManagerLayer({
         ))}
       </AnimatePresence>
 
-      {/* Persistent taskbar — only on desktop layouts */}
+      {/* Auto-hiding taskbar pill — pops up when mouse approaches bottom of screen */}
       <AnimatePresence>
         {!isMobileLayout && taskbarItems.length > 0 && (
           <motion.div
             initial={{ y: 60, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
+            animate={{
+              y: isTaskbarVisible ? 0 : 44,
+              opacity: isTaskbarVisible ? 1 : 0.65,
+              scale: 1,
+            }}
             exit={{ y: 60, opacity: 0, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+            onMouseEnter={() => {
+              taskbarHoverRef.current = true;
+              showTaskbar();
+            }}
+            onMouseLeave={() => {
+              taskbarHoverRef.current = false;
+              scheduleHide(1900);
+            }}
             className="fixed bottom-3 left-1/2 z-[190] -translate-x-1/2"
           >
             <div className="flex items-center gap-1 rounded-[1.25rem] border bg-[var(--surface)] p-1.5"

@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react';
-import { userAuth, userDb } from '../lib/userFirebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { pb } from '../lib/pocketbase';
 
 type LoginThemeMode = 'light' | 'dark' | 'system';
 
@@ -149,30 +147,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     if (!loginPass.trim()) { triggerErr('login-pass'); showToast(t.errReq); return; }
     
     try {
-      const userCredential = await signInWithEmailAndPassword(userAuth, loginEmail.trim(), loginPass);
-      const user = userCredential.user;
-      
-      // Fetch nickname from Firestore
-      const userDocRef = doc(userDb, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      let nick = loginEmail.split('@')[0] || 'User';
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.nickname) {
-          nick = userData.nickname;
-        }
-      }
+      const authData = await pb.collection('users').authWithPassword(loginEmail.trim(), loginPass);
+      const user = authData.record;
+      let nick = user.username || loginEmail.split('@')[0] || 'User';
       
       triggerSuccess(`welcome back, @${nick}`, `@${nick}`, nick.charAt(0).toUpperCase(), nick, false);
     } catch (err: any) {
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка входа: Неверный email или пароль' : 'Login failed: Invalid email or password';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        errMsg = lang === 'ru' ? 'Неверный email или пароль' : 'Invalid email or password';
-      } else if (err.code === 'auth/invalid-credential') {
-        errMsg = lang === 'ru' ? 'Неверные данные для входа' : 'Invalid credentials';
-      }
       showToast(errMsg);
     }
   };
@@ -194,28 +176,23 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     if (!accepted) { triggerErr('signup-cb'); showToast(t.errCheck); return; }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(userAuth, signupEmail.trim(), signupPass);
-      const user = userCredential.user;
-      
-      // Save profile to Firestore under users/{uid}
-      const userDocRef = doc(userDb, 'users', user.uid);
-      await setDoc(userDocRef, {
-        uid: user.uid,
-        nickname: signupUser,
-        email: user.email || signupEmail.trim(),
-        updatedAt: Date.now()
+      await pb.collection('users').create({
+        username: signupUser,
+        email: signupEmail.trim(),
+        password: signupPass,
+        passwordConfirm: signupPass,
+        name: signupUser,
       });
+
+      // Sign in automatically
+      await pb.collection('users').authWithPassword(signupEmail.trim(), signupPass);
       
       triggerSuccess(`hello there, @${signupUser}`, `@${signupUser}`, signupUser.charAt(0).toUpperCase(), signupUser, true);
     } catch (err: any) {
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка регистрации' : 'Registration failed';
-      if (err.code === 'auth/email-already-in-use') {
+      if (err.data?.data?.email?.message) {
         errMsg = lang === 'ru' ? 'Этот адрес электронной почты уже используется' : 'This email address is already in use';
-      } else if (err.code === 'auth/invalid-email') {
-        errMsg = lang === 'ru' ? 'Некорректный адрес электронной почты' : 'Invalid email address';
-      } else if (err.code === 'auth/weak-password') {
-        errMsg = lang === 'ru' ? 'Слишком слабый пароль' : 'Weak password';
       }
       showToast(errMsg);
     }
@@ -336,11 +313,11 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
           <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm relative overflow-hidden h-9 items-center">
             {/* The sliding pill */}
             <motion.div
-              className="absolute bg-[var(--accent)] rounded-xl shadow-sm"
+              className="absolute bg-white rounded-xl shadow-sm"
               initial={false}
               animate={{
-                x: lang === 'en' ? 0 : 40, // rough estimate, will refine
-                width: lang === 'en' ? 38 : 38,
+                x: lang === 'en' ? 0 : 40,
+                width: 38,
               }}
               style={{
                 height: 'calc(100% - 8px)',
@@ -350,17 +327,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
             />
 
             <button
+              type="button"
               onClick={() => onLangChange('en')}
-              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-bold tracking-wider cursor-pointer transition-colors ${
-                lang === 'en' ? 'text-white' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-extrabold tracking-wider cursor-pointer transition-colors ${
+                lang === 'en' ? 'text-black' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
               EN
             </button>
             <button
+              type="button"
               onClick={() => onLangChange('ru')}
-              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-bold tracking-wider cursor-pointer transition-colors ${
-                lang === 'ru' ? 'text-white' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-extrabold tracking-wider cursor-pointer transition-colors ${
+                lang === 'ru' ? 'text-black' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
               RU

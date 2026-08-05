@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { pb } from '../lib/pocketbase';
 
 export function useP2P() {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
@@ -17,7 +16,7 @@ export function useP2P() {
   
   const receivedChunks = useRef<ArrayBuffer[]>([]);
   const receivingMeta = useRef<{name: string, size: number} | null>(null);
-  const unsubscribe = useRef<() => void | null>(null);
+  const currentRoomId = useRef<string | null>(null);
 
   const initWebRTC = useCallback(() => {
     pc.current = new RTCPeerConnection({
@@ -77,14 +76,16 @@ export function useP2P() {
       return result;
     };
     const roomId = generateShortId();
-    const roomRef = doc(db, 'connectRooms', roomId);
+    currentRoomId.current = roomId;
 
     if (!pc.current) return roomId;
     
     // Collect ICE candidates
     pc.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        updateDoc(roomRef, { hostCandidates: arrayUnion(event.candidate.toJSON()) });
+      if (event.candidate && currentRoomId.current) {
+        pb.collection('rooms').update(currentRoomId.current, {
+          'hostCandidates+': event.candidate.toJSON()
+        }).catch(() => {});
       }
     };
 
@@ -92,57 +93,39 @@ export function useP2P() {
     await pc.current.setLocalDescription(offer);
 
     const roomWithOffer = {
-      offer: {
-        type: offer.type,
-        sdp: offer.sdp,
-      },
+      id: roomId,
+      offer: offer,
       hostCandidates: [],
       guestCandidates: [],
-      timestamp: Date.now(),
       connected: false
     };
 
-    await setDoc(roomRef, roomWithOffer);
+    await pb.collection('rooms').create(roomWithOffer);
 
     // Listen for answer and guest candidates
-    const guestCandidatesQueue: any[] = [];
-    let isSettingRemote = false;
+    const guestCandidatesAdded = new Set<string>();
 
-    const unsub = onSnapshot(roomRef, async (snapshot) => {
-      const data = snapshot.data();
-      if (!data) return;
+    pb.collection('rooms').subscribe(roomId, async (e) => {
+      if (e.action !== 'update') return;
+      const data = e.record;
 
-      // Queue candidates
-      if (data.guestCandidates) {
-        data.guestCandidates.forEach((candidate: any) => {
-           // To avoid duplicates, we can just push all and let WebRTC handle it, but better to keep track of added
-           guestCandidatesQueue.push(candidate);
-        });
+      // Handle candidates
+      if (data.guestCandidates && Array.isArray(data.guestCandidates)) {
+        for (const candidate of data.guestCandidates) {
+          const candStr = JSON.stringify(candidate);
+          if (!guestCandidatesAdded.has(candStr)) {
+            guestCandidatesAdded.add(candStr);
+            pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+          }
+        }
       }
 
-      if (!pc.current?.currentRemoteDescription && data.answer && !isSettingRemote) {
-        isSettingRemote = true;
+      if (!pc.current?.currentRemoteDescription && data.answer) {
         const answer = new RTCSessionDescription(data.answer);
         await pc.current?.setRemoteDescription(answer).catch(console.error);
-        
-        // Drain queue
-        guestCandidatesQueue.forEach(candidate => {
-           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-        });
-      } else if (pc.current?.currentRemoteDescription) {
-         // If already set, just drain queue
-         guestCandidatesQueue.forEach(candidate => {
-           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-         });
-      }
-      
-      // Clear queue after processing
-      if (pc.current?.currentRemoteDescription) {
-         guestCandidatesQueue.length = 0;
       }
     });
     
-    unsubscribe.current = unsub;
     return roomId;
   }, [initWebRTC, setupChannel]);
 
@@ -150,11 +133,11 @@ export function useP2P() {
     initWebRTC();
     setStatus('connecting');
     isHost.current = false;
+    currentRoomId.current = roomId;
 
-    const roomRef = doc(db, 'connectRooms', roomId);
-    const roomSnapshot = await getDoc(roomRef);
+    const roomSnapshot = await pb.collection('rooms').getOne(roomId);
 
-    if (!roomSnapshot.exists()) {
+    if (!roomSnapshot) {
       setStatus('idle');
       throw new Error('Room not found');
     }
@@ -163,46 +146,48 @@ export function useP2P() {
 
     // Collect ICE candidates
     pc.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        updateDoc(roomRef, { guestCandidates: arrayUnion(event.candidate.toJSON()) });
+      if (event.candidate && currentRoomId.current) {
+        pb.collection('rooms').update(currentRoomId.current, {
+          'guestCandidates+': event.candidate.toJSON()
+        }).catch(() => {});
       }
     };
 
-    const offer = roomSnapshot.data().offer;
+    const offer = roomSnapshot.offer;
     await pc.current.setRemoteDescription(new RTCSessionDescription(offer));
 
     const answer = await pc.current.createAnswer();
     await pc.current.setLocalDescription(answer);
 
-    await updateDoc(roomRef, {
-      answer: {
-        type: answer.type,
-        sdp: answer.sdp,
-      }
+    await pb.collection('rooms').update(roomId, {
+      answer: answer
     });
 
-    const hostCandidatesQueue: any[] = [];
+    const hostCandidatesAdded = new Set<string>();
     
     // Listen for host ICE candidates
-    const unsub = onSnapshot(roomRef, (snapshot) => {
-      const data = snapshot.data();
-      if (!data) return;
+    pb.collection('rooms').subscribe(roomId, (e) => {
+      if (e.action !== 'update') return;
+      const data = e.record;
 
-      if (data.hostCandidates) {
-        data.hostCandidates.forEach((candidate: any) => {
-          hostCandidatesQueue.push(candidate);
-        });
-      }
-      
-      if (pc.current?.currentRemoteDescription) {
-         hostCandidatesQueue.forEach(candidate => {
-           pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-         });
-         hostCandidatesQueue.length = 0;
+      if (data.hostCandidates && Array.isArray(data.hostCandidates)) {
+        for (const candidate of data.hostCandidates) {
+          const candStr = JSON.stringify(candidate);
+          if (!hostCandidatesAdded.has(candStr)) {
+            hostCandidatesAdded.add(candStr);
+            pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+          }
+        }
       }
     });
 
-    unsubscribe.current = unsub;
+    // Initial check for existing host candidates
+    if (roomSnapshot.hostCandidates && Array.isArray(roomSnapshot.hostCandidates)) {
+      for (const candidate of roomSnapshot.hostCandidates) {
+        hostCandidatesAdded.add(JSON.stringify(candidate));
+        pc.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      }
+    }
   }, [initWebRTC]);
 
   const processQueue = useCallback(() => {
@@ -257,7 +242,7 @@ export function useP2P() {
 
   useEffect(() => {
     return () => {
-      if (unsubscribe.current) unsubscribe.current();
+      pb.collection('rooms').unsubscribe();
       pc.current?.close();
     };
   }, []);

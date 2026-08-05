@@ -2,9 +2,7 @@ import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { userAuth, userDb } from './lib/userFirebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { pb } from './lib/pocketbase';
 import {
   Sun,
   Moon,
@@ -66,6 +64,7 @@ import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SpaceProxyApp } from './components/SpaceProxyApp';
+import { MessengerApp } from './components/MessengerApp';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -320,21 +319,16 @@ export default function App() {
 
   const t = translations[lang];
 
-  // --- Firebase User Settings Sync Engine ---
+  // --- PocketBase User Settings Sync Engine ---
   const isSyncingFromCloud = useRef(false);
 
-  const saveUserDataToFirebase = async (uid?: string, email?: string, nickNameOverride?: string) => {
-    const currentUid = uid || userAuth.currentUser?.uid;
-    if (!currentUid || isSyncingFromCloud.current) return;
+  const saveUserDataToPocketBase = async (nickNameOverride?: string) => {
+    if (!pb.authStore.isValid || isSyncingFromCloud.current || !pb.authStore.record) return;
     
     try {
-      const userDocRef = doc(userDb, 'users', currentUid);
-      
       const payload: any = {
-        uid: currentUid,
         nickname: nickNameOverride || nickname,
-        email: email || userAuth.currentUser?.email || '',
-        settings: {
+        settings: JSON.stringify({
           lang,
           standby_bg: standbyBg,
           wallpaper: mainWallpaper,
@@ -357,110 +351,102 @@ export default function App() {
           links: customLinks,
           toggles: activeToggles,
           optimized_engine: isOptimizedEngine
-        },
-        updatedAt: Date.now()
+        }),
       };
       
-      await setDoc(userDocRef, payload, { merge: true });
+      await pb.collection('users').update(pb.authStore.record.id, payload);
     } catch (err) {
-      console.error("Error saving user settings to Firebase:", err);
+      console.error("Error saving user settings to PocketBase:", err);
     }
   };
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(userAuth, async (user) => {
-      if (user) {
-        setIsAuthenticated(true);
-        localStorage.setItem('linkerru_auth', 'true');
+    const handleAuthChange = async () => {
+      const isValid = pb.authStore.isValid;
+      setIsAuthenticated(isValid);
+      localStorage.setItem('linkerru_auth', String(isValid));
+
+      if (isValid && pb.authStore.record) {
+        const user = pb.authStore.record;
         
         try {
-          // Fetch user data from Firestore
-          const userDocRef = doc(userDb, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
+          // PocketBase record already has data, but we can refetch to be sure
+          const data = await pb.collection('users').getOne(user.id);
           
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.nickname) {
-              setNickname(data.nickname);
-              localStorage.setItem('linkerru_nickname', data.nickname);
+          if (data.nickname) {
+            setNickname(data.nickname);
+            localStorage.setItem('linkerru_nickname', data.nickname);
+          }
+          
+          if (data.settings) {
+            isSyncingFromCloud.current = true;
+            const s = typeof data.settings === 'string' ? JSON.parse(data.settings) : data.settings;
+            
+            if (s.lang) { setLang(s.lang); localStorage.setItem('linkerru_lang', s.lang); }
+            if (s.standby_bg) { setStandbyBg(s.standby_bg); localStorage.setItem('linkerru_standby_bg', s.standby_bg); }
+            if (s.wallpaper) { setMainWallpaper(s.wallpaper); localStorage.setItem('linkerru_wallpaper', s.wallpaper); }
+            if (s.font) { setFontFamily(s.font); localStorage.setItem('linkerru_font', s.font); }
+            if (s.theme) { setTheme(s.theme); localStorage.setItem('linkerru_theme', s.theme); }
+            if (s.accent) { setActivePaletteId(s.accent); localStorage.setItem('linkerru_accent', s.accent); }
+            if (s.contrast !== undefined) { setIsContrast(s.contrast); localStorage.setItem('linkerru_contrast', String(s.contrast)); }
+            if (s.toast !== undefined) { setIsToastEnabled(s.toast); localStorage.setItem('linkerru_toast', String(s.toast)); }
+            if (s.sound !== undefined) { setIsSoundEnabled(s.sound); localStorage.setItem('linkerru_sound', String(s.sound)); }
+            if (s.sound_volume !== undefined) { setSoundVolume(s.sound_volume); localStorage.setItem('linkerru_sound_volume', String(s.sound_volume)); }
+            if (s.brightness !== undefined) { setBrightness(s.brightness); localStorage.setItem('linkerru_brightness', String(s.brightness)); }
+            if (s.click_sound) { setClickSound(s.click_sound); localStorage.setItem('linkerru_click_sound', s.click_sound); }
+            if (s.notify_sound) { setNotifySound(s.notify_sound); localStorage.setItem('linkerru_notify_sound', s.notify_sound); }
+            if (s.panic_key !== undefined) { setPanicKey(s.panic_key); localStorage.setItem('linkerru_panic_key', s.panic_key); }
+            if (s.panic_url) { setPanicUrl(s.panic_url); localStorage.setItem('linkerru_panic_url', s.panic_url); }
+            if (s.server) { setSelectedServer(s.server); localStorage.setItem('linkerru_server', s.server); }
+            if (s.tablet_choice !== undefined) { setTabletChoice(s.tablet_choice); if(s.tablet_choice) localStorage.setItem('linkerru_tablet_choice', s.tablet_choice); else localStorage.removeItem('linkerru_tablet_choice'); }
+            if (s.clock_type) { setClockType(s.clock_type); localStorage.setItem('linkerru_clock_type', s.clock_type); }
+            if (s.clock_variation) { setClockVariation(s.clock_variation); localStorage.setItem('linkerru_clock_variation', String(s.clock_variation)); }
+            if (s.links) {
+              const parsedLinks = typeof s.links === 'string' ? JSON.parse(s.links) : s.links;
+              if (Array.isArray(parsedLinks)) {
+                const clamped = parsedLinks.slice(0, MAX_QUICK_LINKS);
+                setCustomLinks(clamped);
+                localStorage.setItem('linkerru_links', JSON.stringify(clamped));
+              }
+            }
+            if (s.toggles) {
+              const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
+              if (Array.isArray(parsedToggles)) {
+                 const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
+                 setActiveToggles(valid);
+                 localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
+              }
+            }
+            if (s.optimized_engine !== undefined) {
+              const opt = s.optimized_engine === true || s.optimized_engine === 'true';
+              setIsOptimizedEngine(opt);
+              localStorage.setItem('linkerru_optimized_engine', String(opt));
             }
             
-            if (data.settings) {
-              isSyncingFromCloud.current = true;
-              const s = data.settings;
-              
-              if (s.lang) { setLang(s.lang); localStorage.setItem('linkerru_lang', s.lang); }
-              if (s.standby_bg) { setStandbyBg(s.standby_bg); localStorage.setItem('linkerru_standby_bg', s.standby_bg); }
-              if (s.wallpaper) { setMainWallpaper(s.wallpaper); localStorage.setItem('linkerru_wallpaper', s.wallpaper); }
-              if (s.font) { setFontFamily(s.font); localStorage.setItem('linkerru_font', s.font); }
-              if (s.theme) { setTheme(s.theme); localStorage.setItem('linkerru_theme', s.theme); }
-              if (s.accent) { setActivePaletteId(s.accent); localStorage.setItem('linkerru_accent', s.accent); }
-              if (s.contrast !== undefined) { setIsContrast(s.contrast); localStorage.setItem('linkerru_contrast', String(s.contrast)); }
-              if (s.toast !== undefined) { setIsToastEnabled(s.toast); localStorage.setItem('linkerru_toast', String(s.toast)); }
-              if (s.sound !== undefined) { setIsSoundEnabled(s.sound); localStorage.setItem('linkerru_sound', String(s.sound)); }
-              if (s.sound_volume !== undefined) { setSoundVolume(s.sound_volume); localStorage.setItem('linkerru_sound_volume', String(s.sound_volume)); }
-              if (s.brightness !== undefined) { setBrightness(s.brightness); localStorage.setItem('linkerru_brightness', String(s.brightness)); }
-              if (s.click_sound) { setClickSound(s.click_sound); localStorage.setItem('linkerru_click_sound', s.click_sound); }
-              if (s.notify_sound) { setNotifySound(s.notify_sound); localStorage.setItem('linkerru_notify_sound', s.notify_sound); }
-              if (s.panic_key !== undefined) { setPanicKey(s.panic_key); localStorage.setItem('linkerru_panic_key', s.panic_key); }
-              if (s.panic_url) { setPanicUrl(s.panic_url); localStorage.setItem('linkerru_panic_url', s.panic_url); }
-              if (s.server) { setSelectedServer(s.server); localStorage.setItem('linkerru_server', s.server); }
-              if (s.tablet_choice !== undefined) { setTabletChoice(s.tablet_choice); if(s.tablet_choice) localStorage.setItem('linkerru_tablet_choice', s.tablet_choice); else localStorage.removeItem('linkerru_tablet_choice'); }
-              if (s.clock_type) { setClockType(s.clock_type); localStorage.setItem('linkerru_clock_type', s.clock_type); }
-              if (s.clock_variation) { setClockVariation(s.clock_variation); localStorage.setItem('linkerru_clock_variation', String(s.clock_variation)); }
-              if (s.links) {
-                const parsedLinks = typeof s.links === 'string' ? JSON.parse(s.links) : s.links;
-                if (Array.isArray(parsedLinks)) {
-                  const clamped = parsedLinks.slice(0, MAX_QUICK_LINKS);
-                  setCustomLinks(clamped);
-                  localStorage.setItem('linkerru_links', JSON.stringify(clamped));
-                }
-              }
-              if (s.toggles) {
-                const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
-                if (Array.isArray(parsedToggles)) {
-                   const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
-                   setActiveToggles(valid);
-                   localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
-                }
-              }
-              if (s.optimized_engine !== undefined) {
-                const opt = s.optimized_engine === true || s.optimized_engine === 'true';
-                setIsOptimizedEngine(opt);
-                localStorage.setItem('linkerru_optimized_engine', String(opt));
-              }
-              
-              isSyncingFromCloud.current = false;
-            } else {
-              // No settings in cloud, push local ones
-              saveUserDataToFirebase(user.uid, user.email || '', data.nickname || nickname);
-            }
+            isSyncingFromCloud.current = false;
           } else {
-            // New user, create user record & save current local settings
-            await setDoc(userDocRef, {
-              uid: user.uid,
-              nickname: nickname || 'Guest',
-              email: user.email || '',
-              updatedAt: Date.now()
-            });
-            saveUserDataToFirebase(user.uid, user.email || '', nickname || 'Guest');
+            // No settings, push current local
+            saveUserDataToPocketBase();
           }
         } catch (err) {
-          console.error("Error loading user profile from Firebase:", err);
+          console.error("Error loading user profile from PocketBase:", err);
         }
-      } else {
-        setIsAuthenticated(false);
-        localStorage.setItem('linkerru_auth', 'false');
       }
+    };
+
+    const unsubscribe = pb.authStore.onChange(() => {
+      handleAuthChange();
     });
 
-    return () => unsubscribeAuth();
+    handleAuthChange();
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     if (isAuthenticated && !isSyncingFromCloud.current) {
       const timeoutId = setTimeout(() => {
-        saveUserDataToFirebase();
+        saveUserDataToPocketBase();
       }, 1000); // Debounce saves by 1 second so we don't spam writes
       return () => clearTimeout(timeoutId);
     }
@@ -830,6 +816,15 @@ export default function App() {
     });
   }, [lang]);
 
+  // Dismiss standby mode whenever a window is opened
+  useEffect(() => {
+    const handleWinOpen = () => {
+      setIsStandbyOpen(false);
+    };
+    window.addEventListener('linkerru_window_opened', handleWinOpen);
+    return () => window.removeEventListener('linkerru_window_opened', handleWinOpen);
+  }, []);
+
   // --- Idle Timer (5 minutes) ---
   useEffect(() => {
     let idleTimeout: NodeJS.Timeout;
@@ -1044,6 +1039,19 @@ export default function App() {
     });
   };
 
+  const openMessengerWindow = () => {
+    wm.open({
+      id: 'messenger',
+      title: t.ph_messenger,
+      icon: <Send size={14} />,
+      initialWidth: 400,
+      initialHeight: 600,
+      minWidth: 320,
+      minHeight: 400,
+      render: () => <MessengerApp lang={lang} nickname={nickname} />
+    });
+  };
+
   const openLisyanWindow = () => {
     wm.open({
       id: 'lisyan',
@@ -1228,7 +1236,8 @@ export default function App() {
       setIsAuthenticated(false);
       setNickname('Guest');
 
-      signOut(userAuth).catch(console.error);
+      pb.authStore.clear();
+      window.location.reload();
 
       playChime('reset');
       setTimeout(() => {
@@ -1958,9 +1967,16 @@ export default function App() {
               <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Заметки' : 'Keeps'}</span>
             </div>
 
-            {/* Blank Placeholder Apps to match design */}
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
+            {/* Messenger App Shortcut */}
+            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
+              playChime('click');
+              openMessengerWindow();
+            }}>
+              {isMinimized('messenger') && <div className="running-pill-mini" />}
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
+                <Send size={24} className="text-white" />
+              </div>
+              <span className="text-[9px] font-bold text-[var(--on-surface)]">{t.ph_messenger}</span>
             </div>
             <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
               <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
@@ -2148,7 +2164,7 @@ export default function App() {
                 {isAuthenticated ? nickname : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
               </span>
               <span className="text-[10px] text-[var(--on-surface-var)] font-semibold mt-0.5">
-                {isAuthenticated ? userAuth.currentUser?.email : 'guest@linker.os'}
+                {isAuthenticated ? pb.authStore.record?.email : 'guest@linker.os'}
               </span>
             </div>
             <button onClick={handleDestroySession} className="h-10 w-10 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors shadow-sm" title={lang === 'ru' ? 'Выйти' : 'Log out'}>
@@ -2217,7 +2233,7 @@ export default function App() {
               <div
                 onClick={() => {
                   playChime('click');
-                  setActiveSupportQr('https://t.me/pubertatnyj');
+                  openMessengerWindow();
                 }}
                 className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
               >
@@ -2555,6 +2571,7 @@ export default function App() {
         lang={lang}
         isOptimizedEngine={isOptimizedEngine}
         isMobileLayout={isMobileLayout}
+        isStandbyOpen={isStandbyOpen}
         renderWindowContent={(id) => {
           switch (id) {
             case 'settings':

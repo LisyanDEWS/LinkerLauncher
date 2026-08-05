@@ -32,9 +32,7 @@ import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
 import SquashToggle from './SquashToggle';
 import { ColorPickerField } from './ColorPickerField';
-import { userAuth, userDb } from '../lib/userFirebase';
-import { updatePassword } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { pb } from '../lib/pocketbase';
 
 const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
   theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)' },
@@ -1690,12 +1688,10 @@ function AccountTabContent({
     setMessage(null);
     try {
       onNicknameChange(nickInput.trim());
-      // If user is authenticated, we also update it in Firestore
-      if (isAuthenticated && userAuth.currentUser) {
-        const userDocRef = doc(userDb, 'users', userAuth.currentUser.uid);
-        await updateDoc(userDocRef, {
+      // If user is authenticated, we also update it in PocketBase
+      if (isAuthenticated && pb.authStore.record) {
+        await pb.collection('users').update(pb.authStore.record.id, {
           nickname: nickInput.trim(),
-          updatedAt: Date.now()
         });
       }
       setMessage({
@@ -1740,9 +1736,11 @@ function AccountTabContent({
     setIsLoading(true);
     setMessage(null);
     try {
-      const user = userAuth.currentUser;
-      if (user) {
-        await updatePassword(user, newPassword);
+      if (pb.authStore.record) {
+        await pb.collection('users').update(pb.authStore.record.id, {
+          password: newPassword,
+          passwordConfirm: confirmPassword,
+        });
         setMessage({
           type: 'success',
           text: lang === 'ru' ? 'Пароль успешно изменен!' : 'Password updated successfully!'
@@ -1757,15 +1755,9 @@ function AccountTabContent({
       }
     } catch (err: any) {
       console.error(err);
-      let errMsg = lang === 'ru' ? 'Ошибка изменения пароля' : 'Failed to update password';
-      if (err.code === 'auth/requires-recent-login') {
-        errMsg = lang === 'ru' 
-          ? 'Для изменения пароля требуется выйти и войти заново.' 
-          : 'This operation is sensitive and requires recent authentication. Please log out and log back in.';
-      }
       setMessage({
         type: 'error',
-        text: errMsg
+        text: lang === 'ru' ? 'Ошибка изменения пароля' : 'Failed to update password'
       });
     } finally {
       setIsLoading(false);
@@ -1798,7 +1790,7 @@ function AccountTabContent({
               {isAuthenticated ? nickname : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
             </h4>
             <p className="text-[11px] text-[var(--on-surface-var)] font-semibold mt-0.5">
-              {isAuthenticated ? userAuth.currentUser?.email : 'guest@linker.os'}
+              {isAuthenticated ? pb.authStore.record?.email : 'guest@linker.os'}
             </p>
           </div>
         </div>

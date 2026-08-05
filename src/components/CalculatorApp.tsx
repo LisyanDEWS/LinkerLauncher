@@ -87,9 +87,18 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
     if (waitingForOperand || justEvaluated) {
       setDisplay(d);
       setWaitingForOperand(false);
-      setJustEvaluated(false);
+      if (justEvaluated) {
+        setHistoryLine('');
+        setJustEvaluated(false);
+      } else if (op && previous !== null) {
+        setHistoryLine(`${formatNumber(previous)} ${op} ${d}`);
+      }
     } else {
-      setDisplay(display === '0' ? d : display + d);
+      const newDisplay = display === '0' ? d : display + d;
+      setDisplay(newDisplay);
+      if (op && previous !== null) {
+        setHistoryLine(`${formatNumber(previous)} ${op} ${newDisplay}`);
+      }
     }
   };
 
@@ -97,11 +106,20 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
     if (waitingForOperand || justEvaluated) {
       setDisplay('0.');
       setWaitingForOperand(false);
-      setJustEvaluated(false);
+      if (justEvaluated) {
+        setHistoryLine('');
+        setJustEvaluated(false);
+      } else if (op && previous !== null) {
+        setHistoryLine(`${formatNumber(previous)} ${op} 0.`);
+      }
       return;
     }
     if (!display.includes('.')) {
-      setDisplay(display + '.');
+      const newDisplay = display + '.';
+      setDisplay(newDisplay);
+      if (op && previous !== null) {
+        setHistoryLine(`${formatNumber(previous)} ${op} ${newDisplay}`);
+      }
     }
   };
 
@@ -116,22 +134,35 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
 
   const deleteLast = () => {
     if (waitingForOperand || justEvaluated) return;
-    if (display.length > 1) {
-      setDisplay(display.slice(0, -1));
-    } else {
-      setDisplay('0');
+    const newDisplay = display.length > 1 ? display.slice(0, -1) : '0';
+    setDisplay(newDisplay);
+    if (op && previous !== null) {
+      if (newDisplay === '0') {
+        setHistoryLine(`${formatNumber(previous)} ${op}`);
+      } else {
+        setHistoryLine(`${formatNumber(previous)} ${op} ${newDisplay}`);
+      }
     }
   };
 
   const toggleSign = () => {
     if (display === '0') return;
-    setDisplay(display.startsWith('-') ? display.slice(1) : '-' + display);
+    const newDisplay = display.startsWith('-') ? display.slice(1) : '-' + display;
+    setDisplay(newDisplay);
+    if (op && previous !== null) {
+      setHistoryLine(`${formatNumber(previous)} ${op} ${newDisplay}`);
+    }
   };
 
   const percent = () => {
     const v = parseFloat(display);
     if (isNaN(v)) return;
-    setDisplay(String(v / 100));
+    const res = v / 100;
+    const resStr = formatNumber(res);
+    setDisplay(resStr);
+    if (op && previous !== null) {
+      setHistoryLine(`${formatNumber(previous)} ${op} ${resStr}`);
+    }
   };
 
   const compute = (a: number, b: number, operator: Op): number => {
@@ -156,19 +187,22 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
 
     if (waitingForOperand && op !== null) {
       setOp(nextOp);
+      if (previous !== null) {
+        setHistoryLine(`${formatNumber(previous)} ${nextOp}`);
+      }
       return;
     }
 
     if (previous === null) {
       setPrevious(inputValue);
+      setHistoryLine(`${formatNumber(inputValue)} ${nextOp}`);
     } else if (op) {
       const result = compute(previous, inputValue, op);
       const resultStr = formatNumber(result);
       setDisplay(resultStr);
       setPrevious(result);
-      const expr = `${formatNumber(previous)} ${op} ${formatNumber(inputValue)} = ${resultStr}`;
-      setHistoryLine(expr);
       pushHistory(`${formatNumber(previous)} ${op} ${formatNumber(inputValue)}`, resultStr);
+      setHistoryLine(`${resultStr} ${nextOp}`);
     }
 
     setWaitingForOperand(true);
@@ -183,7 +217,10 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
       return;
     }
     const res = Math.sqrt(v);
-    setDisplay(formatNumber(res));
+    const resStr = formatNumber(res);
+    setHistoryLine(`√(${formatNumber(v)}) =`);
+    pushHistory(`√(${formatNumber(v)})`, resStr);
+    setDisplay(resStr);
     setJustEvaluated(true);
   };
 
@@ -193,7 +230,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
     if (isNaN(inputValue)) return;
     const result = compute(previous, inputValue, op);
     const resultStr = formatNumber(result);
-    const expr = `${formatNumber(previous)} ${op} ${formatNumber(inputValue)} = ${resultStr}`;
+    const expr = `${formatNumber(previous)} ${op} ${formatNumber(inputValue)} =`;
     setHistoryLine(expr);
     pushHistory(`${formatNumber(previous)} ${op} ${formatNumber(inputValue)}`, resultStr);
     setDisplay(resultStr);
@@ -273,65 +310,65 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
   return (
     <div ref={containerRef} className="flex h-full w-full bg-[var(--bg)] font-sans select-none overflow-hidden">
       {/* Calculator column */}
-      <div className={`flex flex-col ${showSidePanel ? 'flex-1' : 'w-full'}`}>
-        {/* Top bar — history toggle button with divider */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-3 shrink-0 relative">
-          <div className="absolute bottom-0 left-4 right-4 h-px" style={{ background: 'var(--outline-var)' }} />
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[0.75rem]" style={{ background: accent }}>
-              <Calculator size={16} className="text-white" />
-            </div>
-            <span className="text-xs font-black text-[var(--on-surface)]">{isRu ? 'Калькулятор' : 'Calculator'}</span>
-          </div>
+      <div className={`flex flex-col h-full min-h-0 overflow-hidden ${showSidePanel ? 'flex-1' : 'w-full'}`}>
+        {/* Top bar — history toggle button */}
+        <div className="flex items-center justify-end px-4 py-2 shrink-0 relative">
           <button
             onClick={() => setShowHistory((v) => !v)}
-            className={`flex h-8 w-8 items-center justify-center rounded-xl border transition-colors cursor-pointer ${showHistory ? 'text-white' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}
+            className={`flex h-7 w-7 items-center justify-center rounded-xl border transition-colors cursor-pointer ${showHistory ? 'text-white' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'}`}
             style={{
               background: showHistory ? accent : 'var(--container)',
               borderColor: 'var(--outline)',
             }}
             title={t.history}
           >
-            <History size={15} />
+            <History size={14} />
           </button>
         </div>
 
         {/* Display area */}
-        <div className="flex flex-1 flex-col justify-end p-6 overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col justify-end px-5 py-3 overflow-hidden">
           {/* History line */}
           <AnimatePresence mode="wait">
             {historyLine && (
               <motion.div
                 key={historyLine}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mb-2 flex items-center gap-2 text-right"
+                className="mb-1 flex items-center justify-end gap-2 text-right"
               >
-                <Calculator size={14} className="text-[var(--on-surface-var)] opacity-50" />
-                <span className="text-xs font-medium text-[var(--on-surface-var)] opacity-70 truncate flex-1 text-right">
+                <span className="text-sm md:text-base font-medium text-[var(--on-surface-var)] opacity-80 truncate text-right">
                   {historyLine}
                 </span>
               </motion.div>
             )}
           </AnimatePresence>
-          {/* Main display — M3 expressive oversized type */}
+          {/* Main display — M3 expressive oversized type with dynamic size */}
           <motion.div
             key={formattedDisplay}
             initial={{ opacity: 0.6, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="text-right text-5xl md:text-6xl font-semibold tabular-nums tracking-tight text-[var(--on-surface)] truncate"
+            className={`text-right font-bold tabular-nums tracking-tight text-[var(--on-surface)] truncate ${
+              formattedDisplay.length > 14
+                ? 'text-xl md:text-2xl'
+                : formattedDisplay.length > 10
+                ? 'text-2xl md:text-3xl'
+                : formattedDisplay.length > 7
+                ? 'text-3xl md:text-4xl'
+                : 'text-4xl md:text-5xl'
+            }`}
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
             {formattedDisplay}
           </motion.div>
         </div>
 
-        {/* Button grid — M3 shapes */}
-        <div className="flex flex-col gap-2 p-4 pb-6">
+        {/* Button grid — M3 responsive fluid layout */}
+        <div className="flex-1 min-h-0 flex flex-col justify-between gap-1.5 md:gap-2 p-3 md:p-4 pb-4 md:pb-5">
           {buttons.map((row, ri) => (
-            <div key={ri} className="grid grid-cols-4 gap-2">
+            <div key={ri} className="grid grid-cols-4 gap-1.5 md:gap-2 flex-1 min-h-0">
               {row.map((btn, bi) => {
                 const isOp = btn.type === 'op';
                 const isActiveOp = isOp && activeOp === btn.label.replace('−', '-');
@@ -342,7 +379,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
                     whileHover={{ scale: 1.03 }}
                     transition={{ type: 'spring', damping: 20, stiffness: 400 }}
                     onClick={btn.action}
-                    className={`relative flex items-center justify-center rounded-[1.5rem] text-2xl font-semibold font-sans transition-colors cursor-pointer ${
+                    className={`relative flex h-full min-h-[36px] items-center justify-center rounded-[1.25rem] text-xl md:text-2xl font-semibold font-sans transition-colors cursor-pointer ${
                       btn.span ? 'col-span-2' : ''
                     }`}
                     style={getButtonStyle(btn.type, isActiveOp, accent)}
@@ -442,6 +479,8 @@ function getButtonStyle(
 ): React.CSSProperties {
   const commonStyle: React.CSSProperties = {
     fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    height: '100%',
+    minHeight: '36px',
   };
 
   // Numbers — surface container, subtle
@@ -451,7 +490,6 @@ function getButtonStyle(
       background: 'var(--surface)',
       color: 'var(--on-surface)',
       border: '1px solid var(--outline)',
-      height: '64px',
     };
   }
   // Functions (C, ±, %) — dimmed container
@@ -461,7 +499,6 @@ function getButtonStyle(
       background: 'var(--container)',
       color: 'var(--on-surface-var)',
       border: '1px solid var(--outline)',
-      height: '64px',
     };
   }
   // Operators — accent fill when active, otherwise accent-tinted
@@ -471,7 +508,6 @@ function getButtonStyle(
       background: isActiveOp ? accent : `color-mix(in srgb, ${accent} 15%, var(--surface))`,
       color: isActiveOp ? '#ffffff' : accent,
       border: isActiveOp ? 'none' : `1px solid color-mix(in srgb, ${accent} 30%, transparent)`,
-      height: '64px',
       fontWeight: 600,
     };
   }
@@ -481,7 +517,6 @@ function getButtonStyle(
     background: accent,
     color: '#ffffff',
     border: 'none',
-    height: '64px',
     fontWeight: 700,
     boxShadow: `0 4px 16px -4px ${accent}80`,
   };
