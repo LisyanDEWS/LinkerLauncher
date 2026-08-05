@@ -1,12 +1,12 @@
 import PocketBase from 'pocketbase';
 
-// PocketBase instance with ngrok bypass header
-export const pb = new PocketBase('https://oren-unsuspectful-beulah.ngrok-free.dev');
+// PocketBase instance with Localtunnel bypass header
+export const pb = new PocketBase('https://tall-ties-smash.loca.lt');
 
 // Add bypass header to all requests
 pb.beforeSend = function (url, options) {
     options.headers = Object.assign({}, options.headers, {
-        'ngrok-skip-browser-warning': 'true',
+        'bypass-tunnel-reminder': 'true',
     });
     return { url, options };
 };
