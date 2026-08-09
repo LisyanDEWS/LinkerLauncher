@@ -67,6 +67,15 @@ import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SpaceProxyApp } from './components/SpaceProxyApp';
 
+const Grain = () => (
+  <div 
+    className="fixed inset-0 pointer-events-none z-[100] opacity-5 mix-blend-multiply"
+    style={{
+      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`
+    }}
+  />
+);
+
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -1467,6 +1476,7 @@ export default function App() {
         brightness={brightness}
         onComplete={onLoaderComplete}
       />
+      <Grain />
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1829,18 +1839,18 @@ export default function App() {
           </div>
         </div>
 
-        {/* WIDGET 3: LinkerGAMES */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] opacity-75 cursor-default relative" id="card-linkergames">
+        {/* WIDGET 3: Nexus Game Box NGB */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] opacity-75 cursor-default relative" id="card-nexus-game-box">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
-              <Gamepad2 size={20} className="text-[var(--on-surface)]" />
+            <div className="w-11 h-11 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center shadow-inner overflow-hidden p-1.5">
+              <img src="https://github.com/user-attachments/assets/f5761577-300b-4e28-b21f-9dac08f88326" alt="NGB" className="w-full h-full object-contain" />
             </div>
             <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
               {lang === 'ru' ? 'В разработке' : 'Coming Soon'}
             </div>
           </div>
           <div className="flex-1 mt-5 flex flex-col pr-8">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">LinkerGAMES</h3>
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Nexus Game Box NGB</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru' ? 'Игры и развлечения в будущих обновлениях.' : 'Games and entertainment in future updates.'}
             </p>
@@ -1862,13 +1872,11 @@ export default function App() {
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className={`w-11 h-11 rounded-2xl border overflow-hidden flex items-center justify-center shadow-inner p-1.5 transition-colors ${
-              theme === 'dark' ? 'bg-white border-white/20' : 'bg-black border-black/10'
-            }`}>
+            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner p-2.5">
               <img 
                 src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
                 alt="Lisyan Connect" 
-                className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
+                className="w-full h-full object-contain brightness-0 invert" 
               />
             </div>
           </div>
@@ -1883,7 +1891,7 @@ export default function App() {
               <button
                 className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center"
                 style={{ backgroundColor: activePalette.primary }}
-                onClick={() => { openLisyanWindow(); }}
+                onClick={() => { playChime('click'); openLisyanWindow(); }}
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
               </button>

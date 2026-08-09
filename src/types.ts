@@ -2,14 +2,6 @@ export type Language = 'ru' | 'en';
 export type ThemeMode = 'light' | 'dark';
 export type ClockType = 'digital' | 'analog';
 
-/**
- * Available home screen versions. Each value maps to a registered home
- * component in the HomeVersionRegistry. Add new values here when introducing
- * a new top-level home design (not minor tweaks — those belong as settings
- * inside an existing version).
- */
-export type HomeVersion = 'classic' | 'nextgen' | 'expressive' | 'fusion';
-
 export interface Material3Palette {
   id: string;
   nameRu: string;
