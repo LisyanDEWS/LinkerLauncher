@@ -3,12 +3,14 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import firebaseRulesPlugin from '@firebase/eslint-plugin-security-rules';
 
 export default tseslint.config(
   { ignores: ['dist/**', 'node_modules/**', 'public/**', 'src/homescreen/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  firebaseRulesPlugin.configs['flat/recommended'],
 
   {
     files: ['**/*.{ts,tsx,js,jsx}'],

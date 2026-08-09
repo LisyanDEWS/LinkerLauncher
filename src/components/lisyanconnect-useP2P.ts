@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 
 export function useP2P() {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle');
@@ -98,7 +98,7 @@ export function useP2P() {
       },
       hostCandidates: [],
       guestCandidates: [],
-      timestamp: Date.now(),
+      timestamp: serverTimestamp(),
       connected: false
     };
 

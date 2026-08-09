@@ -9,7 +9,7 @@
         "nickname": { "type": "string" },
         "email": { "type": "string" },
         "settings": { "type": "object" },
-        "updatedAt": { "type": "number" }
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "nickname", "email"]
     },
@@ -22,7 +22,7 @@
         "answer": { "type": "object" },
         "hostCandidates": { "type": "array" },
         "guestCandidates": { "type": "array" },
-        "timestamp": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
         "connected": { "type": "boolean" }
       },
       "required": ["offer", "timestamp", "connected"]

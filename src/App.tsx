@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { userAuth, userDb } from './lib/userFirebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Sun,
   Moon,
@@ -358,7 +358,7 @@ export default function App() {
           toggles: activeToggles,
           optimized_engine: isOptimizedEngine
         },
-        updatedAt: Date.now()
+        updatedAt: serverTimestamp()
       };
       
       await setDoc(userDocRef, payload, { merge: true });
@@ -441,7 +441,7 @@ export default function App() {
               uid: user.uid,
               nickname: nickname || 'Guest',
               email: user.email || '',
-              updatedAt: Date.now()
+              updatedAt: serverTimestamp()
             });
             saveUserDataToFirebase(user.uid, user.email || '', nickname || 'Guest');
           }
