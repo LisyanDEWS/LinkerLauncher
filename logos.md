@@ -1,1 +1,1 @@
-nexus gmaebox <img width="2000" height="2000" alt="Untitled design (1)" src="https://github.com/user-attachments/assets/7c587979-93ad-4a4a-bfbe-812ce0d47d03" />
+nexus gmaebox <img width="2000" height="2000" alt="Untitled design (2)" src="https://github.com/user-attachments/assets/f5761577-300b-4e28-b21f-9dac08f88326" />
