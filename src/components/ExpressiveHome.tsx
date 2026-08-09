@@ -64,6 +64,15 @@ const spring = { type: 'spring' as const, damping: 18, stiffness: 280 };
 const springSoft = { type: 'spring' as const, damping: 24, stiffness: 220 };
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
+const Grain = () => (
+  <div 
+    className="fixed inset-0 pointer-events-none z-[100] opacity-[0.03] mix-blend-multiply"
+    style={{
+      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`
+    }}
+  />
+);
+
 export function ExpressiveHome(props: ExpressiveHomeProps) {
   const {
     lang,
@@ -90,6 +99,28 @@ export function ExpressiveHome(props: ExpressiveHomeProps) {
   const isRu = lang === 'ru';
   const accent = activePalette.primary;
   const unread = notifications.filter((n) => !n.read).length;
+
+  const cardStyle: React.CSSProperties = isDark
+    ? {
+        background: 'linear-gradient(to bottom, #1a1c18, #111310)',
+        boxShadow: `
+          0 45px 85px -20px rgba(0, 0, 0, 0.6),
+          0 16px 32px -8px rgba(0, 0, 0, 0.4),
+          inset 0 1px 1px rgba(255, 255, 255, 0.05),
+          inset 0 -2px 4px rgba(0, 0, 0, 0.4)
+        `,
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+      }
+    : {
+        background: 'linear-gradient(to bottom, #fcfaf7, #ece8de)',
+        boxShadow: `
+          0 45px 85px -20px rgba(40, 30, 10, 0.35),
+          0 16px 32px -8px rgba(40, 30, 10, 0.15),
+          inset 0 2px 1px rgba(255, 255, 255, 0.9),
+          inset 0 -4px 8px rgba(60, 50, 30, 0.12)
+        `,
+        border: '1px solid rgba(255, 255, 255, 0.8)',
+      };
 
   const t = useMemo(
     () => ({
@@ -226,6 +257,7 @@ export function ExpressiveHome(props: ExpressiveHomeProps) {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden font-sans text-[var(--on-surface)] transition-colors duration-500">
+      <Grain />
       {/* === M3 EXPRESSIVE BACKGROUND === */}
       {/* Bold accent-tinted gradient field, not a subtle aurora */}
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -350,14 +382,14 @@ export function ExpressiveHome(props: ExpressiveHomeProps) {
           className="mb-6"
         >
           <motion.button
-            whileHover={{ scale: 1.01 }}
+            whileHover={{ y: -12, scale: 1.01, transition: { duration: 0.5, ease: [0.6, 0, 0.2, 1] } }}
             whileTap={{ scale: 0.99 }}
             onClick={onOpenAgno}
             className="relative w-full overflow-hidden rounded-[2rem] p-6 text-left cursor-pointer"
             style={{
               background: `linear-gradient(135deg, ${accent} 0%, ${activePalette.tertiary || accent} 100%)`,
               color: '#ffffff',
-              boxShadow: `0 20px 50px -15px ${accent}80`,
+              boxShadow: `0 45px 85px -20px ${accent}60, 0 16px 32px -8px ${accent}30`,
             }}
           >
             {/* Decorative shape */}
@@ -401,7 +433,7 @@ export function ExpressiveHome(props: ExpressiveHomeProps) {
               <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
                 {section.apps.map((app, ai) => (
                   <React.Fragment key={app.id}>
-                    <AppTile app={app} accent={accent} index={ai} />
+                    <AppTile app={app} accent={accent} index={ai} style={cardStyle} />
                   </React.Fragment>
                 ))}
               </div>
@@ -469,7 +501,7 @@ interface AppTileProps {
   index: number;
 }
 
-function AppTile({ app, accent, index }: AppTileProps) {
+function AppTile({ app, accent, index, style }: AppTileProps & { style?: React.CSSProperties }) {
   if (app.disabled) {
     return (
       <div
@@ -496,10 +528,11 @@ function AppTile({ app, accent, index }: AppTileProps) {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.04 * index, ...spring }}
-      whileHover={{ y: -3, scale: 1.03 }}
+      whileHover={{ y: -12, scale: 1.03, transition: { duration: 0.5, ease: [0.6, 0, 0.2, 1] } }}
       whileTap={{ scale: 0.94, borderRadius: '1rem' }}
       onClick={app.onClick}
-      className="group relative flex flex-col items-center gap-2 rounded-[1.5rem] border border-[var(--outline)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--on-surface-var)] cursor-pointer"
+      className="group relative flex flex-col items-center gap-2 rounded-[1.5rem] p-4 transition-colors cursor-pointer"
+      style={style}
     >
       {/* Icon container — M3 Expressive: bold accent fill for primary apps */}
       <div

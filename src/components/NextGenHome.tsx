@@ -75,6 +75,15 @@ export interface NextGenHomeProps {
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
+const Grain = () => (
+  <div 
+    className="fixed inset-0 pointer-events-none z-[100] opacity-[0.03] mix-blend-multiply"
+    style={{
+      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`
+    }}
+  />
+);
+
 export function NextGenHome(props: NextGenHomeProps) {
   const {
     lang,
@@ -159,28 +168,26 @@ export function NextGenHome(props: NextGenHomeProps) {
     } as React.CSSProperties;
   }, [activePalette]);
 
-  const glassSurface: React.CSSProperties = isOptimizedEngine
+  const glassSurface: React.CSSProperties = isDark
     ? {
-        background: isDark
-          ? 'linear-gradient(135deg, rgba(20,23,19,0.85) 0%, rgba(20,23,19,0.7) 100%)'
-          : 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.75) 100%)',
-        backdropFilter: 'blur(8px) saturate(140%)',
-        WebkitBackdropFilter: 'blur(8px) saturate(140%)',
-        border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-        transform: 'translate3d(0, 0, 0)',
-        willChange: 'transform, opacity',
+        background: 'linear-gradient(to bottom, #1a1c18, #111310)',
+        boxShadow: `
+          0 45px 85px -20px rgba(0, 0, 0, 0.6),
+          0 16px 32px -8px rgba(0, 0, 0, 0.4),
+          inset 0 1px 1px rgba(255, 255, 255, 0.05),
+          inset 0 -2px 4px rgba(0, 0, 0, 0.4)
+        `,
+        border: '1px solid rgba(255, 255, 255, 0.06)',
       }
     : {
-        background: isDark
-          ? 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)'
-          : 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.45) 100%)',
-        backdropFilter: 'blur(24px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-        border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.9)',
-        boxShadow: isDark
-          ? '0 24px 60px -20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)'
-          : '0 24px 60px -20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
+        background: 'linear-gradient(to bottom, #fcfaf7, #ece8de)',
+        boxShadow: `
+          0 45px 85px -20px rgba(40, 30, 10, 0.35),
+          0 16px 32px -8px rgba(40, 30, 10, 0.15),
+          inset 0 2px 1px rgba(255, 255, 255, 0.9),
+          inset 0 -4px 8px rgba(60, 50, 30, 0.12)
+        `,
+        border: '1px solid rgba(255, 255, 255, 0.8)',
       };
 
   // Stagger entrance variants
@@ -189,8 +196,8 @@ export function NextGenHome(props: NextGenHomeProps) {
     show: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
   };
   const item = {
-    hidden: { opacity: 0, y: 18, filter: isOptimizedEngine ? 'none' : 'blur(8px)' },
-    show: { opacity: 1, y: 0, filter: 'none', transition: { duration: 0.6, ease: easeOut } },
+    hidden: { opacity: 0, y: 18 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: easeOut } },
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -203,6 +210,7 @@ export function NextGenHome(props: NextGenHomeProps) {
       style={aurora}
       className="relative min-h-screen w-full overflow-hidden font-sans text-[var(--on-surface)] transition-colors duration-500"
     >
+      <Grain />
       {/* === AURORA BACKGROUND === */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         {isOptimizedEngine ? (
@@ -563,7 +571,7 @@ function BentoTile({
 }) {
   return (
     <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
+      whileHover={{ y: -12, scale: 1.01, transition: { duration: 0.5, ease: [0.6, 0, 0.2, 1] } }}
       whileTap={{ scale: 0.985 }}
       onClick={onClick}
       className={`group relative cursor-pointer overflow-hidden rounded-3xl p-5 transition-shadow ${className ?? ''}`}
