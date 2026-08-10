@@ -1597,7 +1597,7 @@ export default function FullSettingsModal({
                             </span>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-                              {/* Space Proxy Credit */}
+                              {/* LinkerRoute Credit */}
                               <a 
                                 href="https://gointospace.app/" 
                                 target="_blank" 
@@ -1606,12 +1606,12 @@ export default function FullSettingsModal({
                               >
                                 <img 
                                   src="https://gointospace.app/assets/logo.webp" 
-                                  alt="Space Proxy" 
+                                  alt="LinkerRoute" 
                                   className="w-8 h-8 rounded-lg object-contain bg-black/80 p-1 shrink-0" 
                                 />
                                 <div>
                                   <div className="text-xs font-black text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
-                                    Space Proxy
+                                    LinkerRoute
                                   </div>
                                   <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
                                     gointospace.app

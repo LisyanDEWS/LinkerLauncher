@@ -53,6 +53,7 @@ import { getGreeting } from './data/greetings';
 import ClockModal from './components/ClockModal';
 import CalendarModal from './components/CalendarModal';
 import WeatherModal from './components/WeatherModal';
+import NexusGameBox from './components/NexusGameBox';
 import SettingsModal from './components/SettingsModal';
 import FullSettingsModal from './components/FullSettingsModal';
 import { LoginScreen } from './components/LoginScreen';
@@ -60,12 +61,13 @@ import AppLoader from './components/AppLoader';
 import { useWindows, WindowManagerLayer } from './components/WindowManager';
 import { CalculatorApp } from './components/CalculatorApp';
 import { KeepsApp } from './components/KeepsApp';
+import ServerModal from './components/ServerModal';
 import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
 import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
-import { LinkerRoute } from './components/SpaceProxyApp';
+import { LinkerRouteApp } from './components/LinkerRouteApp';
 
 const Grain = () => (
   <div 
@@ -285,7 +287,9 @@ export default function App() {
   const [isWeatherOpen, setIsWeatherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account'>('appearance');
+  const [isServerOpen, setIsServerOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   // Login screen preview overlay (dev tool — does NOT log out)
   const [isLoginPreviewOpen, setIsLoginPreviewOpen] = useState(false);
   const [isStandbyOpen, setIsStandbyOpen] = useState(false);
@@ -314,6 +318,46 @@ export default function App() {
   const [isCharging, setIsCharging] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: string, lon: string} | null>(null);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [topbarTemp, setTopbarTemp] = useState<number | null>(null);
+
+  useEffect(() => {
+    const syncUnit = () => {
+      const saved = (localStorage.getItem('linkerru_temp_unit') as 'C' | 'F') || 'C';
+      setTempUnit(saved);
+    };
+    window.addEventListener('linkerru_temp_unit_changed', syncUnit);
+
+    const fetchTopWeather = async (lat: string, lon: string) => {
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`);
+        const data = await res.json();
+        if (data && data.current && data.current.temperature_2m !== undefined) {
+          setTopbarTemp(Math.round(data.current.temperature_2m));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch topbar weather', err);
+      }
+    };
+
+    const loadWeather = () => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => fetchTopWeather(pos.coords.latitude.toString(), pos.coords.longitude.toString()),
+          () => fetchTopWeather('52.52', '13.41')
+        );
+      } else {
+        fetchTopWeather('52.52', '13.41');
+      }
+    };
+
+    loadWeather();
+    const interval = setInterval(loadWeather, 600000); // 10 minutes refresh
+
+    return () => {
+      window.removeEventListener('linkerru_temp_unit_changed', syncUnit);
+      clearInterval(interval);
+    };
+  }, []);
 
   // --- Toast Manager State ---
   const [pomodoroRunning, setPomodoroRunning] = useState(false);
@@ -925,7 +969,7 @@ export default function App() {
   const handleLangChange = (newLang: Language) => {
     playChime('click');
     setLang(newLang);
-    localStorage.setItem('linkerru_lang', newLang);
+    localStorage.setItem('linkerru_lang', newLang); window.dispatchEvent(new Event('linkerru_lang_changed'));
   };
 
   const handleThemeToggle = () => {
@@ -1121,7 +1165,6 @@ export default function App() {
     });
   };
 
-  const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   const openLinkerRoute = (url?: string) => {
     if (url) setProxyInitialUrl(url);
     const openProxyInBlank = () => {
@@ -1159,10 +1202,12 @@ export default function App() {
         </motion.button>
       ),
       render: () => (
-        <LinkerRoute
+        <LinkerRouteApp
           lang={lang}
+          selectedServer={selectedServer}
+          onSelectServer={handleServerSelection}
+          activePalette={activePalette}
           theme={theme}
-          palette={activePalette}
           initialUrl={proxyInitialUrl}
         />
       ),
@@ -1187,6 +1232,30 @@ export default function App() {
           primaryColor={activePalette.primary}
           embeddedInWindow={true}
         />
+      ),
+    });
+  };
+
+  const openNexusGameBox = () => {
+    wm.open({
+      id: 'nexusgamebox',
+      title: 'Nexus Game Box',
+      icon: (
+        <div className={`w-4 h-4 rounded flex items-center justify-center p-0 ${theme === 'dark' ? 'bg-white' : 'bg-black'}`}>
+          <img 
+            src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" 
+            alt="Nexus Game Box" 
+            className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
+          />
+        </div>
+      ),
+      singleton: true,
+      initialWidth: 1200,
+      initialHeight: 800,
+      minWidth: 480,
+      minHeight: 400,
+      render: () => (
+        <NexusGameBox />
       ),
     });
   };
@@ -1236,6 +1305,17 @@ export default function App() {
     if (next) {
       setTimeout(() => playChime('click'), 100);
     }
+  };
+
+  const handleServerSelection = (srv: string) => {
+    playChime('click');
+    setSelectedServer(srv);
+    localStorage.setItem('linkerru_server', srv);
+    triggerToast(`${t.selected_label}: ${srv}`);
+    setIsServerOpen(false);
+    setTimeout(() => {
+      openLinkerRoute();
+    }, 100);
   };
 
   // --- Reset All Settings (Destroy Session) ---
@@ -1635,18 +1715,22 @@ export default function App() {
         <>
       {/* --- TOP HEADER NAVIGATION BAR --- */}
       <header className="flex justify-between items-center max-w-7xl mx-auto w-full mb-8 flex-wrap gap-4" id="app-topbar">
-        <div className="flex gap-2.5 flex-wrap items-center">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Weather Pill */}
           <button
             onClick={() => {
               playChime('click');
               openWeatherWindow();
             }}
-            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-md"
             id="topbar-weather-pill"
           >
             <CloudSun size={16} className="text-[var(--on-surface-var)]" />
-            <span>21°C</span>
+            <span>
+              {topbarTemp !== null
+                ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
+                : (tempUnit === 'F' ? '--°F' : '--°C')}
+            </span>
           </button>
 
           {/* Calendar Pill */}
@@ -1655,7 +1739,7 @@ export default function App() {
               playChime('click');
               setIsCalendarOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-md"
             id="topbar-calendar-pill"
           >
             <CalendarIcon size={16} className="text-[var(--on-surface-var)]" />
@@ -1665,7 +1749,7 @@ export default function App() {
           {/* Battery Pill */}
           {batteryLvl !== null && (
             <div
-              className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-sm cursor-default"
+              className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 cursor-default backdrop-blur-md"
               title={isCharging ? (lang === 'ru' ? 'Заряжается' : 'Charging') : (lang === 'ru' ? 'От батареи' : 'On battery')}
             >
               {isCharging
@@ -1681,7 +1765,7 @@ export default function App() {
               playChime('click');
               setIsClockOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-md"
             id="topbar-clock-pill"
           >
             <Clock size={16} className="text-[var(--on-surface-var)]" />
@@ -1809,6 +1893,7 @@ export default function App() {
             <button
               onClick={() => {
                 playChime('click');
+                setIsServerOpen(true);
                 openLinkerRoute();
               }}
               className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
@@ -1853,40 +1938,13 @@ export default function App() {
           </div>
         </div>
 
-        {/* WIDGET 3: Nexus Game Box NGB */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] opacity-75 cursor-default relative" id="card-nexus-game-box">
-          <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-center shadow-inner overflow-hidden p-1.5">
-              <img src="https://github.com/user-attachments/assets/f5761577-300b-4e28-b21f-9dac08f88326" alt="NGB" className="w-full h-full object-contain" />
-            </div>
-            <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
-              {lang === 'ru' ? 'В разработке' : 'Coming Soon'}
-            </div>
-          </div>
-          <div className="flex-1 mt-5 flex flex-col pr-8">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Nexus Game Box NGB</h3>
-            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
-              {lang === 'ru' ? 'Игры и развлечения в будущих обновлениях.' : 'Games and entertainment in future updates.'}
-            </p>
-          </div>
-          <div className="mt-4 flex items-end">
-            <button
-              disabled
-              className="w-full py-3 rounded-full text-xs font-extrabold text-[var(--on-surface-var)] transition-all bg-[var(--surface-dim)] border border-[var(--outline-var)] cursor-not-allowed text-center"
-              id="linkergames-action-btn"
-            >
-              {lang === 'ru' ? 'Ожидайте' : 'Coming Soon'}
-            </button>
-          </div>
-        </div>
-
-        {/* WIDGET 4: Lisyan Connect */}
+        {/* WIDGET 3: Lisyan Connect */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
           {lisyanMinimized && (
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner p-2.5">
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-2.5" style={{ backgroundColor: activePalette.primary }}>
               <img 
                 src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
                 alt="Lisyan Connect" 
@@ -1903,13 +1961,40 @@ export default function App() {
           <div className="flex items-center justify-between mt-4">
             <div className="flex gap-2 flex-1">
               <button
-                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center"
-                style={{ backgroundColor: activePalette.primary }}
+                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center border-transparent"
+                style={{ backgroundColor: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
                 onClick={() => { playChime('click'); openLisyanWindow(); }}
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* WIDGET 4: Nexus Game Box NGB */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
+          <div className="flex justify-between items-start h-[44px]">
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0" style={{ backgroundColor: activePalette.primary }}>
+              <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB" className="w-full h-full object-contain brightness-0 invert" />
+            </div>
+            <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
+              {lang === 'ru' ? 'Игры' : 'Games'}
+            </div>
+          </div>
+          <div className="flex-1 mt-5 flex flex-col pr-8">
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Nexus Game Box</h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {lang === 'ru' ? 'Сотни бесплатных браузерных игр.' : 'Hundreds of free browser games.'}
+            </p>
+          </div>
+          <div className="mt-4 flex items-end">
+            <button
+              onClick={openNexusGameBox}
+              className="w-full py-3 rounded-full text-xs font-extrabold transition-all border text-center text-[var(--surface)] border-transparent"
+              style={{ background: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+            >
+              {lang === 'ru' ? 'Открыть' : 'Open'}
+            </button>
           </div>
         </div>
       </main>
@@ -1919,18 +2004,20 @@ export default function App() {
         {/* LOCKED CARD 2 (was 6, now 5) */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] opacity-75 transition-all hover:scale-[1.02] active:scale-[0.98]" id="card-locked-2">
           <div className="flex justify-between items-start">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center">
-              <Lock size={20} className="text-white" />
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0" style={{ backgroundColor: activePalette.primary }}>
+              <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB Extensions" className="w-full h-full object-contain brightness-0 invert" />
             </div>
           </div>
           <div className="my-3">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">/{t.ph_soon}/</h3>
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">
+              {lang === 'ru' ? 'Расширения' : 'Extensions'}
+            </h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold mt-1">
-              /{t.ph_locked}/
+              {lang === 'ru' ? '(в разработке)' : '(in developing)'}
             </p>
           </div>
           <button className="w-full py-3 bg-[var(--container)] text-[var(--on-surface-var)] border border-[var(--outline-var)] rounded-full text-xs font-black cursor-not-allowed select-none">
-            /{t.ph_locked}/
+            {lang === 'ru' ? 'Ожидайте' : 'Coming Soon'}
           </button>
         </div>
 
@@ -2035,7 +2122,7 @@ export default function App() {
                     onClick={() => {
                       if (!link.url || link.url === 'https://') return;
                       playChime('click');
-                      openLinkerRoute(link.url);
+                      window.open(link.url, '_blank', 'noopener,noreferrer');
                     }}
                     className="flex-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
                     onMouseEnter={(e) => {
@@ -2455,6 +2542,18 @@ export default function App() {
         />
       )}
 
+      <ServerModal
+        isOpen={isServerOpen}
+        onClose={() => {
+          playChime('click');
+          setIsServerOpen(false);
+        }}
+        lang={lang}
+        selectedServer={selectedServer}
+        onSelectServer={handleServerSelection}
+        primaryColor={activePalette.primary}
+      />
+
       <StandbySetupModal
         isOpen={isStandbySetupOpen}
         onClose={() => {
@@ -2514,7 +2613,7 @@ export default function App() {
         lang={lang}
         onLangChange={(l) => {
           setLang(l);
-          localStorage.setItem('linkerru_lang', l);
+          localStorage.setItem('linkerru_lang', l); window.dispatchEvent(new Event('linkerru_lang_changed'));
         }}
         theme={theme}
         onThemeChange={(t) => {
@@ -2694,11 +2793,12 @@ export default function App() {
               return <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />;
             case 'proxy':
               return (
-                <LinkerRoute
+                <LinkerRouteApp
                   lang={lang}
+                  selectedServer={selectedServer}
+                  onSelectServer={handleServerSelection}
+                  activePalette={activePalette}
                   theme={theme}
-                  palette={activePalette}
-                  initialUrl={proxyInitialUrl}
                 />
               );
             case 'weather':

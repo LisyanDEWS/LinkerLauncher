@@ -723,6 +723,10 @@ function WindowFrame({
         pointerEvents: win.isMinimized ? 'none' : 'auto',
       }}
     >
+      {win.isMaximized && !isMobileLayout && (
+        <div className="absolute top-0 left-0 right-0 h-1 z-50 pointer-events-none" />
+      )}
+
       {/* Header bar — adapt clean mobile view vs desktop window bar.
           In maximized mode, a compact toggle shrinks the bar height. */}
       {!win.hideTitleBar && (
@@ -737,8 +741,8 @@ function WindowFrame({
           }}
         >
           <div className="flex items-center gap-2.5">
-            {win.icon}
-            <span className={`${isMobileLayout ? 'text-sm font-black' : 'text-xs font-bold'} text-[var(--on-surface)] tracking-tight`}>
+            <span className={`font-black ${isMobileLayout ? 'text-lg' : compactTitleBar ? 'text-[10px]' : 'text-sm'} text-[var(--on-surface)] truncate pointer-events-none tracking-tight flex items-center gap-2`}>
+              {win.icon && <span className={`text-[var(--on-surface-var)] flex items-center justify-center ${compactTitleBar ? '[&>svg]:h-3 [&>svg]:w-3' : ''}`}>{win.icon}</span>}
               {win.title}
             </span>
           </div>
