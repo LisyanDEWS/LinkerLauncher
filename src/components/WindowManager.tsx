@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle, PanelTop, PanelTopClose } from 'lucide-react';
 import { Language } from '../types';
 
 /**
@@ -40,6 +40,8 @@ export interface WindowInstance {
   renderKey: number;
   hideTitleBar?: boolean;
   allowMaximize?: boolean;
+  /** Custom action buttons rendered in the title bar (left of minimize/maximize/close). */
+  headerActions?: React.ReactNode;
 }
 
 export interface OpenWindowOptions {
@@ -54,6 +56,8 @@ export interface OpenWindowOptions {
   singleton?: boolean;
   hideTitleBar?: boolean;
   allowMaximize?: boolean;
+  /** Custom action buttons rendered in the title bar (left of minimize/maximize/close). */
+  headerActions?: React.ReactNode;
 }
 
 export interface WindowManager {
@@ -102,6 +106,7 @@ export function useWindows(): WindowManager {
                   icon: opts.icon,
                   hideTitleBar: opts.hideTitleBar,
                   allowMaximize: opts.allowMaximize ?? true,
+                  headerActions: opts.headerActions,
                 }
               : w,
           );
@@ -159,6 +164,7 @@ export function useWindows(): WindowManager {
         renderKey: 0,
         hideTitleBar: opts.hideTitleBar || false,
         allowMaximize: opts.allowMaximize ?? true,
+        headerActions: opts.headerActions,
       };
       return [...prev, instance];
     });
@@ -577,42 +583,12 @@ function WindowFrame({
   // ends, transitions re-enable so maximize/restore and snap-back animate.
   const [isInteracting, setIsInteracting] = useState(false);
 
-  // Auto-hide title bar when maximized: after 5s of inactivity at the top,
-  // the title bar slides up out of view. Hovering the top edge reveals it.
-  const [titleBarVisible, setTitleBarVisible] = useState(true);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Reset visibility when maximize state changes — always show on enter,
-  // start the auto-hide countdown.
+  // Compact title bar for maximized mode — user can toggle a slimmer bar.
+  // Auto-resets to normal when leaving maximized mode.
+  const [compactTitleBar, setCompactTitleBar] = useState(false);
   useEffect(() => {
-    if (win.isMaximized && !isMobileLayout) {
-      setTitleBarVisible(true);
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = setTimeout(() => setTitleBarVisible(false), 5000);
-    } else {
-      setTitleBarVisible(true);
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    }
-    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
-  }, [win.isMaximized, isMobileLayout]);
-
-  // Top-edge hover zone: when the mouse enters the top 4px of the viewport
-  // while maximized, reveal the title bar and reset the auto-hide timer.
-  const onTopHoverEnter = () => {
-    if (!win.isMaximized || isMobileLayout) return;
-    setTitleBarVisible(true);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-  };
-  const onTitleBarEnter = () => {
-    if (!win.isMaximized || isMobileLayout) return;
-    setTitleBarVisible(true);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-  };
-  const onTitleBarLeave = () => {
-    if (!win.isMaximized || isMobileLayout) return;
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setTitleBarVisible(false), 5000);
-  };
+    if (!win.isMaximized) setCompactTitleBar(false);
+  }, [win.isMaximized]);
 
   const onTitleMouseDown = (e: React.MouseEvent) => {
     if (win.isMaximized || isMobileLayout) return;
@@ -747,29 +723,17 @@ function WindowFrame({
         pointerEvents: win.isMinimized ? 'none' : 'auto',
       }}
     >
-      {/* Top hover zone — invisible 4px strip at the very top of a maximized
-          desktop window. Entering it reveals the auto-hidden title bar. */}
-      {win.isMaximized && !isMobileLayout && !titleBarVisible && (
-        <div
-          className="absolute top-0 left-0 right-0 h-1 z-50"
-          onMouseEnter={onTopHoverEnter}
-        />
-      )}
-
-      {/* Header bar — adapt clean mobile view vs desktop window bar */}
+      {/* Header bar — adapt clean mobile view vs desktop window bar.
+          In maximized mode, a compact toggle shrinks the bar height. */}
       {!win.hideTitleBar && (
         <div
           onMouseDown={onTitleMouseDown}
           onDoubleClick={onTitleDoubleClick}
-          onMouseEnter={onTitleBarEnter}
-          onMouseLeave={onTitleBarLeave}
-          className={`flex ${isMobileLayout ? 'h-14 px-4' : 'h-11 px-3.5 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
+          className={`flex ${isMobileLayout ? 'h-14 px-4' : compactTitleBar && win.isMaximized ? 'h-7 px-3 cursor-grab active:cursor-grabbing' : 'h-11 px-3.5 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
           style={{
             background: isActive
               ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
               : 'var(--surface)',
-            transform: win.isMaximized && !isMobileLayout && !titleBarVisible ? 'translateY(-100%)' : 'translateY(0)',
-            transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
           <div className="flex items-center gap-2.5">
@@ -779,16 +743,30 @@ function WindowFrame({
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <div className={compactTitleBar ? '[&>button]:h-5 [&>button]:w-5 [&>button_svg]:h-[11px] [&>button_svg]:w-[11px]' : ''}>
+              {win.headerActions}
+            </div>
             {!isMobileLayout && (
               <>
+                {win.isMaximized && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => { e.stopPropagation(); setCompactTitleBar(v => !v); }}
+                    title={compactTitleBar ? (isRu ? 'Обычный заголовок' : 'Normal title bar') : (isRu ? 'Компактный заголовок' : 'Compact title bar')}
+                    className={`flex ${compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'} items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer`}
+                  >
+                    {compactTitleBar ? <PanelTop size={11} /> : <PanelTopClose size={13} />}
+                  </motion.button>
+                )}
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => { e.stopPropagation(); onMinimize(); }}
                   title={isRu ? 'Свернуть' : 'Minimize'}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+                  className={`flex ${compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'} items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer`}
                 >
-                  <Minus size={14} />
+                  <Minus size={compactTitleBar ? 11 : 14} />
                 </motion.button>
                 {win.allowMaximize !== false && (
                   <motion.button
@@ -796,9 +774,9 @@ function WindowFrame({
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
                     title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+                    className={`flex ${compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'} items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer`}
                   >
-                    {win.isMaximized ? <Copy size={13} /> : <Square size={13} />}
+                    {win.isMaximized ? <Copy size={compactTitleBar ? 10 : 13} /> : <Square size={compactTitleBar ? 10 : 13} />}
                   </motion.button>
                 )}
               </>
@@ -808,9 +786,9 @@ function WindowFrame({
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               title={isRu ? 'Закрыть' : 'Close'}
-              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-7 w-7'}`}
+              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'}`}
             >
-              <X size={isMobileLayout ? 16 : 14} />
+              <X size={isMobileLayout ? 16 : compactTitleBar ? 11 : 14} />
             </motion.button>
           </div>
         </div>

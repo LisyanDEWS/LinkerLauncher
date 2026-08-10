@@ -40,7 +40,8 @@ import {
   Edit2,
   Calculator,
   StickyNote,
-  Server
+  Server,
+  ExternalLink
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from './types';
@@ -59,13 +60,12 @@ import AppLoader from './components/AppLoader';
 import { useWindows, WindowManagerLayer } from './components/WindowManager';
 import { CalculatorApp } from './components/CalculatorApp';
 import { KeepsApp } from './components/KeepsApp';
-import ServerModal from './components/ServerModal';
 import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
 import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
-import { SpaceProxyApp } from './components/SpaceProxyApp';
+import { LinkerRoute } from './components/SpaceProxyApp';
 
 const Grain = () => (
   <div 
@@ -285,7 +285,6 @@ export default function App() {
   const [isWeatherOpen, setIsWeatherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account'>('appearance');
-  const [isServerOpen, setIsServerOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   // Login screen preview overlay (dev tool — does NOT log out)
   const [isLoginPreviewOpen, setIsLoginPreviewOpen] = useState(false);
@@ -1122,23 +1121,49 @@ export default function App() {
     });
   };
 
-  const openProxyWindow = () => {
+  const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
+  const openLinkerRoute = (url?: string) => {
+    if (url) setProxyInitialUrl(url);
+    const openProxyInBlank = () => {
+      playChime('click');
+      const proxyUrl = url
+        ? `http://localhost:8080/proxy/${encodeURIComponent(url.startsWith('http') ? url : 'https://' + url)}`
+        : 'http://localhost:8080/';
+      const themeParams = `?theme=${theme}&primary=${encodeURIComponent(activePalette.primary)}&secondary=${encodeURIComponent(activePalette.secondary)}&tertiary=${encodeURIComponent(activePalette.tertiary)}`;
+      const win = window.open('about:blank', '_blank');
+      if (win) {
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LinkerRoute</title>
+          <style>html,body{margin:0;padding:0;overflow:hidden;width:100vw;height:100vh}iframe{display:block;width:100vw;height:100vh;border:none}</style>
+          </head><body><iframe src="${proxyUrl}${themeParams}"></iframe></body></html>`);
+        win.document.close();
+      }
+    };
     wm.open({
       id: 'proxy',
-      title: lang === 'ru' ? 'Прокси-сервер' : 'Space Proxy Hub',
+      title: 'LinkerRoute',
       icon: <Globe size={14} className="text-[var(--on-surface)]" />,
       singleton: true,
       initialWidth: 900,
       initialHeight: 650,
       minWidth: 480,
       minHeight: 380,
+      headerActions: (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => { e.stopPropagation(); openProxyInBlank(); }}
+          title={lang === 'ru' ? 'Открыть в новой вкладке' : 'Open in new tab'}
+          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+        >
+          <ExternalLink size={13} />
+        </motion.button>
+      ),
       render: () => (
-        <SpaceProxyApp
+        <LinkerRoute
           lang={lang}
-          selectedServer={selectedServer}
-          onSelectServer={handleServerSelection}
-          activePalette={activePalette}
           theme={theme}
+          palette={activePalette}
+          initialUrl={proxyInitialUrl}
         />
       ),
     });
@@ -1211,17 +1236,6 @@ export default function App() {
     if (next) {
       setTimeout(() => playChime('click'), 100);
     }
-  };
-
-  const handleServerSelection = (srv: string) => {
-    playChime('click');
-    setSelectedServer(srv);
-    localStorage.setItem('linkerru_server', srv);
-    triggerToast(`${t.selected_label}: ${srv}`);
-    setIsServerOpen(false);
-    setTimeout(() => {
-      openProxyWindow();
-    }, 100);
   };
 
   // --- Reset All Settings (Destroy Session) ---
@@ -1777,8 +1791,8 @@ export default function App() {
 
       {/* --- ROW 1: BENTO LAYOUT MAIN WIDGETS --- */}
       <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
-        {/* WIDGET 1: Proxy Server Hub selector */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-proxy-space">
+        {/* WIDGET 1: LinkerRoute */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
           {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
@@ -1786,16 +1800,16 @@ export default function App() {
             </div>
           </div>
           <div className="flex-1 mt-5 flex flex-col pr-8">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Space Proxy Hub</h3>
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">LinkerRoute</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
-              {t.multi_server_desc}
+              {lang === 'ru' ? 'Шифрованный веб-туннель для обхода ограничений.' : 'Encrypted web tunnel to bypass restrictions.'}
             </p>
           </div>
           <div className="mt-4 flex gap-2 items-end">
             <button
               onClick={() => {
                 playChime('click');
-                setIsServerOpen(true);
+                openLinkerRoute();
               }}
               className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
               style={{ backgroundColor: activePalette.primary }}
@@ -2021,7 +2035,7 @@ export default function App() {
                     onClick={() => {
                       if (!link.url || link.url === 'https://') return;
                       playChime('click');
-                      window.open(link.url, '_blank', 'noopener,noreferrer');
+                      openLinkerRoute(link.url);
                     }}
                     className="flex-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
                     onMouseEnter={(e) => {
@@ -2441,18 +2455,6 @@ export default function App() {
         />
       )}
 
-      <ServerModal
-        isOpen={isServerOpen}
-        onClose={() => {
-          playChime('click');
-          setIsServerOpen(false);
-        }}
-        lang={lang}
-        selectedServer={selectedServer}
-        onSelectServer={handleServerSelection}
-        primaryColor={activePalette.primary}
-      />
-
       <StandbySetupModal
         isOpen={isStandbySetupOpen}
         onClose={() => {
@@ -2692,12 +2694,11 @@ export default function App() {
               return <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />;
             case 'proxy':
               return (
-                <SpaceProxyApp
+                <LinkerRoute
                   lang={lang}
-                  selectedServer={selectedServer}
-                  onSelectServer={handleServerSelection}
-                  activePalette={activePalette}
                   theme={theme}
+                  palette={activePalette}
+                  initialUrl={proxyInitialUrl}
                 />
               );
             case 'weather':
