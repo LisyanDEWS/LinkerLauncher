@@ -235,6 +235,7 @@ interface WindowManagerLayerProps {
   renderWindowContent?: (id: string) => React.ReactNode;
 }
 
+
 export function WindowManagerLayer({
   wm,
   lang,
@@ -243,578 +244,78 @@ export function WindowManagerLayer({
   isStandbyOpen = false,
   renderWindowContent,
 }: WindowManagerLayerProps) {
-  const isRu = lang === 'ru';
-  const updateGeometry = (wm as any).__updateGeometry as (id: string, patch: Partial<WindowInstance>) => void;
-  // Taskbar shows ALL open windows (not just minimized)
-  const taskbarItems = wm.windows;
-
-  // Find the top-most non-minimized window (the "active" one)
-  const activeWin = wm.windows
-    .filter((w) => !w.isMinimized)
-    .sort((a, b) => b.zIndex - a.zIndex)[0];
-
-  // Right-click context menu state for taskbar pills
-  const [ctxMenu, setCtxMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-
-  // Taskbar auto-hide state (hidden by default unless mouse approaches bottom or hovers)
-  const [isTaskbarVisible, setIsTaskbarVisible] = useState(false);
-  const taskbarHoverRef = useRef(false);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isVisibleRef = useRef(false);
-
-  useEffect(() => {
-    isVisibleRef.current = isTaskbarVisible;
-  }, [isTaskbarVisible]);
-
-  const scheduleHide = useCallback((delayMs = 1900) => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => {
-      if (!taskbarHoverRef.current) {
-        setIsTaskbarVisible(false);
-      }
-      hideTimerRef.current = null;
-    }, delayMs);
-  }, []);
-
-  const showTaskbar = useCallback(() => {
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-    setIsTaskbarVisible(true);
-  }, []);
-
-  // Show taskbar temporarily (for 1.9s) whenever window count changes or active window changes
-  useEffect(() => {
-    if (taskbarItems.length === 0) return;
-    showTaskbar();
-    scheduleHide(1900);
-  }, [taskbarItems.length, activeWin?.id, showTaskbar, scheduleHide]);
-
-  // Track mouse position to reveal taskbar when near bottom edge, or schedule hide after 1.9s when leaving
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const distanceFromBottom = window.innerHeight - e.clientY;
-      if (distanceFromBottom <= 55) {
-        showTaskbar();
-      } else if (!taskbarHoverRef.current && distanceFromBottom > 90) {
-        if (isVisibleRef.current && !hideTimerRef.current) {
-          scheduleHide(1900);
-        }
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-    };
-  }, [scheduleHide, showTaskbar]);
-
-  // Close context menu on any click elsewhere or Escape
-  useEffect(() => {
-    if (!ctxMenu) return;
-    const onAnyClick = () => setCtxMenu(null);
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCtxMenu(null); };
-    window.addEventListener('click', onAnyClick);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('click', onAnyClick);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [ctxMenu]);
-
-  // If standby mode is active, do not render windows or taskbar over standby
-  if (isStandbyOpen) {
-    return null;
-  }
-
-  const ctxWin = ctxMenu ? wm.windows.find((w) => w.id === ctxMenu.id) : null;
+  if (isStandbyOpen) return null;
 
   return (
-    <>
-      {/* Windows */}
-      <AnimatePresence>
-        {wm.windows.map((win) => (
-          <React.Fragment key={win.id}>
-            <WindowFrame
-              win={win}
-              lang={lang}
-              isActive={activeWin?.id === win.id}
-              onClose={() => wm.close(win.id)}
-              onMinimize={() => wm.minimize(win.id)}
-              onToggleMaximize={() => wm.toggleMaximize(win.id)}
-              onReload={() => wm.reload(win.id)}
-              onFocus={() => wm.focus(win.id)}
-              onGeometryChange={(patch) => updateGeometry(win.id, patch)}
-              isOptimizedEngine={isOptimizedEngine}
-              isMobileLayout={isMobileLayout}
-              renderWindowContent={renderWindowContent}
-            />
-          </React.Fragment>
-        ))}
-      </AnimatePresence>
-
-      {/* Auto-hiding taskbar pill — pops up when mouse approaches bottom of screen */}
-      <AnimatePresence>
-        {!isMobileLayout && taskbarItems.length > 0 && (
-          <motion.div
-            initial={{ y: 60, opacity: 0, scale: 0.95 }}
-            animate={{
-              y: isTaskbarVisible ? 0 : 44,
-              opacity: isTaskbarVisible ? 1 : 0.65,
-              scale: 1,
-            }}
-            exit={{ y: 60, opacity: 0, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 300 }}
-            onMouseEnter={() => {
-              taskbarHoverRef.current = true;
-              showTaskbar();
-            }}
-            onMouseLeave={() => {
-              taskbarHoverRef.current = false;
-              scheduleHide(1900);
-            }}
-            className="fixed bottom-3 left-1/2 z-[190] -translate-x-1/2"
-          >
-            <div className="flex items-center gap-1 rounded-[1.25rem] border bg-[var(--surface)] p-1.5"
-              style={{
-                borderColor: 'var(--outline)',
-                borderRadius: '1.25rem',
-                boxShadow: '0 12px 32px -8px rgba(0,0,0,0.25), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)',
-                backdropFilter: 'blur(20px) saturate(180%)',
-                background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
-              }}
-            >
-              {taskbarItems.map((w, idx) => {
-                const isActive = activeWin?.id === w.id;
-                const isMinimized = w.isMinimized;
-                return (
-                  <React.Fragment key={w.id}>
-                    {/* Divider between items */}
-                    {idx > 0 && (
-                      <div className="h-6 w-px shrink-0" style={{ background: 'var(--outline-var)' }} />
-                    )}
-                  <motion.button
-                    whileHover={{ y: -2, scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => {
-                      if (isMinimized) {
-                        wm.restore(w.id);
-                      } else if (isActive) {
-                        // Active window → minimize (Windows-style toggle)
-                        wm.minimize(w.id);
-                      } else {
-                        // Background window → focus it
-                        wm.focus(w.id);
-                      }
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCtxMenu({ id: w.id, x: e.clientX, y: e.clientY });
-                    }}
-                    className="relative flex items-center gap-2 rounded-[1rem] px-3 py-2 text-xs font-bold transition-colors cursor-pointer overflow-hidden"
-                    style={{
-                      background: isActive
-                        ? 'var(--container-high)'
-                        : isMinimized
-                          ? 'color-mix(in srgb, var(--accent) 12%, var(--container))'
-                          : 'transparent',
-                      color: 'var(--on-surface)',
-                    }}
-                    title={isMinimized
-                      ? (isRu ? `Восстановить: ${w.title}` : `Restore: ${w.title}`)
-                      : isActive
-                        ? (isRu ? `Свернуть: ${w.title}` : `Minimize: ${w.title}`)
-                        : (isRu ? `Активировать: ${w.title}` : `Focus: ${w.title}`)}
-                  >
-                    {/* Gradient steel indicator for minimized apps */}
-                    {isMinimized && (
-                      <span
-                        className="absolute inset-0 opacity-50"
-                        style={{
-                          background:
-                            'linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, transparent 60%)',
-                        }}
-                      />
-                    )}
-                    {/* Active indicator bar (left accent stripe) */}
-                    {isActive && !isMinimized && (
-                      <motion.span
-                        layoutId={`active-stripe-${w.id}`}
-                        className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
-                        style={{ background: 'var(--accent)' }}
-                      />
-                    )}
-                    <span className="relative z-10 flex items-center gap-2">
-                      {w.icon}
-                      <span>{w.title}</span>
-                    </span>
-                  </motion.button>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Right-click context menu for taskbar pills */}
-      <AnimatePresence>
-        {ctxMenu && ctxWin && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -4 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 360 }}
-            className="fixed z-[300] min-w-[180px] overflow-hidden rounded-2xl border py-1.5"
-            style={{
-              left: Math.min(ctxMenu.x, window.innerWidth - 200),
-              top: Math.min(ctxMenu.y, window.innerHeight - 220),
-              borderColor: 'var(--outline)',
-              background: 'color-mix(in srgb, var(--surface) 96%, transparent)',
-              backdropFilter: 'blur(20px) saturate(180%)',
-              boxShadow: '0 16px 40px -8px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header with app title */}
-            <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--on-surface-var)' }}>
-              {ctxWin.icon}
-              <span className="truncate">{ctxWin.title}</span>
-            </div>
-            <div className="mx-2 h-px" style={{ background: 'var(--outline-var)' }} />
-
-            {/* Open / Restore — focuses the window (or restores if minimized) */}
-            <CtxItem
-              icon={ctxWin.isMinimized ? <Eye size={15} /> : <Copy size={15} />}
-              label={ctxWin.isMinimized
-                ? (isRu ? 'Открыть' : 'Open')
-                : (isRu ? 'Активировать' : 'Focus')}
-              onClick={() => { wm.restore(ctxWin.id); setCtxMenu(null); }}
-            />
-
-            <div className="mx-2 my-1 h-px" style={{ background: 'var(--outline-var)' }} />
-
-            {/* Close — terminates the app */}
-            <CtxItem
-              icon={<XCircle size={15} />}
-              label={isRu ? 'Закрыть' : 'Close'}
-              danger
-              onClick={() => { wm.close(ctxWin.id); setCtxMenu(null); }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    <AnimatePresence>
+      {wm.windows.map((win) => (
+        <React.Fragment key={win.id}>
+          <WindowFrame
+            win={win}
+            lang={lang}
+            onClose={() => wm.close(win.id)}
+            renderWindowContent={renderWindowContent}
+            isMobileLayout={isMobileLayout}
+          />
+        </React.Fragment>
+      ))}
+    </AnimatePresence>
   );
-}
-
-/* ---------- Context menu item ---------- */
-
-interface CtxItemProps {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-}
-
-function CtxItem({ icon, label, onClick, danger }: CtxItemProps) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-3 px-3 py-2 text-left text-xs font-semibold transition-colors cursor-pointer"
-      style={{
-        color: danger ? 'var(--error, #ef4444)' : 'var(--on-surface)',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = danger
-          ? 'color-mix(in srgb, var(--error, #ef4444) 12%, transparent)'
-          : 'var(--container-high)';
-      }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-    >
-      <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-/* ---------- Single Window Frame ---------- */
-
-interface WindowFrameProps {
-  win: WindowInstance;
-  lang: Language;
-  isActive: boolean;
-  onClose: () => void;
-  onMinimize: () => void;
-  onToggleMaximize: () => void;
-  onReload: () => void;
-  onFocus: () => void;
-  onGeometryChange: (patch: Partial<WindowInstance>) => void;
-  isOptimizedEngine?: boolean;
-  isMobileLayout?: boolean;
-  renderWindowContent?: (id: string) => React.ReactNode;
 }
 
 function WindowFrame({
   win,
   lang,
-  isActive,
   onClose,
-  onMinimize,
-  onToggleMaximize,
-  onReload,
-  onFocus,
-  onGeometryChange,
-  isOptimizedEngine = false,
-  isMobileLayout = false,
   renderWindowContent,
-}: WindowFrameProps) {
+  isMobileLayout,
+}: any) {
   const isRu = lang === 'ru';
-  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-  const resizeState = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-  // Tracks whether the user is actively dragging/resizing — disables CSS
-  // geometry transitions so the interaction feels instant. When the interaction
-  // ends, transitions re-enable so maximize/restore and snap-back animate.
-  const [isInteracting, setIsInteracting] = useState(false);
-
-  // Compact title bar for maximized mode — user can toggle a slimmer bar.
-  // Auto-resets to normal when leaving maximized mode.
-  const [compactTitleBar, setCompactTitleBar] = useState(false);
-  useEffect(() => {
-    if (!win.isMaximized) setCompactTitleBar(false);
-  }, [win.isMaximized]);
-
-  const onTitleMouseDown = (e: React.MouseEvent) => {
-    if (win.isMaximized || isMobileLayout) return;
-    if ((e.target as HTMLElement).closest('button')) return;
-    onFocus();
-    dragState.current = { startX: e.clientX, startY: e.clientY, origX: win.x, origY: win.y };
-    setIsInteracting(true);
-    e.preventDefault();
-  };
-
-  // Double-click title bar to toggle maximize
-  const onTitleDoubleClick = () => {
-    if (!isMobileLayout && win.allowMaximize !== false) {
-      onToggleMaximize();
-    }
-  };
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (dragState.current) {
-        const dx = e.clientX - dragState.current.startX;
-        const dy = e.clientY - dragState.current.startY;
-        const nx = Math.max(0, Math.min(window.innerWidth - 100, dragState.current.origX + dx));
-        const ny = Math.max(0, Math.min(window.innerHeight - 60, dragState.current.origY + dy));
-        onGeometryChange({ x: nx, y: ny });
-      }
-      if (resizeState.current) {
-        const dx = e.clientX - resizeState.current.startX;
-        const dy = e.clientY - resizeState.current.startY;
-        const nw = Math.max(win.minWidth ?? 360, resizeState.current.origW + dx);
-        const nh = Math.max(win.minHeight ?? 280, resizeState.current.origH + dy);
-        onGeometryChange({ width: nw, height: nh });
-      }
-    };
-    const onUp = () => {
-      dragState.current = null;
-      resizeState.current = null;
-      setIsInteracting(false);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [win.minWidth, win.minHeight, onGeometryChange]);
-
-  const onResizeMouseDown = (e: React.MouseEvent) => {
-    if (win.isMaximized || isMobileLayout) return;
-    onFocus();
-    resizeState.current = { startX: e.clientX, startY: e.clientY, origW: win.width, origH: win.height };
-    setIsInteracting(true);
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  // Geometry target — maximized or mobile covers full viewport
-  const isFullScreen = win.isMaximized || isMobileLayout;
-  const frameStyle: React.CSSProperties = isFullScreen
-    ? { left: 0, top: 0, width: '100vw', height: '100vh' }
-    : { left: win.x, top: win.y, width: win.width, height: win.height };
-
-  // Minimize flies towards the taskbar (bottom-center of screen).
-  const taskbarX = window.innerWidth / 2;
-  const taskbarY = window.innerHeight - 24;
-  const winCenterX = win.x + win.width / 2;
-  const winCenterY = win.y + win.height / 2;
-  const minimizeX = taskbarX - winCenterX;
-  const minimizeY = taskbarY - winCenterY;
-
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: isMobileLayout ? 0.98 : 0.82, y: isMobileLayout ? 20 : 36, filter: isOptimizedEngine ? 'none' : 'blur(10px)' }}
-      animate={
-        win.isMinimized
-          ? {
-              opacity: [1, 1, 0.7, 0],
-              scale: [1, 0.85, 0.45, 0.08],
-              x: [0, minimizeX * 0.3, minimizeX * 0.7, minimizeX],
-              y: [0, minimizeY * 0.4, minimizeY * 0.75, minimizeY],
-              filter: isOptimizedEngine ? 'none' : ['blur(0px)', 'blur(1px)', 'blur(3px)', 'blur(6px)'],
-            }
-          : {
-              opacity: 1,
-              scale: 1,
-              x: 0,
-              y: 0,
-              filter: 'none',
-            }
-      }
-      exit={{
-        opacity: 0,
-        scale: isMobileLayout ? 0.98 : 0.82,
-        y: isMobileLayout ? 20 : 36,
-        filter: isOptimizedEngine ? 'none' : 'blur(10px)',
-        transition: {
-          duration: 0.3,
-          ease: [0.4, 0, 1, 1],
-        },
-      }}
-      transition={
-        win.isMinimized
-          ? {
-              duration: 0.6,
-              times: [0, 0.3, 0.65, 1],
-              ease: [0.16, 1, 0.3, 1],
-            }
-          : {
-              type: 'spring',
-              damping: isMobileLayout ? 24 : 18,
-              stiffness: isMobileLayout ? 320 : 280,
-              restDelta: 0.01,
-            }
-      }
-      onMouseDown={onFocus}
-      className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)] ${isFullScreen ? 'border-none' : 'border'}`}
-      style={{
-        ...frameStyle,
-        zIndex: win.zIndex,
-        borderRadius: isFullScreen ? 0 : '1.25rem',
-        borderColor: isActive
-          ? 'color-mix(in srgb, var(--accent) 40%, var(--outline))'
-          : 'var(--outline)',
-        boxShadow: isFullScreen
-          ? 'none'
-          : isActive
-            ? '0 20px 50px -12px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent)'
-            : 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.15))',
-        transition: isInteracting
-          ? 'none'
-          : 'left 0.32s cubic-bezier(0.16, 1, 0.3, 1), top 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
-        pointerEvents: win.isMinimized ? 'none' : 'auto',
-      }}
-    >
-      {win.isMaximized && !isMobileLayout && (
-        <div className="absolute top-0 left-0 right-0 h-1 z-50 pointer-events-none" />
-      )}
-
-      {/* Header bar — adapt clean mobile view vs desktop window bar.
-          In maximized mode, a compact toggle shrinks the bar height. */}
-      {!win.hideTitleBar && (
-        <div
-          onMouseDown={onTitleMouseDown}
-          onDoubleClick={onTitleDoubleClick}
-          className={`flex ${isMobileLayout ? 'h-14 px-4' : compactTitleBar && win.isMaximized ? 'h-7 px-3 cursor-grab active:cursor-grabbing' : 'h-11 px-3.5 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
-          style={{
-            background: isActive
-              ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
-              : 'var(--surface)',
-          }}
-        >
-          <div className="flex items-center gap-2.5">
-            <span className={`font-black ${isMobileLayout ? 'text-lg' : compactTitleBar ? 'text-[10px]' : 'text-sm'} text-[var(--on-surface)] truncate pointer-events-none tracking-tight flex items-center gap-2`}>
-              {win.icon && <span className={`text-[var(--on-surface-var)] flex items-center justify-center ${compactTitleBar ? '[&>svg]:h-3 [&>svg]:w-3' : ''}`}>{win.icon}</span>}
-              {win.title}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className={compactTitleBar ? '[&>button]:h-5 [&>button]:w-5 [&>button_svg]:h-[11px] [&>button_svg]:w-[11px]' : ''}>
-              {win.headerActions}
+    <div className="fixed inset-0 z-[150] flex items-center justify-center pointer-events-auto">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+      />
+      
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+        className="relative z-10 flex flex-col overflow-hidden bg-[var(--surface)] border border-[var(--outline)] shadow-2xl"
+        style={{
+          width: isMobileLayout ? '92vw' : Math.min(win.initialWidth, 1000),
+          height: isMobileLayout ? '85vh' : Math.min(win.initialHeight, 800),
+          borderRadius: '1.5rem',
+        }}
+      >
+        {!win.hideTitleBar && (
+          <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--outline-var)] bg-[var(--surface-dim)] px-4 select-none">
+            <div className="flex items-center gap-2">
+              <span className="text-[var(--on-surface-var)] [&>svg]:h-4 [&>svg]:w-4">{win.icon}</span>
+              <span className="font-bold text-[var(--on-surface)] text-sm tracking-tight">{win.title}</span>
             </div>
-            {!isMobileLayout && (
-              <>
-                {win.isMaximized && (
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); setCompactTitleBar(v => !v); }}
-                    title={compactTitleBar ? (isRu ? 'Обычный заголовок' : 'Normal title bar') : (isRu ? 'Компактный заголовок' : 'Compact title bar')}
-                    className={`flex ${compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'} items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer`}
-                  >
-                    {compactTitleBar ? <PanelTop size={11} /> : <PanelTopClose size={13} />}
-                  </motion.button>
-                )}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => { e.stopPropagation(); onMinimize(); }}
-                  title={isRu ? 'Свернуть' : 'Minimize'}
-                  className={`flex ${compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'} items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer`}
-                >
-                  <Minus size={compactTitleBar ? 11 : 14} />
-                </motion.button>
-                {win.allowMaximize !== false && (
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-                    title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
-                    className={`flex ${compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'} items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer`}
-                  >
-                    {win.isMaximized ? <Copy size={compactTitleBar ? 10 : 13} /> : <Square size={compactTitleBar ? 10 : 13} />}
-                  </motion.button>
-                )}
-              </>
-            )}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => { e.stopPropagation(); onClose(); }}
-              title={isRu ? 'Закрыть' : 'Close'}
-              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-8 w-8 bg-[var(--surface-dim)] border border-[var(--outline)]' : compactTitleBar ? 'h-5 w-5' : 'h-7 w-7'}`}
-            >
-              <X size={isMobileLayout ? 16 : compactTitleBar ? 11 : 14} />
-            </motion.button>
+            <div className="flex items-center gap-2">
+              {win.headerActions}
+              <button
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors"
+                title={isRu ? 'Закрыть' : 'Close'}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
+        )}
+        <div className="relative flex-1 overflow-auto bg-[var(--surface)]">
+          {renderWindowContent ? (renderWindowContent(win.id) ?? win.render()) : win.render()}
         </div>
-      )}
-
-      {/* Content */}
-      <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
-        {renderWindowContent ? (renderWindowContent(win.id) ?? win.render()) : win.render()}
-      </div>
-
-      {/* Resize handle */}
-      {!win.isMaximized && !isMobileLayout && (
-        <div
-          onMouseDown={onResizeMouseDown}
-          className="absolute bottom-0 right-0 h-5 w-5 cursor-se-resize"
-          style={{
-            background:
-              'linear-gradient(135deg, transparent 55%, color-mix(in srgb, var(--accent) 30%, var(--outline)) 55%)',
-            borderRadius: '0 0 1.25rem 0',
-          }}
-        />
-      )}
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }

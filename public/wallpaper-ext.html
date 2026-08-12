@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wallpaper+ Library</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: var(--on-surface, #1d1b20);
+  --muted: var(--on-surface-var, #625b66);
+  --paper: var(--bg, #f8f6f9);
+  --surface: var(--container, #f5eff3);
+  --surface-2: color-mix(in srgb, var(--surface) 85%, #000 15%);
+  --line: var(--outline-var, #d3c6d1);
+  --primary: var(--accent, #8b5cf6);
+  --primary-ink: #ffffff;
+  --focus: color-mix(in srgb, var(--primary) 20%, transparent);
+  --shadow: 0 12px 32px rgba(0,0,0,0.12);
+  --glass: color-mix(in srgb, var(--paper) 70%, transparent);
+}
+
+[data-theme="dark"] {
+  --ink: var(--on-surface, #e9e0e7);
+  --muted: var(--on-surface-var, #cec1cc);
+  --paper: var(--bg, #120e14);
+  --surface: var(--container, #1f1823);
+  --surface-2: color-mix(in srgb, var(--surface) 80%, #fff 20%);
+  --line: var(--outline-var, #443749);
+  --primary: var(--accent, #a78bfa);
+  --primary-ink: #120e14;
+  --focus: color-mix(in srgb, var(--primary) 25%, transparent);
+  --shadow: 0 16px 40px rgba(0,0,0,0.4);
+  --glass: color-mix(in srgb, var(--paper) 60%, transparent);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: 'Space Grotesk', Manrope, system-ui, sans-serif;
+  transition: background-color .3s ease, color .3s ease;
+}
+
+button, input { font: inherit; }
+button { color: inherit; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 40%, transparent);
+  background: var(--glass);
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.topbar-inner {
+  width: min(1440px, calc(100% - 48px));
+  min-height: 72px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.brand-mark svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+.brand-name {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.brand-name small {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font: 500 9px/1.2 "DM Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search {
+  position: relative;
+  width: min(340px, 32vw);
+}
+
+.search input {
+  width: 100%;
+  height: 42px;
+  padding: 0 16px 0 40px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  outline: none;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 13px;
+  transition: all .2s ease;
+}
+
+.search input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.search svg {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  width: 17px;
+  height: 17px;
+  stroke: var(--muted);
+}
+
+.round-button, .filter, .text-button {
+  border: 0;
+  cursor: pointer;
+  transition: transform .2s ease, background .2s ease, color .2s ease;
+}
+
+.round-button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.round-button:hover, .round-button:focus-visible {
+  transform: scale(1.05);
+  background: var(--focus);
+  outline: none;
+}
+
+.round-button svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+
+main {
+  width: min(1440px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 36px 0 60px;
+}
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 280px;
+  gap: 32px;
+  align-items: end;
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--primary);
+  font: 600 11px/1 "DM Mono", monospace;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 800px;
+  margin: 0;
+  font-size: clamp(32px, 4.5vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+  font-weight: 800;
+}
+
+h1 span {
+  color: var(--primary);
+}
+
+.intro-copy {
+  margin: 12px 0 0;
+  max-width: 600px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.library-total {
+  padding: 22px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.library-total strong {
+  display: block;
+  font-size: 42px;
+  line-height: .95;
+  letter-spacing: -.05em;
+  color: var(--primary);
+}
+
+.library-total span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font: 500 10px/1.4 "DM Mono", monospace;
+  text-transform: uppercase;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 28px;
+}
+
+.filter {
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.filter:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.filter.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+
+.wallpaper-section {
+  margin: 0 0 42px;
+  scroll-margin-top: 90px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+
+.section-meta {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font: 500 10px/1.4 "DM Mono", monospace;
+  text-transform: uppercase;
+}
+
+.section-count {
+  color: var(--primary);
+  font: 600 11px/1 "DM Mono", monospace;
+  white-space: nowrap;
+}
+
+.wallpaper-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.wallpaper {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+  border-radius: 20px;
+  cursor: pointer;
+  background: var(--surface);
+  transition: all .3s cubic-bezier(.2, .8, .2, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.wallpaper img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), filter .4s ease;
+}
+
+.wallpaper.pixel img {
+  image-rendering: pixelated;
+}
+
+.wallpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.85) 100%);
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+
+.wallpaper:hover, .wallpaper:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+}
+
+.wallpaper:hover img, .wallpaper:focus-visible img {
+  transform: scale(1.08);
+  filter: saturate(1.15);
+}
+
+.wallpaper:hover::after, .wallpaper:focus-visible::after {
+  opacity: 1;
+}
+
+.wallpaper:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.image-label {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  color: white;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+
+.wallpaper:hover .image-label, .wallpaper:focus-visible .image-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.image-label strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
+
+.image-label small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255,255,255,0.75);
+  font: 500 9px/1 "DM Mono", monospace;
+  text-transform: uppercase;
+}
+
+.resolution {
+  position: absolute;
+  z-index: 1;
+  left: 10px;
+  top: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: white;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  font: 500 9px/1 "DM Mono", monospace;
+}
+
+.empty {
+  padding: 42px 20px;
+  border: 1px dashed var(--line);
+  border-radius: 20px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+.dialog {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+
+.dialog.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dialog-panel {
+  width: min(1000px, 100%);
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  transform: translateY(16px) scale(.98);
+  transition: transform .28s cubic-bezier(.2, .8, .2, 1);
+}
+
+.dialog.show .dialog-panel {
+  transform: translateY(0) scale(1);
+}
+
+.dialog-image {
+  display: block;
+  width: 100%;
+  max-height: min(60vh, 520px);
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+.dialog-image.pixel-art {
+  image-rendering: pixelated;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.dialog-detail {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font: 500 10px/1.4 "DM Mono", monospace;
+  text-transform: uppercase;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.text-button {
+  padding: 10px 16px;
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.text-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.text-button.primary {
+  color: var(--primary-ink);
+  background: var(--primary);
+  border-color: transparent;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+@media (max-width: 1050px) {
+  .wallpaper-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .topbar-inner, main { width: min(100% - 24px, 1440px); }
+  .intro { grid-template-columns: 1fr; gap: 20px; }
+  .wallpaper-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dialog-footer { flex-direction: column; align-items: stretch; }
+  .dialog-actions { width: 100%; }
+  .dialog-actions > * { flex: 1; text-align: center; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#library" aria-label="Wallpaper+ Library">
+      <span class="brand-mark">
+        <!-- Lucide-style Paintbrush Icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m18.37 2.63 3 3a1 1 0 0 1 0 1.41l-9 9a1 1 0 0 1-.39.23l-5 1.67a1 1 0 0 1-1.25-1.25l1.67-5a1 1 0 0 1 .23-.39l9-9a1 1 0 0 1 1.41 0z"></path>
+          <path d="M9 11l3 3"></path>
+          <path d="M5 19l-1 3 3-1"></path>
+        </svg>
+      </span>
+      <span class="brand-name">
+        WALLPAPER+
+        <small>Desktop Engine</small>
+      </span>
+    </a>
+
+    <div class="topbar-actions">
+      <label class="search" aria-label="Поиск обоев">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input id="search" type="search" placeholder="Поиск обоев...">
+      </label>
+
+      <button class="round-button" id="theme-toggle" type="button" title="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="library">
+  <section class="intro" aria-labelledby="page-title">
+    <div>
+      <p class="eyebrow">4K / Pixel Art Engine</p>
+      <h1 id="page-title">Выбери свой <span>фон.</span></h1>
+      <p class="intro-copy">Коллекция из 150 обоев высокого разрешения. Нажмите на любой кадр, чтобы мгновенно установить его на рабочий стол LinkerRu.</p>
+    </div>
+    <div class="library-total">
+      <strong id="total-count">150</strong>
+      <span>обоев в каталоге</span>
+    </div>
+  </section>
+
+  <nav class="filter-row" aria-label="Категории обоев" id="filters"></nav>
+  <div id="gallery"></div>
+</main>
+
+<div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  <div class="dialog-panel relative">
+    <button class="round-button modal-close" id="close-dialog" type="button" title="Закрыть">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    <img class="dialog-image" id="dialog-image" src="" alt="">
+    <div class="dialog-footer">
+      <div>
+        <h2 class="dialog-title" id="dialog-title"></h2>
+        <p class="dialog-detail" id="dialog-detail"></p>
+      </div>
+      <div class="dialog-actions">
+        <a class="text-button" id="source-link" href="#" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          Оригинал
+        </a>
+        <button class="text-button primary" id="apply-link" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><path d="m16 5 3 3-9 9-4 1 1-4 9-9z"></path></svg>
+          Применить обои
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const pexels = (id, ext = 'jpeg') => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.${ext}`;
+const imageUrl = (source, size) => source.startsWith('data:') ? source : `${source}?auto=compress&cs=tinysrgb&fit=crop&w=${size[0]}&h=${size[1]}`;
+
+const sourcePools = {
+  '4k':[pexels(12260629,'png'),pexels(1632044),pexels(1525041),pexels(10394827),pexels(20572628),pexels(29607138),pexels(18099105),pexels(29106399),pexels(29106402),pexels(29698817)],
+  nature:[pexels(18296931),pexels(1525041),pexels(11917567),pexels(18062747),pexels(6016480),pexels(38880622),pexels(12721814),pexels(8558892),pexels(35060933),pexels(19161533)],
+  space:[pexels(9160637),pexels(37269546),pexels(2312040),pexels(37269529),pexels(36489751,'png'),pexels(37269532),pexels(2538107),pexels(37269550),pexels(4644812),pexels(11737041)],
+  city:[pexels(3075993),pexels(4261607),pexels(3980364),pexels(33878663),pexels(13259678),pexels(4034345),pexels(747101),pexels(1036657),pexels(18302561),pexels(11269298)],
+  abstract:[pexels(7135028),pexels(7135053),pexels(7130536),pexels(7135037),pexels(6985193),pexels(6985121),pexels(7135034),pexels(7135075),pexels(7135058),pexels(6985118)],
+  minimal:[pexels(7130496),pexels(7130490),pexels(7130491),pexels(7130469),pexels(4253271),pexels(4252899),pexels(28494633),pexels(4252525),pexels(29652324),pexels(4253062)],
+  dark:[pexels(167699),pexels(13258046),pexels(11735178),pexels(13258049),pexels(13258054),pexels(5459512),pexels(30773319),pexels(37911514),pexels(1909572),pexels(5431724)],
+  colorful:[pexels(13382071),pexels(15035617),pexels(15011846),pexels(15049825),pexels(15072693),pexels(15103625),pexels(15131893),pexels(15147961),pexels(11150766),pexels(15011845)]
+};
+
+const catalog = [
+  {id:'4k',label:'4K Ultra',title:'4K пейзажи',note:'Высокая детальность 3840x2160',count:20,resolution:'3840 x 2160',names:['Австрийские Альпы','Горный хребет с высоты','Озеро Брайес','Зелёная долина','Снежные вершины','Арктический берег','Закат в Оберстдорфе','Татры и озеро','Зеркальная вода Татр','Швейцарский поток','Свет над Альпами','Каменные пики','Озеро в Доломитах','Облака над долиной','Северные горы','Ледяное побережье','Вечерний хребет','Высокогорное озеро','Снежное отражение','Альпийское утро']},
+  {id:'pixel',label:'Pixel Art',title:'Pixel Art Engine',note:'Ретро пиксельная стилистика',count:15,resolution:'Pixel Art 16:9',names:['Неоновый мегаполис','Лунный форпост','Пиксельный закат','Горная долина','Ретро-аркада','Космический рейс','Лес после дождя','Океанский маяк','Красная пустыня','Северное сияние','Ночная ферма','Кибер-улица','Остров облаков','Порт после заката','Геймерская ночь']},
+  {id:'nature',label:'Природа',title:'Природа и озёра',note:'Горы, леса и реки',count:20,resolution:'2560 x 1440',names:['Лесное отражение','Озеро Брайес','Маттерхорн','Озеро Гайсальп','Тирольское утро','Домик у Оберзее','Туманное озеро','Альберта','Зимний Халльштатт','Озеро в Тироле','Береговой лес','Доломиты','Швейцарские вершины','Зелёное озеро','Снег и сосны','Баварский берег','Горный туман','Ледяная гладь','Зима в Альпах','Спокойная вода']},
+  {id:'space',label:'Космос',title:'Космос и туманности',note:'Астрономические кадры',count:15,resolution:'3840 x 2160',names:['Туманность Северная Америка','Глубокая туманность','Млечный Путь','Звёздное облако','Красная туманность','Бирюзовый космос','Галактика ночью','Зелёная туманность','Ночное звёздное небо','Фиолетовый Млечный Путь','Свет в туманности','Космический горизонт','Тысячи звёзд','Северное небо','Звёздная глубина']},
+  {id:'city',label:'Города',title:'Города ночью',note:'Огни скайлайнов',count:15,resolution:'2560 x 1440',names:['Нью-Йорк: ночь','Город сверху','Чёрно-белый скайлайн','Свет над Манхэттеном','Бруклинский мост','Сингапурская бухта','Огни Гудзона','Чикаго на закате','Ночной проспект','Вена после заката','Манхэттенские огни','Городская сетка','Нью-Йорк и вода','Световой мост','Стеклянный горизонт']},
+  {id:'abstract',label:'Абстракция',title:'Цветовая абстракция',note:'Градиенты и световые поля',count:20,resolution:'2560 x 1440',names:['Лиловый спектр','Пастельный переход','Мягкий рассвет','Синий и красный','Цветной свет','Три цвета','Зелёная волна','Голубая глубина','Светлый спектр','Фиолетовый поток','Сиреневый переход','Воздушная пастель','Синий импульс','Красно-синяя волна','Тёплый свет','RGB-поле','Мятная глубина','Синий спектр','Светлая тишина','Ультрафиолет']},
+  {id:'minimal',label:'Минимализм',title:'Минимализм',note:'Чистые лаконичные формы',count:15,resolution:'2560 x 1440',names:['Мягкий синий свет','Белая вспышка','Сиреневый градиент','Пастельный воздух','Два цвета','Чёрно-белые слои','Розовая геометрия','Серые листы','Монохромная дуга','Теал и жёлтый','Чистая композиция','Световое поле','Тонкая структура','Спокойные линии','Минимум цвета']},
+  {id:'dark',label:'Тёмные',title:'Тёмные темы',note:'Глубокие оттенки и туман',count:15,resolution:'2560 x 1440',names:['Туманный склон','Гроза над хребтом','Озеро в Уэльсе','Лес в облаках','Сквозь туман','Тёмные горы','Шотландское плато','Холмы Слайго','Лесная мгла','Дорога в тумане','Тёмные сосны','Облачный перевал','Вечернее озеро','Густой лес','Горная тень']},
+  {id:'colorful',label:'Яркие',title:'Яркие акценты',note:'Насыщенные цвета',count:15,resolution:'2560 x 1440',names:['Радужный жест','Акриловый взрыв','Цветовые мазки','Оранжевый ритм','Красный и синий','Экспрессивное поле','Синий акцент','Краска в движении','Радужные капли','Яркий холст','Насыщенный поток','Жёлтый импульс','Цветная материя','Смелые мазки','Живой пигмент']}
+];
+
+function pixelArt(index) {
+  const palettes=[['#161b4b','#303b7a','#ed6a5a','#ffd166','#f7f4e9'],['#0e2237','#155e75','#16c79a','#ffe66d','#edf6f9'],['#2d133c','#563b8b','#e45c96','#ffcb69','#ffe9e3'],['#052e2b','#0b5d5a','#52b788','#d8f3dc','#f4e285'],['#200b2b','#4b1f5e','#8e44ad','#00d4ff','#f9f7f7']][index%5];
+  const rand=seed=>((Math.sin(seed*942.37)+1)/2);
+  const stars=Array.from({length:45},(_,i)=>{const x=Math.floor(rand(index*60+i)*320/3)*3;const y=Math.floor(rand(index*89+i)*72/3)*3;const s=i%7===0?4:2;return `<rect x="${x}" y="${y}" width="${s}" height="${s}" fill="${palettes[4]}" opacity="${.3+(i%5)/8}"/>`;}).join('');
+  const skyline=Array.from({length:16},(_,i)=>{const h=20+Math.floor(rand(index*37+i)*48);const x=i*21-6;const lit=i%3===0?palettes[3]:palettes[1];return `<rect x="${x}" y="${180-h}" width="18" height="${h}" fill="${palettes[0]}"/><rect x="${x+5}" y="${180-h+9}" width="4" height="4" fill="${lit}"/><rect x="${x+5}" y="${180-h+22}" width="4" height="4" fill="${lit}"/>`;}).join('');
+  const y=108+(index%4)*6;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" shape-rendering="crispEdges"><rect width="320" height="180" fill="${palettes[0]}"/><rect y="74" width="320" height="106" fill="${palettes[1]}"/>${stars}<rect x="${39+index%6*25}" y="${23+index%4*7}" width="28" height="28" fill="${palettes[3]}"/><rect x="${35+index%6*25}" y="${27+index%4*7}" width="36" height="20" fill="${palettes[3]}"/><polygon points="0,${y+49} 82,${y-18} 145,${y+49}" fill="${palettes[2]}"/><polygon points="65,${y+49} 184,${y-38} 295,${y+49}" fill="${palettes[0]}"/><polygon points="148,${y-18} 184,${y-38} 214,${y-12} 190,${y-19}" fill="${palettes[4]}"/><rect y="${y+48}" width="320" height="58" fill="${palettes[1]}"/><rect y="${y+66}" width="320" height="6" fill="${palettes[2]}" opacity=".7"/>${skyline}</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+const wallpapers = catalog.flatMap(category =>
+  Array.from({length: category.count}, (_, index) => {
+    const pixel = category.id === 'pixel';
+    const source = pixel ? pixelArt(index) : sourcePools[category.id][index % sourcePools[category.id].length];
+    return {
+      id: `${category.id}-${index}`,
+      category: category.id,
+      categoryTitle: category.title,
+      name: category.names[index],
+      resolution: category.resolution,
+      pixel,
+      preview: imageUrl(source, [1280, 720]),
+      full: source
+    };
+  })
+);
+
+const gallery = document.getElementById('gallery');
+const filters = document.getElementById('filters');
+const search = document.getElementById('search');
+let activeCategory = 'all';
+let searchTerm = '';
+
+function makeFilters() {
+  filters.innerHTML = '';
+  [{id:'all', label:'Все 150'}, ...catalog.map(({id, label}) => ({id, label}))].forEach(filter => {
+    const button = document.createElement('button');
+    button.className = `filter${filter.id === activeCategory ? ' active' : ''}`;
+    button.type = 'button';
+    button.textContent = filter.label;
+    button.addEventListener('click', () => {
+      activeCategory = filter.id;
+      makeFilters();
+      renderGallery();
+    });
+    filters.appendChild(button);
+  });
+}
+
+function wallpaperButton(wallpaper) {
+  const button = document.createElement('button');
+  button.className = `wallpaper${wallpaper.pixel ? ' pixel' : ''}`;
+  button.type = 'button';
+  button.innerHTML = `<img src="${wallpaper.preview}" alt="${wallpaper.name}" loading="lazy"><span class="resolution">${wallpaper.pixel ? 'PIXEL ART' : wallpaper.resolution}</span><span class="image-label"><strong>${wallpaper.name}</strong><small>${wallpaper.categoryTitle}</small></span>`;
+  button.addEventListener('click', () => openDialog(wallpaper));
+  return button;
+}
+
+function renderGallery() {
+  gallery.innerHTML = '';
+  const visible = catalog.filter(category => activeCategory === 'all' || activeCategory === category.id);
+  let results = false;
+
+  visible.forEach(category => {
+    const items = wallpapers.filter(w => w.category === category.id && w.name.toLowerCase().includes(searchTerm));
+    if (!items.length) return;
+    results = true;
+
+    const section = document.createElement('section');
+    section.className = 'wallpaper-section';
+    section.id = `section-${category.id}`;
+    section.innerHTML = `<div class="section-heading"><div><h2>${category.title}</h2><p class="section-meta">${category.note}</p></div><span class="section-count">${items.length} / ${category.count}</span></div>`;
+    const grid = document.createElement('div');
+    grid.className = 'wallpaper-grid';
+    items.forEach(wallpaper => grid.appendChild(wallpaperButton(wallpaper)));
+    section.appendChild(grid);
+    gallery.appendChild(section);
+  });
+
+  if (!results) {
+    gallery.innerHTML = '<div class="empty">Обои по запросу не найдены</div>';
+  }
+}
+
+const dialog = document.getElementById('dialog');
+const dialogImage = document.getElementById('dialog-image');
+const dialogTitle = document.getElementById('dialog-title');
+const dialogDetail = document.getElementById('dialog-detail');
+const sourceLink = document.getElementById('source-link');
+const applyLink = document.getElementById('apply-link');
+
+function openDialog(wallpaper) {
+  dialogImage.src = wallpaper.full;
+  dialogImage.alt = wallpaper.name;
+  dialogImage.classList.toggle('pixel-art', wallpaper.pixel);
+  dialogTitle.textContent = wallpaper.name;
+  dialogDetail.textContent = `${wallpaper.categoryTitle} / ${wallpaper.resolution}`;
+  sourceLink.href = wallpaper.full;
+  dialog.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('close-dialog').focus();
+}
+
+function closeDialog() {
+  dialog.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('close-dialog').addEventListener('click', closeDialog);
+dialog.addEventListener('click', event => { if (event.target === dialog) closeDialog(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeDialog(); });
+
+search.addEventListener('input', event => {
+  searchTerm = event.target.value.trim().toLowerCase();
+  renderGallery();
+});
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', current);
+});
+
+// Apply Wallpaper action sent directly to LinkerRu parent window:
+applyLink.addEventListener('click', () => {
+  const imageUrl = dialogImage.src;
+  if (!imageUrl) return;
+
+  if (window.parent) {
+    window.parent.postMessage({ type: 'APPLY_WALLPAPER', payload: imageUrl }, '*');
+  }
+  if (window.top && window.top !== window.parent) {
+    window.top.postMessage({ type: 'APPLY_WALLPAPER', payload: imageUrl }, '*');
+  }
+
+  applyLink.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Применено! ✨`;
+  
+  setTimeout(() => {
+    applyLink.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><path d="m16 5 3 3-9 9-4 1 1-4 9-9z"></path></svg> Применить обои`;
+    closeDialog();
+  }, 750);
+});
+
+// Cross-tab / theme synchronization listener from LinkerRu
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'LINKER_CONFIG') {
+    if (e.data.theme) {
+      document.documentElement.setAttribute('data-theme', e.data.theme);
+    }
+    if (e.data.palette?.primary) {
+      document.documentElement.style.setProperty('--primary', e.data.palette.primary);
+      document.documentElement.style.setProperty('--accent', e.data.palette.primary);
+    }
+  }
+});
+
+document.getElementById('total-count').textContent = wallpapers.length;
+makeFilters();
+renderGallery();
+</script>
+</body>
+</html>

@@ -255,12 +255,32 @@ export function useP2P() {
     processQueue();
   }, [processQueue]);
 
-  useEffect(() => {
-    return () => {
-      if (unsubscribe.current) unsubscribe.current();
-      pc.current?.close();
-    };
+  const disconnect = useCallback(() => {
+    if (unsubscribe.current) {
+      unsubscribe.current();
+      unsubscribe.current = null;
+    }
+    if (ch.current) {
+      ch.current.close();
+      ch.current = null;
+    }
+    if (pc.current) {
+      pc.current.close();
+      pc.current = null;
+    }
+    setStatus('idle');
+    setReceivedFiles([]);
+    setSentFiles([]);
+    setProgress(null);
+    fileQueue.current = [];
+    isSending.current = false;
   }, []);
 
-  return { status, createRoom, joinRoom, sendFiles, receivedFiles, sentFiles, progress };
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, [disconnect]);
+
+  return { status, createRoom, joinRoom, sendFiles, receivedFiles, sentFiles, progress, disconnect };
 }

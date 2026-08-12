@@ -41,6 +41,7 @@ const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
   language: { ru: 'Язык', en: 'Language' },
   sound: { ru: 'Звук', en: 'Sound' },
   contrast: { ru: 'Контраст', en: 'Contrast' },
+  night_light: { ru: 'Ночной режим', en: 'Night Light' },
 };
 
 interface FullSettingsModalProps {
@@ -195,6 +196,10 @@ export default function FullSettingsModal({
   const [customPrimary, setCustomPrimary] = useState('#8B5CF6');
   const [customSecondary, setCustomSecondary] = useState('#A78BFA');
   const [customTertiary, setCustomTertiary] = useState('#6D28D9');
+
+  const [useDynamicTheme, setUseDynamicTheme] = useState(() => {
+    return localStorage.getItem('linkerru_dynamic_theme') !== 'false';
+  });
 
   const createCustomTheme = () => {
     const customPalette = {
@@ -792,9 +797,42 @@ export default function FullSettingsModal({
                               <span>{t.theme_engine_desc}</span>
                             </div>
 
+                            {/* Dynamic Theme Toggle */}
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline-var)]">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Автоматическая тема из обоев' : 'Adaptive Theme from Wallpaper'}
+                                </span>
+                                <span className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                  {lang === 'ru' ? 'Адаптировать акцентные цвета под текущие обои Wallpaper+' : 'Adapt accent colors to match the current Wallpaper+ background'}
+                                </span>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  className="sr-only peer" 
+                                  checked={useDynamicTheme}
+                                  onChange={(e) => {
+                                    const val = e.target.checked;
+                                    setUseDynamicTheme(val);
+                                    localStorage.setItem('linkerru_dynamic_theme', String(val));
+                                    if (val && materialPalettes.find(p => p.id === 'dynamic_wallpaper')) {
+                                      onPaletteChange('dynamic_wallpaper');
+                                    } else if (!val && activePaletteId === 'dynamic_wallpaper') {
+                                      onPaletteChange('sage_khaki'); // fallback
+                                    }
+                                  }} 
+                                />
+                                <div className="w-9 h-5 bg-[var(--outline)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                              </label>
+                            </div>
+
                             {/* Color Grid list */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3" id="theme-color-palette-grid">
                               {materialPalettes.map((palette) => {
+                                if (palette.id === 'dynamic_wallpaper' && !useDynamicTheme) {
+                                  return null;
+                                }
                                 const isActive = palette.id === activePaletteId;
                                 return (
                                   <button

@@ -49,7 +49,7 @@ export const DEFAULT_QUICK_LINKS: QuickLink[] = [
 ];
 
 /** All available quick toggle ids. */
-export const TOGGLE_IDS = ['theme', 'language', 'sound', 'contrast'] as const;
+export const TOGGLE_IDS = ['theme', 'language', 'sound', 'contrast', 'night_light'] as const;
 export type ToggleId = (typeof TOGGLE_IDS)[number];
 
 /** Maximum number of toggles that can be active in the panel at once. */

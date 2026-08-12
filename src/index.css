@@ -614,5 +614,30 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--outline-var) !important;
 }
 
+/* --- Touchscreen & Hybrid Device Adaptations --- */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Disable accidental text selection while dragging window handles */
+.wm-titlebar, .wm-resize-handle, [data-wm-drag] {
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* Touch friendly active feedback for touch screens */
+@media (pointer: coarse) {
+  button, [role="button"] {
+    min-height: 36px;
+  }
+}
+
+
 
 

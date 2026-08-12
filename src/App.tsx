@@ -1,3 +1,4 @@
+import { ExtensionsManager } from './components/ExtensionsManager';
 import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -7,11 +8,13 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Sun,
-  Moon,
+  Moon, SunMoon,
   Clock,
   Calendar as CalendarIcon,
   CloudSun,
   Settings,
+  Blocks,
+  Puzzle,
   User,
   History,
   Globe,
@@ -41,7 +44,8 @@ import {
   Calculator,
   StickyNote,
   Server,
-  ExternalLink
+  ExternalLink,
+  HelpCircle, MessageCircle,
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from './types';
@@ -61,12 +65,12 @@ import AppLoader from './components/AppLoader';
 import { useWindows, WindowManagerLayer } from './components/WindowManager';
 import { CalculatorApp } from './components/CalculatorApp';
 import { KeepsApp } from './components/KeepsApp';
-import ServerModal from './components/ServerModal';
 import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
 import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
+import { SupportQRModal, CONTACTS } from './components/SupportApp';
 import { LinkerRouteApp } from './components/LinkerRouteApp';
 
 const Grain = () => (
@@ -111,6 +115,11 @@ export default function App() {
   const [activePaletteId, setActivePaletteId] = useState<string>(() => {
     return localStorage.getItem('linkerru_accent') || 'monochrome';
   });
+
+  const [isNightLight, setIsNightLight] = useState<boolean>(() => {
+    return localStorage.getItem('linkerru_night_light') === 'true';
+  });
+
 
   const [isContrast, setIsContrast] = useState<boolean>(() => {
     return localStorage.getItem('linkerru_contrast') === 'true';
@@ -287,7 +296,6 @@ export default function App() {
   const [isWeatherOpen, setIsWeatherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account'>('appearance');
-  const [isServerOpen, setIsServerOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   // Login screen preview overlay (dev tool — does NOT log out)
@@ -625,6 +633,98 @@ export default function App() {
     const id = Date.now().toString() + Math.random().toString();
     setToasts(p => [...p, { id, text }]);
   };
+
+const extractDominantColor = (imageUrl: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject('No ctx');
+      canvas.width = 64;
+      canvas.height = 64;
+      ctx.drawImage(img, 0, 0, 64, 64);
+      const data = ctx.getImageData(0, 0, 64, 64).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const brightness = (data[i] * 299 + data[i+1] * 587 + data[i+2] * 114) / 1000;
+        if (brightness > 30 && brightness < 225) { // filter out too dark/light
+          r += data[i];
+          g += data[i+1];
+          b += data[i+2];
+          count++;
+        }
+      }
+      if (count === 0) {
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i]; g += data[i+1]; b += data[i+2];
+        }
+        count = data.length / 4;
+      }
+      r = Math.floor(r / count);
+      g = Math.floor(g / count);
+      b = Math.floor(b / count);
+      const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+      resolve(hex);
+    };
+    img.onerror = () => reject('Image load failed');
+    img.src = imageUrl;
+  });
+};
+
+  // --- Message Listener for Extension Events (e.g., Wallpaper+) ---
+  useEffect(() => {
+    const handleExtensionMessage = async (e: MessageEvent) => {
+      if (e.data?.type === 'APPLY_WALLPAPER') {
+        const url = e.data.payload;
+        if (url) {
+          setMainWallpaper(url);
+          localStorage.setItem('linkerru_wallpaper', url);
+          
+          try {
+            const hex = await extractDominantColor(url);
+            
+            // Adjust brightness for secondary/tertiary loosely
+            const adjust = (color: string, amount: number) => {
+                return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
+            }
+            
+            const dynPalette = {
+              id: 'dynamic_wallpaper',
+              nameRu: 'Адаптивная (Обои)',
+              nameEn: 'Adaptive (Wallpaper)',
+              primary: hex,
+              secondary: adjust(hex, 20),
+              tertiary: adjust(hex, -20),
+              lightBg: '#F5F5F5',
+              darkBg: '#121212'
+            };
+            
+            const existingIdx = materialPalettes.findIndex(p => p.id === 'dynamic_wallpaper');
+            if (existingIdx >= 0) {
+              materialPalettes[existingIdx] = dynPalette;
+            } else {
+              materialPalettes.push(dynPalette);
+            }
+            
+            const useDyn = localStorage.getItem('linkerru_dynamic_theme') !== 'false';
+            if (useDyn) {
+              setActivePaletteId('dynamic_wallpaper');
+              localStorage.setItem('linkerru_accent', 'dynamic_wallpaper');
+            }
+          } catch(err) {
+            console.error('Failed to extract wallpaper color', err);
+          }
+
+          playChime('victory');
+          triggerToast(lang === 'ru' ? 'Обои успешно применены!' : 'Wallpaper successfully applied!');
+        }
+      }
+    };
+    window.addEventListener('message', handleExtensionMessage);
+    return () => window.removeEventListener('message', handleExtensionMessage);
+  }, [lang]);
 
   // --- PIPUN CONFIGS / CROSS-APP THEME SYNC ---
   useEffect(() => {
@@ -1105,6 +1205,21 @@ export default function App() {
     });
   };
 
+  const handleOpenExtensions = () => {
+    playChime('click');
+    wm.open({
+      id: 'extensions',
+      title: lang === 'ru' ? 'Расширения' : 'Extensions',
+      icon: <Puzzle size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 700,
+      initialHeight: 520,
+      minWidth: 420,
+      minHeight: 360,
+      render: () => <ExtensionsManager lang={lang} wm={wm} playChime={playChime} triggerToast={triggerToast} />
+    });
+  };
+
   const openLisyanWindow = () => {
     wm.open({
       id: 'lisyan',
@@ -1136,6 +1251,8 @@ export default function App() {
       ),
     });
   };
+
+  const [activeSupportContactId, setActiveSupportContactId] = useState<string | null>(null);
 
   const openCalculatorWindow = () => {
     wm.open({
@@ -1278,6 +1395,13 @@ export default function App() {
     localStorage.setItem('linkerru_contrast', String(next));
   };
 
+  const handleNightLightToggle = () => {
+    playChime('click');
+    const next = !isNightLight;
+    setIsNightLight(next);
+    localStorage.setItem('linkerru_night_light', String(next));
+  };
+
   const handleStandbyBgSave = (bg: string) => {
     playChime('click');
     setStandbyBg(bg);
@@ -1312,10 +1436,6 @@ export default function App() {
     setSelectedServer(srv);
     localStorage.setItem('linkerru_server', srv);
     triggerToast(`${t.selected_label}: ${srv}`);
-    setIsServerOpen(false);
-    setTimeout(() => {
-      openLinkerRoute();
-    }, 100);
   };
 
   // --- Reset All Settings (Destroy Session) ---
@@ -1518,7 +1638,7 @@ export default function App() {
 
   const getWallpaperStyle = () => {
     if (isMobileLayout) return 'var(--bg)';
-    if (mainWallpaper === 'none') return 'var(--bg)';
+    if (!mainWallpaper || mainWallpaper === 'none') return 'var(--bg)';
     
     // We will use standard Hex/RGB colors of the current palette
     const p1 = activePalette.primary;
@@ -1530,7 +1650,19 @@ export default function App() {
       case 'gradient-2': return `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))`;
       case 'gradient-3': return `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)`;
       case 'gradient-4': return `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)`;
-      default: return 'var(--bg)';
+      default: {
+        if (typeof mainWallpaper === 'string' && (
+          mainWallpaper.startsWith('http://') ||
+          mainWallpaper.startsWith('https://') ||
+          mainWallpaper.startsWith('data:') ||
+          mainWallpaper.startsWith('blob:') ||
+          mainWallpaper.startsWith('url(')
+        )) {
+          const cleanUrl = mainWallpaper.startsWith('url(') ? mainWallpaper : `url("${mainWallpaper}")`;
+          return `linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.28)), ${cleanUrl} center / cover no-repeat fixed`;
+        }
+        return 'var(--bg)';
+      }
     }
   };
 
@@ -1570,7 +1702,12 @@ export default function App() {
         brightness={brightness}
         onComplete={onLoaderComplete}
       />
+      
       <Grain />
+      {isNightLight && (
+        <div className="fixed inset-0 z-[9999] pointer-events-none bg-[#ffad33] opacity-[0.15] mix-blend-multiply" style={{ mixBlendMode: theme === 'dark' ? 'color-burn' : 'multiply' }} />
+      )}
+
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1893,7 +2030,6 @@ export default function App() {
             <button
               onClick={() => {
                 playChime('click');
-                setIsServerOpen(true);
                 openLinkerRoute();
               }}
               className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
@@ -2002,10 +2138,13 @@ export default function App() {
       {/* --- ROW 2: EXTRA CARDS AND ACCENT PILLS BUTTONS --- */}
       <section className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4" id="row2-bento-grid">
         {/* LOCKED CARD 2 (was 6, now 5) */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] opacity-75 transition-all hover:scale-[1.02] active:scale-[0.98]" id="card-locked-2">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group" id="card-locked-2" onClick={handleOpenExtensions}>
           <div className="flex justify-between items-start">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0" style={{ backgroundColor: activePalette.primary }}>
-              <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB Extensions" className="w-full h-full object-contain brightness-0 invert" />
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
+              <Puzzle size={24} />
+            </div>
+            <div className="w-8 h-8 rounded-full border border-[var(--outline)] flex items-center justify-center bg-[var(--surface)] text-[var(--on-surface)] opacity-0 group-hover:opacity-100 transition-opacity">
+              <ExternalLink size={14} />
             </div>
           </div>
           <div className="my-3">
@@ -2013,11 +2152,11 @@ export default function App() {
               {lang === 'ru' ? 'Расширения' : 'Extensions'}
             </h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold mt-1">
-              {lang === 'ru' ? '(в разработке)' : '(in developing)'}
+              {lang === 'ru' ? 'Менеджер расширений' : 'Extensions Manager'}
             </p>
           </div>
-          <button className="w-full py-3 bg-[var(--container)] text-[var(--on-surface-var)] border border-[var(--outline-var)] rounded-full text-xs font-black cursor-not-allowed select-none">
-            {lang === 'ru' ? 'Ожидайте' : 'Coming Soon'}
+          <button className="w-full py-3 bg-[var(--accent)] text-white border border-[var(--accent)] rounded-full text-xs font-black select-none pointer-events-none shadow-sm shadow-[var(--accent)]/20">
+            {lang === 'ru' ? 'Открыть' : 'Open'}
           </button>
         </div>
 
@@ -2124,7 +2263,7 @@ export default function App() {
                       playChime('click');
                       window.open(link.url, '_blank', 'noopener,noreferrer');
                     }}
-                    className="flex-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
+                    className="flex-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = activePalette.primary;
                       e.currentTarget.style.color = '#fff';
@@ -2176,7 +2315,7 @@ export default function App() {
             <span className="text-[10px] tabular-nums text-[var(--outline)]">{activeToggles.length}/{MAX_TOGGLES}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 flex-1">
+          <div className="grid grid-cols-2 gap-2 flex-1 content-start mt-2">
             {activeToggles.length === 0 ? (
               <div className="col-span-2 flex items-center justify-center text-[11px] text-[var(--outline)] italic">
                 {lang === 'ru' ? 'Нет переключателей' : 'No toggles'}
@@ -2200,8 +2339,8 @@ export default function App() {
                   },
                   sound: {
                     icon: isSoundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />,
-                    label: lang === 'ru' ? 'Звук' : 'Sounds',
-                    sub: isSoundEnabled ? (lang === 'ru' ? 'Вкл' : 'Enabled') : (lang === 'ru' ? 'Выкл' : 'Disabled'),
+                    label: lang === 'ru' ? 'Звук' : 'Sound',
+                    sub: isSoundEnabled ? (lang === 'ru' ? 'Вкл' : 'On') : (lang === 'ru' ? 'Выкл' : 'Off'),
                     active: isSoundEnabled,
                     onClick: handleSoundToggle,
                   },
@@ -2212,26 +2351,35 @@ export default function App() {
                     active: isContrast,
                     onClick: handleContrastToggle,
                   },
-                }[id];
+                  night_light: {
+                    icon: <SunMoon size={14} />,
+                    label: lang === 'ru' ? 'Ночной' : 'Night Light',
+                    sub: isNightLight ? (lang === 'ru' ? 'Вкл' : 'On') : (lang === 'ru' ? 'Выкл' : 'Off'),
+                    active: isNightLight,
+                    onClick: handleNightLightToggle,
+                  },
+                } as Record<string, any>;
+                const activeCfg = cfg[id];
 
                 return (
                   <button
                     key={id}
-                    onClick={cfg.onClick}
-                    className="flex items-center p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] transition-colors gap-3"
+                    onClick={activeCfg.onClick}
+                    className={`flex items-center gap-2 p-2 px-3 rounded-2xl border border-[var(--outline-var)] transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                      activeCfg.active
+                        ? 'text-[var(--surface)] shadow-md border-transparent'
+                        : 'bg-[var(--surface)] text-[var(--on-surface)] hover:bg-[var(--container-high)]'
+                    }`}
+                    style={activeCfg.active ? { backgroundColor: activePalette.primary } : undefined}
                   >
-                    <div
-                      className="p-2 rounded-full flex items-center justify-center transition-colors"
-                      style={{
-                        backgroundColor: cfg.active ? activePalette.primary : 'var(--surface-dim)',
-                        color: cfg.active ? '#fff' : 'var(--on-surface)',
-                      }}
-                    >
-                      {cfg.icon}
+                    <div className={`flex items-center justify-center shrink-0 w-7 h-7 rounded-xl ${
+                      activeCfg.active ? 'bg-white/20 text-white' : 'bg-[var(--container)] text-[var(--on-surface-var)]'
+                    }`}>
+                      {activeCfg.icon}
                     </div>
                     <div className="flex flex-col items-start text-left min-w-0">
-                      <span className="text-[10px] font-bold text-[var(--on-surface)] leading-tight truncate">{cfg.label}</span>
-                      <span className="text-[8px] text-[var(--on-surface-var)] truncate">{cfg.sub}</span>
+                      <span className={`text-[10px] font-extrabold leading-tight truncate w-full ${activeCfg.active ? 'text-white' : 'text-[var(--on-surface)]'}`}>{activeCfg.label}</span>
+                      <span className={`text-[8px] font-bold truncate w-full mt-0.5 ${activeCfg.active ? 'text-white/80' : 'text-[var(--on-surface-var)]'}`}>{activeCfg.sub}</span>
                     </div>
                   </button>
                 );
@@ -2301,69 +2449,39 @@ export default function App() {
         </div>
 
         {/* COLUMN 3: Support channels & contacts */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] col-span-1 md:col-span-2 lg:col-span-1" id="panel-support">
-          <div className="flex items-center justify-between mb-3">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col min-h-[220px] col-span-1 md:col-span-2 lg:col-span-1" id="panel-support">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
               <User size={16} />
               <span>{t.ph_support}</span>
             </div>
             <span className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase">
-              Helpdesk
+              Lisyan Dews Technologies
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 items-center my-auto">
-            <div className="flex gap-4 items-center">
-              <div className="h-14 w-14 shrink-0 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] shadow-sm overflow-hidden">
-                {activeSupportQr ? (
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(activeSupportQr)}&color=${theme==='dark'?'ffffff':'000000'}&bgcolor=${theme==='dark'?'1a1a1a':'f2f2f2'}`} alt="QR" className="w-full h-full object-cover" />
-                ) : (
-                  <QrCode size={24} />
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-black text-[var(--on-surface)] truncate">
-                  {activeSupportQr === 'https://t.me/pubertatnyj' ? '@pubertatnyj' : activeSupportQr === 'mailto:lisyandews@gmail.com' ? 'lisyandews@gmail.com' : `/${t.ph_developer}/`}
-                </div>
-                <div className="text-[10px] text-[var(--on-surface-var)] font-semibold mt-0.5 leading-tight">
-                  {activeSupportQr ? (lang === 'ru' ? 'Отсканируйте код' : 'Scan the code') : 'Lisyan Dews Technologies'}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div
-                onClick={() => {
-                  playChime('click');
-                  setActiveSupportQr('https://t.me/pubertatnyj');
-                }}
-                className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Send size={14} className="text-[var(--on-surface-var)] shrink-0" />
-                  <div className="text-xs font-bold text-[var(--on-surface)] truncate">
-                    {t.ph_messenger} <span className="text-[10px] text-[var(--on-surface-var)] font-semibold">@pubertatnyj</span>
+          <div className="flex flex-col gap-2 flex-1 justify-center">
+            {CONTACTS.map(contact => {
+              const Icon = contact.icon;
+              return (
+                <div
+                  key={contact.id}
+                  onClick={() => { playChime('click'); setActiveSupportContactId(contact.id); }}
+                  className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] hover:border-[var(--accent)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center shrink-0">
+                      <Icon size={16} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-[var(--on-surface)] truncate">{contact.title}</span>
+                      <span className="text-[10px] text-[var(--on-surface-var)] font-semibold truncate group-hover:text-[var(--accent)] transition-colors">{contact.value}</span>
+                    </div>
                   </div>
+                  <ChevronRight size={14} className="text-[var(--outline)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
                 </div>
-                <ChevronRight size={14} className="text-[var(--outline)] shrink-0" />
-              </div>
-
-              <div
-                onClick={() => {
-                  playChime('click');
-                  setActiveSupportQr('mailto:lisyandews@gmail.com');
-                }}
-                className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Mail size={14} className="text-[var(--on-surface-var)] shrink-0" />
-                  <div className="text-xs font-bold text-[var(--on-surface)] truncate">
-                    {t.ph_mail} <span className="text-[10px] text-[var(--on-surface-var)] font-semibold">lisyandews@gmail.com</span>
-                  </div>
-                </div>
-                <ChevronRight size={14} className="text-[var(--outline)] shrink-0" />
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -2541,18 +2659,6 @@ export default function App() {
           onClearAll={() => setNotifications([])}
         />
       )}
-
-      <ServerModal
-        isOpen={isServerOpen}
-        onClose={() => {
-          playChime('click');
-          setIsServerOpen(false);
-        }}
-        lang={lang}
-        selectedServer={selectedServer}
-        onSelectServer={handleServerSelection}
-        primaryColor={activePalette.primary}
-      />
 
       <StandbySetupModal
         isOpen={isStandbySetupOpen}
@@ -2855,6 +2961,20 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      
+      <AnimatePresence>
+        {activeSupportContactId && (
+          <SupportQRModal
+            contactId={activeSupportContactId}
+            onClose={() => setActiveSupportContactId(null)}
+            lang={lang}
+            theme={theme}
+          />
+        )}
+      </AnimatePresence>
+
+
     </motion.div>
     </>
   );
