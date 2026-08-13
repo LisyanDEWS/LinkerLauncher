@@ -43,12 +43,13 @@ import {
   Edit2,
   Calculator,
   StickyNote,
+  Sparkles,
   Server,
   ExternalLink,
   HelpCircle, MessageCircle,
 } from 'lucide-react';
 
-import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from './types';
+import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette } from './types';
 import { materialPalettes } from './data/themes';
 import { translations } from './data/translations';
 import { getGreeting } from './data/greetings';
@@ -103,6 +104,10 @@ export default function App() {
   const [mainWallpaper, setMainWallpaper] = useState<string>(() => {
     return localStorage.getItem('linkerru_wallpaper') || 'none';
   });
+
+  const [dynamicPalette, setDynamicPalette] = useState<Material3Palette | null>(null);
+  const [wallpaperLuminance, setWallpaperLuminance] = useState<number | null>(null);
+  const [wallpaperApplyNonce, setWallpaperApplyNonce] = useState<number>(0);
 
   const [fontFamily, setFontFamily] = useState<string>(() => {
     return localStorage.getItem('linkerru_font') || '"Space Grotesk", "Inter", sans-serif';
@@ -416,7 +421,15 @@ export default function App() {
           clock_variation: clockVariation,
           links: customLinks,
           toggles: activeToggles,
-          optimized_engine: isOptimizedEngine
+          optimized_engine: isOptimizedEngine,
+          installed_extensions: (() => {
+            try {
+              const saved = localStorage.getItem('linkerru_installed_extensions');
+              return saved ? JSON.parse(saved) : ['wallpaper-plus'];
+            } catch {
+              return ['wallpaper-plus'];
+            }
+          })()
         },
         updatedAt: serverTimestamp()
       };
@@ -488,6 +501,14 @@ export default function App() {
                 const opt = s.optimized_engine === true || s.optimized_engine === 'true';
                 setIsOptimizedEngine(opt);
                 localStorage.setItem('linkerru_optimized_engine', String(opt));
+              }
+              if (s.installed_extensions) {
+                try {
+                  const exts = typeof s.installed_extensions === 'string' ? JSON.parse(s.installed_extensions) : s.installed_extensions;
+                  if (Array.isArray(exts)) {
+                    localStorage.setItem('linkerru_installed_extensions', JSON.stringify(exts));
+                  }
+                } catch { /* ignore */ }
               }
               
               isSyncingFromCloud.current = false;
@@ -564,6 +585,9 @@ export default function App() {
   }, []);
 
   const activePalette = useMemo(() => {
+    if (activePaletteId === 'dynamic_wallpaper' && dynamicPalette) {
+      return dynamicPalette;
+    }
     const custom = localStorage.getItem('linkerru_custom_palette');
     if (custom) {
       try {
@@ -574,7 +598,7 @@ export default function App() {
       } catch (e) {}
     }
     return materialPalettes.find((p) => p.id === activePaletteId) || materialPalettes[0];
-  }, [activePaletteId]);
+  }, [activePaletteId, dynamicPalette, wallpaperApplyNonce]);
 
   type ToastMessage = { id: string, text: string };
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -673,6 +697,72 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
   });
 };
 
+  // --- Wallpaper Analysis & Dynamic Theme Synchronizer ---
+  useEffect(() => {
+    let isMounted = true;
+    if (!mainWallpaper || mainWallpaper === 'none') {
+      setWallpaperLuminance(theme === 'dark' ? 20 : 220);
+      return;
+    }
+
+    if (typeof mainWallpaper === 'string' && (
+      mainWallpaper.startsWith('http://') ||
+      mainWallpaper.startsWith('https://') ||
+      mainWallpaper.startsWith('data:') ||
+      mainWallpaper.startsWith('blob:') ||
+      mainWallpaper.startsWith('url(')
+    )) {
+      const cleanUrl = mainWallpaper.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+      extractDominantColor(cleanUrl).then((hex) => {
+        if (!isMounted) return;
+        const r = parseInt(hex.slice(1, 3), 16) || 0;
+        const g = parseInt(hex.slice(3, 5), 16) || 0;
+        const b = parseInt(hex.slice(5, 7), 16) || 0;
+        const lum = (r * 299 + g * 587 + b * 114) / 1000;
+        setWallpaperLuminance(lum);
+
+        const adjust = (color: string, amount: number) => {
+          return '#' + color.replace(/^#/, '').replace(/../g, c => ('0' + Math.min(255, Math.max(0, parseInt(c, 16) + amount)).toString(16)).substr(-2));
+        };
+
+        const dynPalette: Material3Palette = {
+          id: 'dynamic_wallpaper',
+          nameRu: 'Адаптивная (Обои)',
+          nameEn: 'Adaptive (Wallpaper)',
+          primary: hex,
+          secondary: adjust(hex, 25),
+          tertiary: adjust(hex, -25),
+          lightBg: lum < 140 ? '#121212' : '#F5F5F5',
+          darkBg: '#121212'
+        };
+
+        setDynamicPalette(dynPalette);
+
+        const existingIdx = materialPalettes.findIndex(p => p.id === 'dynamic_wallpaper');
+        if (existingIdx >= 0) {
+          materialPalettes[existingIdx] = dynPalette;
+        } else {
+          materialPalettes.push(dynPalette);
+        }
+
+        const useDyn = localStorage.getItem('linkerru_dynamic_theme') !== 'false';
+        if (useDyn) {
+          setActivePaletteId('dynamic_wallpaper');
+          localStorage.setItem('linkerru_accent', 'dynamic_wallpaper');
+        }
+      }).catch((err) => {
+        console.warn('Failed to calculate wallpaper luminance:', err);
+        if (isMounted) {
+          setWallpaperLuminance(30);
+        }
+      });
+    } else {
+      setWallpaperLuminance(theme === 'dark' ? 30 : 200);
+    }
+
+    return () => { isMounted = false; };
+  }, [mainWallpaper, wallpaperApplyNonce, theme]);
+
   // --- Message Listener for Extension Events (e.g., Wallpaper+) ---
   useEffect(() => {
     const handleExtensionMessage = async (e: MessageEvent) => {
@@ -681,44 +771,11 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         if (url) {
           setMainWallpaper(url);
           localStorage.setItem('linkerru_wallpaper', url);
-          
-          try {
-            const hex = await extractDominantColor(url);
-            
-            // Adjust brightness for secondary/tertiary loosely
-            const adjust = (color: string, amount: number) => {
-                return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
-            }
-            
-            const dynPalette = {
-              id: 'dynamic_wallpaper',
-              nameRu: 'Адаптивная (Обои)',
-              nameEn: 'Adaptive (Wallpaper)',
-              primary: hex,
-              secondary: adjust(hex, 20),
-              tertiary: adjust(hex, -20),
-              lightBg: '#F5F5F5',
-              darkBg: '#121212'
-            };
-            
-            const existingIdx = materialPalettes.findIndex(p => p.id === 'dynamic_wallpaper');
-            if (existingIdx >= 0) {
-              materialPalettes[existingIdx] = dynPalette;
-            } else {
-              materialPalettes.push(dynPalette);
-            }
-            
-            const useDyn = localStorage.getItem('linkerru_dynamic_theme') !== 'false';
-            if (useDyn) {
-              setActivePaletteId('dynamic_wallpaper');
-              localStorage.setItem('linkerru_accent', 'dynamic_wallpaper');
-            }
-          } catch(err) {
-            console.error('Failed to extract wallpaper color', err);
-          }
+          setWallpaperApplyNonce(prev => prev + 1);
 
           playChime('victory');
           triggerToast(lang === 'ru' ? 'Обои успешно применены!' : 'Wallpaper successfully applied!');
+          saveUserDataToFirebase();
         }
       }
     };
@@ -880,11 +937,17 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
 
     root.style.setProperty('--font-sans', fontFamily);
 
+    const isDarkBg = (wallpaperLuminance !== null ? wallpaperLuminance < 140 : (mainWallpaper && mainWallpaper !== 'none')) || theme === 'dark';
+    root.style.setProperty('--on-wallpaper-surface', isDarkBg ? '#ffffff' : '#000000');
+    root.style.setProperty('--wallpaper-text-shadow', isDarkBg 
+      ? '0 2px 20px rgba(0,0,0,0.98), 0 1px 6px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,1)' 
+      : '0 2px 20px rgba(255,255,255,0.98), 0 1px 6px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)');
+
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.backgroundColor = isContrast 
       ? (theme === 'dark' ? '#000000' : '#ffffff') 
       : (theme === 'dark' ? '#09090b' : '#fafafa');
-  }, [theme, activePaletteId, isContrast, fontFamily]);
+  }, [theme, activePalette, activePaletteId, isContrast, fontFamily, wallpaperLuminance, wallpaperApplyNonce]);
 
   // --- Optimized Engine Effects ---
   useEffect(() => {
@@ -1165,7 +1228,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
             fontFamily={fontFamily}
             onFontChange={(f) => { setFontFamily(f); localStorage.setItem('linkerru_font', f); }}
             mainWallpaper={mainWallpaper}
-            onMainWallpaperChange={(wp) => { setMainWallpaper(wp); localStorage.setItem('linkerru_wallpaper', wp); }}
+            onMainWallpaperChange={(wp) => { setMainWallpaper(wp); localStorage.setItem('linkerru_wallpaper', wp); setWallpaperApplyNonce(prev => prev + 1); }}
             isAuthenticated={isAuthenticated}
             nickname={nickname}
             onNicknameChange={(n) => { setNickname(n); localStorage.setItem('linkerru_nickname', n); }}
@@ -1955,22 +2018,35 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         </div>
       </header>
 
-      {/* --- BRANDING HEADER AREA --- */}
+      {/* --- BRANDING HEADER AREA (Seamless & Cardless, adapts directly to wallpaper) --- */}
       <section className="max-w-7xl mx-auto w-full mb-8 text-left" id="branding-heading">
-        <span
-          className="inline-flex items-center px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest bg-[var(--surface)] text-[var(--accent-tertiary)] border border-[var(--outline-var)] rounded-xl mb-4 select-none"
-          id="branding-tag"
-        >
-          LinkerRu × Lisyan
-        </span>
-        <div className="mb-4 h-12 md:h-16 flex items-center gap-4" id="branding-title">
+        <div className="flex items-center gap-2.5 mb-3">
+          <span
+            className="inline-flex items-center px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest bg-[var(--surface)]/80 text-[var(--accent)] border border-[var(--outline-var)]/60 rounded-xl select-none backdrop-blur-md shadow-xs"
+            id="branding-tag"
+          >
+            LinkerRu × Lisyan
+          </span>
+          <button
+            onClick={() => {
+              playChime('click');
+              openChangelogWindow();
+            }}
+            className="inline-flex items-center gap-1.5 bg-[var(--surface)]/80 border border-[var(--outline-var)]/60 px-3.5 py-1.5 rounded-xl text-[10px] font-black text-[var(--on-surface-var)] backdrop-blur-md shadow-xs hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+            id="version-pill"
+          >
+            <History size={12} />
+            <span>v1/262608</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-4 min-h-[56px]" id="branding-title">
           <img
             src={theme === 'dark'
               ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
               : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
             }
             alt="LinkerRu Logo"
-            className={`h-12 w-12 md:h-16 md:w-16 rounded-full object-cover transition-opacity border-2 border-[var(--outline-var)] shadow-sm ${theme === "dark" ? "bg-black" : "bg-white"}`}
+            className={`h-12 w-12 md:h-14 md:w-14 rounded-2xl object-cover transition-opacity border border-[var(--outline-var)] shadow-lg ${theme === "dark" ? "bg-black" : "bg-white"}`}
             referrerPolicy="no-referrer"
           />
           <AnimatePresence mode="wait">
@@ -1980,7 +2056,11 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0, filter: 'blur(8px)', y: -10 }}
                 transition={{ duration: 0.5 }}
-                className="text-5xl md:text-7xl font-black tracking-tighter text-[var(--on-surface)]"
+                className="text-4xl md:text-6xl font-black tracking-tighter transition-colors duration-300"
+                style={{
+                  color: 'var(--on-wallpaper-surface, var(--on-surface))',
+                  textShadow: 'var(--wallpaper-text-shadow)'
+                }}
               >
                 LinkerRu:Re
               </motion.h1>
@@ -1990,37 +2070,30 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                 initial={{ opacity: 0, filter: 'blur(8px)', y: 10 }}
                 animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="text-3xl md:text-5xl font-black tracking-tight text-[var(--on-surface)]"
+                className="text-3xl md:text-5xl font-black tracking-tight leading-tight transition-colors duration-300"
+                style={{
+                  color: 'var(--on-wallpaper-surface, var(--on-surface))',
+                  textShadow: 'var(--wallpaper-text-shadow)'
+                }}
               >
                 {greetingText}
               </motion.h1>
             )}
           </AnimatePresence>
         </div>
-        <button
-          onClick={() => {
-            playChime('click');
-            openChangelogWindow();
-          }}
-          className="inline-flex items-center gap-2 bg-[var(--surface)] border border-[var(--outline-var)] px-4 py-2.5 rounded-full text-xs font-black text-[var(--on-surface-var)] shadow-sm hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
-          id="version-pill"
-        >
-          <History size={14} />
-          <span>v1/262608</span>
-        </button>
       </section>
 
       {/* --- ROW 1: BENTO LAYOUT MAIN WIDGETS --- */}
       <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
         {/* WIDGET 1: LinkerRoute */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
           {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
               <Globe size={20} className="text-white" />
             </div>
           </div>
-          <div className="flex-1 mt-5 flex flex-col pr-8">
+          <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">LinkerRoute</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru' ? 'Шифрованный веб-туннель для обхода ограничений.' : 'Encrypted web tunnel to bypass restrictions.'}
@@ -2042,7 +2115,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         </div>
 
         {/* WIDGET 2: Agno GPT */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
           {agnoMinimized && (
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
@@ -2051,7 +2124,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               <Bot size={20} className="text-white" />
             </div>
           </div>
-          <div className="flex-1 mt-5 flex flex-col pr-8">
+          <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Agno GPT</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru' ? 'Персональный ИИ-ассистент на базе OpenAI' : 'Personal AI assistant powered by OPENAI'}
@@ -2075,7 +2148,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         </div>
 
         {/* WIDGET 3: Lisyan Connect */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
           {lisyanMinimized && (
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
@@ -2088,7 +2161,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               />
             </div>
           </div>
-          <div className="flex-1 mt-5 flex flex-col pr-8">
+          <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan Connect</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru' ? 'Веб-сервис для быстрой, безопасной и анонимной P2P-передачи файлов.' : 'Web service for fast, secure and anonymous P2P file transfer.'}
@@ -2108,7 +2181,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         </div>
 
         {/* WIDGET 4: Nexus Game Box NGB */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[240px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0" style={{ backgroundColor: activePalette.primary }}>
               <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB" className="w-full h-full object-contain brightness-0 invert" />
@@ -2117,7 +2190,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               {lang === 'ru' ? 'Игры' : 'Games'}
             </div>
           </div>
-          <div className="flex-1 mt-5 flex flex-col pr-8">
+          <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Nexus Game Box</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru' ? 'Сотни бесплатных браузерных игр.' : 'Hundreds of free browser games.'}
@@ -2138,101 +2211,105 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
       {/* --- ROW 2: EXTRA CARDS AND ACCENT PILLS BUTTONS --- */}
       <section className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4" id="row2-bento-grid">
         {/* LOCKED CARD 2 (was 6, now 5) */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group" id="card-locked-2" onClick={handleOpenExtensions}>
-          <div className="flex justify-between items-start">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group" id="card-locked-2" onClick={handleOpenExtensions}>
+          <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
-              <Puzzle size={24} />
+              <Puzzle size={22} />
             </div>
             <div className="w-8 h-8 rounded-full border border-[var(--outline)] flex items-center justify-center bg-[var(--surface)] text-[var(--on-surface)] opacity-0 group-hover:opacity-100 transition-opacity">
               <ExternalLink size={14} />
             </div>
           </div>
-          <div className="my-3">
+          <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">
               {lang === 'ru' ? 'Расширения' : 'Extensions'}
             </h3>
-            <p className="text-xs text-[var(--on-surface-var)] font-semibold mt-1">
-              {lang === 'ru' ? 'Менеджер расширений' : 'Extensions Manager'}
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {lang === 'ru' ? 'Менеджер расширений и плагинов.' : 'Extensions and plugins manager.'}
             </p>
           </div>
-          <button className="w-full py-3 bg-[var(--accent)] text-white border border-[var(--accent)] rounded-full text-xs font-black select-none pointer-events-none shadow-sm shadow-[var(--accent)]/20">
+          <button className="mt-4 w-full py-3 bg-[var(--accent)] text-white border border-[var(--accent)] rounded-full text-xs font-black select-none pointer-events-none shadow-sm shadow-[var(--accent)]/20">
             {lang === 'ru' ? 'Открыть' : 'Open'}
           </button>
         </div>
 
-        {/* WIDGET 5: App Launcher (was 5, now 6) */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col min-h-[240px] transition-all relative overflow-hidden" id="card-app-launcher">
-          <div className="absolute top-6 right-6 flex items-center gap-2 text-[var(--accent)] hover:text-[var(--on-surface)] transition-colors cursor-pointer" title="Quick Apps">
-            <Gamepad2 size={20} className="opacity-0" /> {/* Spacer */}
+        {/* WIDGET 5: App Launcher */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all relative overflow-hidden" id="card-app-launcher">
+          <div className="flex justify-between items-center h-[32px]">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
+              <Gamepad2 size={16} />
+              <span>{lang === 'ru' ? 'Приложения' : 'Quick Apps'}</span>
+            </div>
+            <span className="text-[10px] tabular-nums text-[var(--outline)] font-bold">4/4</span>
           </div>
           
-          <div className="grid grid-cols-4 gap-3 my-auto pt-4" id="app-grid">
-            {/* Weather App Shortcut */}
-            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
-              playChime('click');
-              openWeatherWindow();
-            }}>
-              {isMinimized('weather') && <div className="running-pill-mini" />}
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
-                <CloudSun size={24} className="text-white" />
+          <div className="flex-1 flex flex-col justify-center my-auto py-1">
+            <div className="grid grid-cols-4 gap-2" id="app-grid">
+              {/* Weather App Shortcut */}
+              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                playChime('click');
+                openWeatherWindow();
+              }}>
+                {isMinimized('weather') && <div className="running-pill-mini" />}
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
+                  <CloudSun size={18} className="text-white" />
+                </div>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
               </div>
-              <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
+
+              {/* Settings App Shortcut */}
+              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                playChime('click');
+                handleOpenSettings();
+              }}>
+                {settingsMinimized && <div className="running-pill-mini" />}
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
+                  <Settings size={18} className="text-[var(--on-surface)]" />
+                </div>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">Settings</span>
+              </div>
+
+              {/* Calculator App Shortcut */}
+              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                playChime('click');
+                openCalculatorWindow();
+              }}>
+                {calculatorMinimized && <div className="running-pill-mini" />}
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
+                  <Calculator size={18} className="text-white" />
+                </div>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Калькулятор' : 'Calc'}</span>
+              </div>
+
+              {/* Keeps App Shortcut */}
+              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                playChime('click');
+                openKeepsWindow();
+              }}>
+                {keepsMinimized && <div className="running-pill-mini" />}
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
+                  <StickyNote size={18} className="text-[var(--accent)]" />
+                </div>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Заметки' : 'Keeps'}</span>
+              </div>
             </div>
 
-            {/* Settings App Shortcut */}
-            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
-              playChime('click');
-              handleOpenSettings();
-            }}>
-              {settingsMinimized && <div className="running-pill-mini" />}
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
-                <Settings size={24} className="text-[var(--on-surface)]" />
+            {/* Pill under 4 apps */}
+            <div className="mt-2 flex items-center justify-center">
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-dim)]/80 border border-[var(--outline-var)] text-[8.5px] font-extrabold text-[var(--on-surface-var)] shadow-xs select-none">
+                <Sparkles size={10} className="text-[var(--accent)] shrink-0" />
+                <span className="truncate">{lang === 'ru' ? 'Скоро больше приложений...' : 'More apps coming soon...'}</span>
               </div>
-              <span className="text-[9px] font-bold text-[var(--on-surface)]">Settings</span>
-            </div>
-
-            {/* Calculator App Shortcut */}
-            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
-              playChime('click');
-              openCalculatorWindow();
-            }}>
-              {calculatorMinimized && <div className="running-pill-mini" />}
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
-                <Calculator size={24} className="text-white" />
-              </div>
-              <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Калькулятор' : 'Calculator'}</span>
-            </div>
-
-            {/* Keeps App Shortcut — local notes with image support (cache only) */}
-            <div className="relative flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => {
-              playChime('click');
-              openKeepsWindow();
-            }}>
-              {keepsMinimized && <div className="running-pill-mini" />}
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
-                <StickyNote size={24} className="text-[var(--accent)]" />
-              </div>
-              <span className="text-[9px] font-bold text-[var(--on-surface)]">{lang === 'ru' ? 'Заметки' : 'Keeps'}</span>
-            </div>
-
-            {/* Blank Placeholder Apps to match design */}
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--surface-dim)] flex items-center justify-center border border-[var(--outline-var)]"></div>
             </div>
           </div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-[var(--outline)] text-center mt-auto pt-4">
+
+          <span className="text-[9px] font-black uppercase tracking-widest text-[var(--outline)] text-center mt-auto">
             Quick Apps
           </span>
         </div>
 
         {/* PANEL: Quick Links — max 4 (2 default + 2 custom) */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative group" id="panel-links">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative group" id="panel-links">
           <button
             className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
             title={lang === 'ru' ? 'Изменить ссылки' : 'Edit Links'}
@@ -2243,13 +2320,13 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           >
             <Edit2 size={14} />
           </button>
-          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-4">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider h-[32px]">
             <Link2 size={16} />
             <span>{t.ph_links}</span>
             <span className="ml-auto text-[10px] tabular-nums text-[var(--outline)]">{customLinks.length}/{MAX_QUICK_LINKS}</span>
           </div>
 
-          <div className="flex flex-col gap-2 flex-1">
+          <div className="flex flex-col gap-2 flex-1 justify-center my-auto">
             {customLinks.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-[11px] text-[var(--outline)] italic">
                 {lang === 'ru' ? 'Нет ссылок' : 'No links'}
@@ -2263,7 +2340,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                       playChime('click');
                       window.open(link.url, '_blank', 'noopener,noreferrer');
                     }}
-                    className="flex-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
+                    className="flex-1 inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = activePalette.primary;
                       e.currentTarget.style.color = '#fff';
@@ -2281,7 +2358,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                   </button>
                   <button
                     onClick={() => handleCopyLink(link.url)}
-                    className="h-9 w-9 shrink-0 flex items-center justify-center rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                    className="h-8 w-8 shrink-0 flex items-center justify-center rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
                     title={lang === 'ru' ? 'Копировать' : 'Copy Link'}
                   >
                     <Copy size={13} />
@@ -2291,13 +2368,13 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
             )}
           </div>
 
-          <div className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase text-center mt-3">
+          <div className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase text-center mt-auto">
             {t.ph_community}
           </div>
         </div>
 
         {/* PANEL: Quick Toggles — max 4 (theme/language/sound/contrast) */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative group" id="panel-quicktoggles">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative group" id="panel-quicktoggles">
           <button
             className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
             title={lang === 'ru' ? 'Изменить переключатели' : 'Edit Toggles'}
@@ -2308,7 +2385,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           >
             <Edit2 size={14} />
           </button>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between h-[32px]">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
               <span>{t.ph_toggles}</span>
             </div>
@@ -2735,6 +2812,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         onWallpaperChange={(w) => {
           setMainWallpaper(w);
           localStorage.setItem('linkerru_wallpaper', w);
+          setWallpaperApplyNonce(prev => prev + 1);
         }}
         clockType={clockType}
         onClockTypeChange={(type) => {
@@ -2854,6 +2932,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                     onMainWallpaperChange={(wp) => {
                       setMainWallpaper(wp);
                       localStorage.setItem('linkerru_wallpaper', wp);
+                      setWallpaperApplyNonce(prev => prev + 1);
                     }}
                     isAuthenticated={isAuthenticated}
                     nickname={nickname}

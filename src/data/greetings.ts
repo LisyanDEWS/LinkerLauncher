@@ -19,7 +19,7 @@ const morning: GreetingCategory = {
   ru: [
     'Доброе утро, {name}!',
     'С добрым утром, {name}!',
-    'Хорошего утреннего дня, {name}!',
+    'Как настроение этим утром, {name}?',
     'Отличного начала дня, {name}!',
     'Желаем прекрасного утра, {name}!',
     'Пусть утро будет добрым, {name}!',
@@ -31,7 +31,7 @@ const morning: GreetingCategory = {
   en: [
     'Good morning, {name}!',
     'Morning, {name}!',
-    'Have a wonderful morning, {name}!',
+    'How are you feeling this morning, {name}?',
     'Great start to your day, {name}!',
     'Wishing you a bright morning, {name}!',
     'Hope your morning goes well, {name}!',
@@ -48,7 +48,7 @@ const afternoon: GreetingCategory = {
   ru: [
     'Добрый день, {name}!',
     'Хорошего дня, {name}!',
-    'Надеемся, день проходит отлично, {name}!',
+    'Как настроение этим днём, {name}?',
     'Приятного обеда, {name}!',
     'Как проходит твой день, {name}?',
     'Удачного продолжения дня, {name}!',
@@ -60,7 +60,7 @@ const afternoon: GreetingCategory = {
   en: [
     'Good afternoon, {name}!',
     'Have a great afternoon, {name}!',
-    'Hope your day is going well, {name}!',
+    'How are you feeling this afternoon, {name}?',
     'Enjoy your lunch, {name}?',
     'How is your day going, {name}?',
     'Wishing you a productive day, {name}!',
@@ -106,7 +106,7 @@ const night: GreetingCategory = {
   ru: [
     'Доброй ночи, {name}!',
     'Приятных снов, {name}!',
-    'Время отдохнуть, {name}!',
+    'Как настроение этой ночью, {name}?',
     'Сладких снов, {name}!',
     'Спокойной ночи, {name}!',
     'Тихой и спокойной ночи, {name}!',
@@ -118,7 +118,7 @@ const night: GreetingCategory = {
   en: [
     'Good night, {name}!',
     'Sweet dreams, {name}!',
-    'Time to get some rest, {name}!',
+    'How are you doing tonight, {name}?',
     'Have a peaceful night, {name}!',
     'Rest well, {name}!',
     'Wishing you a quiet night, {name}!',
