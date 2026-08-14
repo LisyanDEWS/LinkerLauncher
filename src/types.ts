@@ -53,4 +53,4 @@ export const TOGGLE_IDS = ['theme', 'language', 'sound', 'contrast', 'night_ligh
 export type ToggleId = (typeof TOGGLE_IDS)[number];
 
 /** Maximum number of toggles that can be active in the panel at once. */
-export const MAX_TOGGLES = 4;
+export const MAX_TOGGLES = 5;
