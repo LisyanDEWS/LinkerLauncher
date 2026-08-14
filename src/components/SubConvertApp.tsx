@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Subtitles,
   Search,
@@ -19,7 +19,8 @@ import {
   Trash2,
   Share2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Material3Palette } from '../types';
@@ -86,8 +87,98 @@ export function SubConvertApp({
   const [filterQuery, setFilterQuery] = useState('');
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const primaryColor = activePalette?.primary || 'var(--accent)';
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        if (!content) return;
+
+        let parsedSnippets: Snippet[] = [];
+        const filename = file.name.toLowerCase();
+
+        if (filename.endsWith('.json')) {
+          const parsed = JSON.parse(content);
+          if (Array.isArray(parsed.snippets)) {
+            parsedSnippets = parsed.snippets;
+          } else if (Array.isArray(parsed)) {
+            parsedSnippets = parsed;
+          }
+        } else if (filename.endsWith('.srt') || filename.endsWith('.vtt')) {
+          const blocks = content.replace(/\r\n/g, '\n').split(/\n\s*\n/);
+          for (const block of blocks) {
+            const lines = block.trim().split('\n');
+            if (lines.length >= 2) {
+              const timeLine = lines.find((l) => l.includes('-->'));
+              if (timeLine) {
+                const parts = timeLine.split('-->');
+                const parseSec = (tStr: string) => {
+                  const cleaned = tStr.trim().replace(',', '.');
+                  const tParts = cleaned.split(':');
+                  if (tParts.length === 3) {
+                    return parseFloat(tParts[0]) * 3600 + parseFloat(tParts[1]) * 60 + parseFloat(tParts[2]);
+                  } else if (tParts.length === 2) {
+                    return parseFloat(tParts[0]) * 60 + parseFloat(tParts[1]);
+                  }
+                  return 0;
+                };
+                const start = parseSec(parts[0]);
+                const end = parseSec(parts[1]);
+                const textLines = lines.slice(lines.indexOf(timeLine) + 1).join(' ').trim();
+                if (textLines) {
+                  parsedSnippets.push({
+                    start: Math.round(start * 100) / 100,
+                    duration: Math.round(Math.max(0.5, end - start) * 100) / 100,
+                    text: textLines.replace(/<[^>]*>/g, ''),
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+          parsedSnippets = lines.map((l, i) => ({
+            start: i * 3,
+            duration: 3,
+            text: l,
+          }));
+        }
+
+        if (parsedSnippets.length === 0) {
+          throw new Error(lang === 'ru' ? 'Не удалось прочитать субтитры из файла' : 'Could not parse subtitle file');
+        }
+
+        setData({
+          videoId: file.name.replace(/\.[^/.]+$/, ''),
+          title: file.name,
+          author: lang === 'ru' ? 'Импортированный файл' : 'Imported File',
+          thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=480&auto=format&fit=crop&q=60',
+          language: 'Auto',
+          languageCode: 'auto',
+          isGenerated: false,
+          snippetCount: parsedSnippets.length,
+          text: parsedSnippets.map((s) => s.text).join(' '),
+          snippets: parsedSnippets,
+          availableLanguages: [{ code: 'auto', name: 'Auto', generated: false }],
+        });
+
+        setError(null);
+        playChime?.('victory');
+        triggerToast?.(lang === 'ru' ? `Файл ${file.name} импортирован (${parsedSnippets.length} строк)` : `Imported ${file.name} (${parsedSnippets.length} lines)`);
+      } catch (err: any) {
+        setError(err?.message || (lang === 'ru' ? 'Ошибка чтения файла' : 'Failed to read file'));
+        playChime?.('alert');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleFetch = async (targetLang?: string, targetUrl?: string) => {
     const queryUrl = (targetUrl !== undefined ? targetUrl : videoUrl).trim();
@@ -213,6 +304,15 @@ export function SubConvertApp({
 
   return (
     <div className="h-full flex flex-col bg-[var(--surface)] text-[var(--on-surface)] overflow-y-auto select-text font-sans">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".srt,.vtt,.json,.txt"
+        className="hidden"
+      />
+
       {/* HEADER BAR */}
       <div className="p-4 md:p-6 border-b border-[var(--outline-var)] bg-[var(--surface-dim)]/40 shrink-0">
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -243,20 +343,31 @@ export function SubConvertApp({
             </div>
           </div>
 
-          {data && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setData(null);
-                setVideoUrl('');
-                setError(null);
-                playChime?.('reset');
-              }}
+              onClick={() => fileInputRef.current?.click()}
               className="px-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] hover:bg-[var(--container-high)] text-xs font-bold text-[var(--on-surface)] transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              title={lang === 'ru' ? 'Импортировать .srt / .vtt / .txt файл' : 'Import .srt / .vtt / .txt file'}
             >
-              <RefreshCw size={13} />
-              <span className="hidden sm:inline">{lang === 'ru' ? 'Новое видео' : 'New Video'}</span>
+              <Upload size={13} />
+              <span className="hidden sm:inline">{lang === 'ru' ? 'Импорт файла' : 'Import File'}</span>
             </button>
-          )}
+
+            {data && (
+              <button
+                onClick={() => {
+                  setData(null);
+                  setVideoUrl('');
+                  setError(null);
+                  playChime?.('reset');
+                }}
+                className="px-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] hover:bg-[var(--container-high)] text-xs font-bold text-[var(--on-surface)] transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <RefreshCw size={13} />
+                <span className="hidden sm:inline">{lang === 'ru' ? 'Новое видео' : 'New Video'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* INPUT FORM */}
@@ -352,7 +463,16 @@ export function SubConvertApp({
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <div className="flex-1">
             <span className="font-bold">{lang === 'ru' ? 'Не удалось извлечь субтитры:' : 'Could not extract subtitles:'}</span>
-            <p className="mt-0.5 text-red-300">{error}</p>
+            <p className="mt-0.5 text-red-300 leading-relaxed">{error}</p>
+            <div className="mt-2.5 flex items-center gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <Upload size={12} />
+                <span>{lang === 'ru' ? 'Загрузить файл .srt / .vtt / .txt вручную' : 'Upload .srt / .vtt / .txt file manually'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
