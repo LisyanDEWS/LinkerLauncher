@@ -270,6 +270,45 @@ export function WindowManagerLayer({
 
   const ctxWin = ctxMenu ? wm.windows.find((w) => w.id === ctxMenu.id) : null;
 
+  // Auto-hide taskbar capsule after 5s, pop back up when mouse comes near bottom (< 100px)
+  const [isTaskbarVisible, setIsTaskbarVisible] = useState(true);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetHideTimer = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    setIsTaskbarVisible(true);
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsTaskbarVisible(false);
+    }, 5000);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const distFromBottom = window.innerHeight - e.clientY;
+      if (distFromBottom <= 100) {
+        resetHideTimer();
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    resetHideTimer();
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [resetHideTimer]);
+
+  useEffect(() => {
+    if (taskbarItems.length > 0) {
+      resetHideTimer();
+    }
+  }, [taskbarItems.length, activeWin?.id, resetHideTimer]);
+
   return (
     <>
       {/* Windows */}
@@ -299,10 +338,22 @@ export function WindowManagerLayer({
         {!isMobileLayout && taskbarItems.length > 0 && (
           <motion.div
             initial={{ y: 60, opacity: 0, scale: 0.95 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
+            animate={
+              isTaskbarVisible
+                ? { y: 0, opacity: 1, scale: 1 }
+                : { y: 60, opacity: 0, scale: 0.95 }
+            }
             exit={{ y: 60, opacity: 0, scale: 0.95 }}
             transition={{ type: 'spring', damping: 22, stiffness: 280 }}
             className="fixed bottom-3 left-1/2 z-[190] -translate-x-1/2"
+            style={{ pointerEvents: isTaskbarVisible ? 'auto' : 'none' }}
+            onMouseEnter={() => {
+              if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+              setIsTaskbarVisible(true);
+            }}
+            onMouseLeave={() => {
+              resetHideTimer();
+            }}
           >
             <div className="flex items-center gap-1 rounded-[1.25rem] border bg-[var(--surface)] p-1.5"
               style={{

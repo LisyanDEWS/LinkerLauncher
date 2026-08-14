@@ -75,6 +75,7 @@ import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SupportQRModal, CONTACTS } from './components/SupportApp';
 import { LinkerRouteApp } from './components/LinkerRouteApp';
+import { AdminConsoleModal } from './components/AdminConsoleModal';
 
 const Grain = () => (
   <div 
@@ -88,6 +89,7 @@ const Grain = () => (
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   // OS-style window manager for popup apps (Agno, Settings, Lisyan, Weather, Calculator)
   const wm = useWindows();
@@ -1347,6 +1349,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             activeToggles={activeToggles}
             onTogglesChange={handleTogglesChange}
             isOptimizedEngine={isOptimizedEngine}
+            onTriggerAdmin={() => setIsAdminOpen(true)}
             onOptimizedEngineToggle={() => {
               const n = !isOptimizedEngine;
               setIsOptimizedEngine(n);
@@ -2318,9 +2321,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0" style={{ backgroundColor: activePalette.primary }}>
               <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB" className="w-full h-full object-contain brightness-0 invert" />
             </div>
-            <div className="bg-[var(--surface)] border border-[var(--outline-var)] px-2.5 py-1 rounded-full text-[9px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
-              {lang === 'ru' ? 'Игры' : 'Games'}
-            </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Nexus Game Box</h3>
@@ -2347,10 +2347,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
               <Subtitles size={22} />
-            </div>
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[9px] font-black text-[var(--accent)] select-none">
-              <Sparkles size={11} />
-              <span>YouTube</span>
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -3047,7 +3043,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     activeToggles={activeToggles}
                     onTogglesChange={handleTogglesChange}
                     isOptimizedEngine={isOptimizedEngine}
-                    onOptimizedEngineToggle={() => {
+                    onTriggerAdmin={() => setIsAdminOpen(true)}
+            onOptimizedEngineToggle={() => {
                       const n = !isOptimizedEngine;
                       setIsOptimizedEngine(n);
                       localStorage.setItem('linkerru_optimized_engine', String(n));

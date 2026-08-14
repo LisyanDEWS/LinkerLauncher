@@ -93,6 +93,7 @@ interface FullSettingsModalProps {
   onTimeFormatChange?: (tf: '12h' | '24h') => void;
   tempUnit?: 'C' | 'F';
   onTempUnitChange?: (tu: 'C' | 'F') => void;
+  onTriggerAdmin?: () => void;
 }
 
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account';
@@ -146,6 +147,7 @@ export default function FullSettingsModal({
   onTimeFormatChange,
   tempUnit = 'C',
   onTempUnitChange,
+  onTriggerAdmin,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
@@ -391,8 +393,12 @@ export default function FullSettingsModal({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (e.target.value.trim() !== '') {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    if (val === 'adminhluxa' && onTriggerAdmin) {
+                      onTriggerAdmin();
+                      setSearchQuery('');
+                    } else if (val.trim() !== '') {
                       setShowMobileContent(true);
                     }
                   }}
