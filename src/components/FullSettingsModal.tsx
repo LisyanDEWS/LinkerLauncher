@@ -25,6 +25,15 @@ import {
   Lock,
   Loader2,
   KeyRound,
+  Subtitles,
+  MessageCircle,
+  StickyNote,
+  Calculator,
+  Gamepad2,
+  Puzzle,
+  Smartphone,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
@@ -81,8 +90,6 @@ interface FullSettingsModalProps {
   isAuthenticated: boolean;
   nickname: string;
   onNicknameChange: (newNick: string) => void;
-  customLinks: QuickLink[];
-  onLinksChange: (links: QuickLink[]) => void;
   activeToggles: ToggleId[];
   onTogglesChange: (toggles: ToggleId[]) => void;
   isOptimizedEngine: boolean;
@@ -94,9 +101,13 @@ interface FullSettingsModalProps {
   tempUnit?: 'C' | 'F';
   onTempUnitChange?: (tu: 'C' | 'F') => void;
   onTriggerAdmin?: () => void;
+  appNotifPermissions?: Record<string, 'allowed' | 'denied'>;
+  onAppNotifPermissionToggle?: (appId: string, allowed: boolean) => void;
+  isWeatherDisabled?: boolean;
+  onWeatherDisabledToggle?: (disabled: boolean) => void;
 }
 
-type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account';
+type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account';
 
 export default function FullSettingsModal({
   isOpen,
@@ -135,8 +146,6 @@ export default function FullSettingsModal({
   isAuthenticated,
   nickname,
   onNicknameChange,
-  customLinks,
-  onLinksChange,
   activeToggles,
   onTogglesChange,
   isOptimizedEngine,
@@ -148,6 +157,10 @@ export default function FullSettingsModal({
   tempUnit = 'C',
   onTempUnitChange,
   onTriggerAdmin,
+  appNotifPermissions = {},
+  onAppNotifPermissionToggle,
+  isWeatherDisabled = false,
+  onWeatherDisabledToggle,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
@@ -395,10 +408,7 @@ export default function FullSettingsModal({
                   onChange={(e) => {
                     const val = e.target.value;
                     setSearchQuery(val);
-                    if (val === 'adminhluxa' && onTriggerAdmin) {
-                      onTriggerAdmin();
-                      setSearchQuery('');
-                    } else if (val.trim() !== '') {
+                    if (val.trim() !== '') {
                       setShowMobileContent(true);
                     }
                   }}
@@ -512,19 +522,6 @@ export default function FullSettingsModal({
                 </span>
 
                 <button
-                  onClick={() => selectTab('links')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'links' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-links-btn"
-                >
-                  <Link2 size={16} />
-                  <span>{lang === 'ru' ? 'Ссылки' : 'Links'}</span>
-                </button>
-
-                <button
                   onClick={() => selectTab('toggles')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'toggles' && !searchQuery
@@ -612,8 +609,6 @@ export default function FullSettingsModal({
                     ) : activeTab === 'security' ? (
                       lang === 'ru' ? 'Безопасность' : 'Security'
                     ) : activeTab === 'links' ? (
-                      lang === 'ru' ? 'Пользовательские ссылки' : 'Custom Links'
-                    ) : activeTab === 'toggles' ? (
                       lang === 'ru' ? 'Настройка переключателей' : 'Quick Toggles Setup'
                     ) : (
                       t.page_about
@@ -1175,7 +1170,7 @@ export default function FullSettingsModal({
 
                     {/* NOTIFICATIONS TAB CONTENT */}
                     {activeTab === 'notifications' && (
-                      <div className="space-y-4" id="page-notifications-view">
+                      <div className="space-y-6" id="page-notifications-view">
                         <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
                           {t.notif_style}
                         </h4>
@@ -1200,6 +1195,98 @@ export default function FullSettingsModal({
                             onChange={onToastToggle} 
                             color={activePalette.primary} 
                           />
+                        </div>
+
+                        {/* App Notifications Permissions List */}
+                        <div className="space-y-3">
+                          <div className="pl-1.5">
+                            <h5 className="text-xs font-bold text-[var(--on-surface)]">
+                              {lang === 'ru' ? 'Уведомления от приложений' : 'App Notifications'}
+                            </h5>
+                            <p className="text-[11px] text-[var(--on-surface-var)] mt-0.5">
+                              {lang === 'ru'
+                                ? 'Управляйте разрешениями на отправку уведомлений для внутренних приложений и расширений.'
+                                : 'Manage notification permissions for internal apps and extensions.'}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {[
+                              { id: 'subconvert', name: 'Сабконверт', nameEn: 'SubConvert', Icon: Subtitles },
+                              { id: 'lisyan', name: 'Lisyan Connect', nameEn: 'Lisyan Connect', Icon: MessageCircle },
+                              { id: 'keeps', name: 'Заметки (Keeps)', nameEn: 'Notes (Keeps)', Icon: StickyNote },
+                              { id: 'calculator', name: 'Калькулятор', nameEn: 'Calculator', Icon: Calculator },
+                              { id: 'nexus', name: 'Nexus Game Box', nameEn: 'Nexus Game Box', Icon: Gamepad2 },
+                              { id: 'extensions', name: 'Расширения', nameEn: 'Extensions', Icon: Puzzle },
+                            ].map((appItem) => {
+                              const isAllowed = appNotifPermissions[appItem.id] !== 'denied';
+                              const AppIcon = appItem.Icon;
+                              return (
+                                <div
+                                  key={appItem.id}
+                                  className="flex items-center justify-between p-3.5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                                      <AppIcon size={16} />
+                                    </div>
+                                    <span className="text-xs font-bold text-[var(--on-surface)]">
+                                      {lang === 'ru' ? appItem.name : appItem.nameEn}
+                                    </span>
+                                  </div>
+                                  <SquashToggle
+                                    checked={isAllowed}
+                                    onChange={() => {
+                                      if (onAppNotifPermissionToggle) {
+                                        onAppNotifPermissionToggle(appItem.id, !isAllowed);
+                                      }
+                                    }}
+                                    color={activePalette.primary}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Device-Level System Notifications Section */}
+                        <div className="p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                                <Smartphone size={18} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Системные уведомления устройства' : 'Device System Notifications'}
+                                </div>
+                                <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                  {typeof window !== 'undefined' && 'Notification' in window
+                                    ? Notification.permission === 'granted'
+                                      ? (lang === 'ru' ? 'Разрешено в браузере' : 'Allowed in browser')
+                                      : Notification.permission === 'denied'
+                                      ? (lang === 'ru' ? 'Заблокировано в браузере' : 'Blocked in browser')
+                                      : (lang === 'ru' ? 'Не запрошено' : 'Not requested')
+                                    : (lang === 'ru' ? 'Не поддерживается' : 'Not supported')}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (typeof window !== 'undefined' && 'Notification' in window) {
+                                  Notification.requestPermission();
+                                }
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-[var(--surface-dim)] hover:bg-[var(--surface-bright)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer"
+                            >
+                              {lang === 'ru' ? 'Настроить' : 'Configure'}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-[var(--on-surface-var)] leading-normal pt-1 border-t border-[var(--outline-var)]/50">
+                            {lang === 'ru'
+                              ? 'Включение системных уведомлений устройства необязательно и никак не повлияет на стабильность и работу приложения.'
+                              : 'Device notifications setting is optional and will not affect app stability or operation.'}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1389,89 +1476,8 @@ export default function FullSettingsModal({
                         </div>
                       </div>
                     )}
+                    {activeTab === "toggles" && (
                     
-                    {activeTab === 'links' && (
-                      <div className="space-y-6" id="page-links-view">
-                        <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-4">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-bold text-[var(--on-surface)]">
-                              {lang === 'ru' ? 'Быстрые ссылки' : 'Quick Links'}
-                            </div>
-                            <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tabular-nums">
-                              {customLinks.length}/{MAX_QUICK_LINKS}
-                            </span>
-                          </div>
-
-                          <p className="text-[11px] text-[var(--on-surface-var)]">
-                            {lang === 'ru'
-                              ? `Первые 2 ссылки — стандартные (редактируются, но не удаляются). Можно добавить до ${MAX_QUICK_LINKS - DEFAULT_QUICK_LINKS.length} своих.`
-                              : `First 2 links are default (editable but not removable). You can add up to ${MAX_QUICK_LINKS - DEFAULT_QUICK_LINKS.length} custom ones.`}
-                          </p>
-
-                          <div className="flex flex-col gap-3">
-                            {customLinks.map((link, idx) => {
-                              const isDefault = idx < DEFAULT_QUICK_LINKS.length;
-                              return (
-                                <div key={idx} className="flex items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={link.name}
-                                    onChange={(e) => {
-                                      const next = [...customLinks];
-                                      next[idx] = { ...next[idx], name: e.target.value };
-                                      onLinksChange(next);
-                                    }}
-                                    placeholder={lang === 'ru' ? 'Название' : 'Name'}
-                                    className="flex-1 min-w-0 text-xs py-2 px-3 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--accent)]"
-                                  />
-                                  <input
-                                    type="url"
-                                    value={link.url}
-                                    onChange={(e) => {
-                                      const next = [...customLinks];
-                                      next[idx] = { ...next[idx], url: e.target.value };
-                                      onLinksChange(next);
-                                    }}
-                                    placeholder="https://"
-                                    className="flex-[2] min-w-0 text-xs py-2 px-3 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-xl outline-none focus:border-[var(--accent)]"
-                                  />
-                                  {isDefault ? (
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--outline)]" title={lang === 'ru' ? 'Нельзя удалить' : 'Cannot delete'}>
-                                      <Lock size={13} />
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        const next = customLinks.filter((_, i) => i !== idx);
-                                        onLinksChange(next);
-                                      }}
-                                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
-                                      title={lang === 'ru' ? 'Удалить' : 'Delete'}
-                                    >
-                                      <X size={14} />
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })}
-
-                            {customLinks.length < MAX_QUICK_LINKS && (
-                              <button
-                                onClick={() => {
-                                  const next = [...customLinks, { name: '', url: 'https://' }];
-                                  onLinksChange(next);
-                                }}
-                                className="w-full py-2.5 rounded-xl bg-[var(--surface-dim)] border border-dashed border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] hover:bg-[var(--surface)] transition-colors mt-2"
-                              >
-                                + {lang === 'ru' ? 'Добавить ссылку' : 'Add Link'}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {activeTab === 'toggles' && (
                       <div className="space-y-6" id="page-toggles-view">
                         <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-4">
                           <div className="flex items-center justify-between">
@@ -1512,6 +1518,56 @@ export default function FullSettingsModal({
                               );
                             })}
                           </div>
+                        </div>
+
+                        {/* Disabled Components Section */}
+                        <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-4">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-bold text-[var(--on-surface)]">
+                              {lang === 'ru' ? 'Отключенные компоненты' : 'Disabled Components'}
+                            </div>
+                            <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tabular-nums">
+                              {isWeatherDisabled ? '1' : '0'}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-[var(--on-surface-var)]">
+                            {lang === 'ru'
+                              ? 'Компоненты и виджеты, выключенные вручную. Вы можете повторно включить их отсюда.'
+                              : 'Manually disabled components and widgets. You can re-enable them here.'}
+                          </p>
+
+                          {isWeatherDisabled ? (
+                            <div className="flex items-center justify-between p-3.5 bg-[var(--surface-dim)] rounded-xl border border-[var(--outline-var)]">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                                  <CloudSun size={18} />
+                                </div>
+                                <div>
+                                  <div className="text-xs font-bold text-[var(--on-surface)]">
+                                    {lang === 'ru' ? 'Виджет погоды' : 'Weather Widget'}
+                                  </div>
+                                  <div className="text-[10px] text-[var(--on-surface-var)]">
+                                    {lang === 'ru' ? 'Отображение погоды и температуры' : 'Weather and temperature display'}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  if (onWeatherDisabledToggle) {
+                                    onWeatherDisabledToggle(false);
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold hover:opacity-90 transition-all shadow-sm cursor-pointer"
+                              >
+                                {lang === 'ru' ? 'Включить' : 'Enable'}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="p-4 bg-[var(--surface-dim)] rounded-xl border border-[var(--outline-var)] text-center text-xs text-[var(--on-surface-var)] font-medium">
+                              {lang === 'ru' ? 'Нет отключенных компонентов' : 'No disabled components'}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

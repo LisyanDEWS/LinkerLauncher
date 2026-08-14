@@ -63,6 +63,8 @@ import WeatherModal from './components/WeatherModal';
 import NexusGameBox from './components/NexusGameBox';
 import SettingsModal from './components/SettingsModal';
 import FullSettingsModal from './components/FullSettingsModal';
+import { WeatherLocationErrorModal } from './components/WeatherLocationErrorModal';
+import { AppNotifPromptModal } from './components/AppNotifPromptModal';
 import { LoginScreen } from './components/LoginScreen';
 import AppLoader from './components/AppLoader';
 import { useWindows, WindowManagerLayer } from './components/WindowManager';
@@ -75,7 +77,6 @@ import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SupportQRModal, CONTACTS } from './components/SupportApp';
 import { LinkerRouteApp } from './components/LinkerRouteApp';
-import { AdminConsoleModal } from './components/AdminConsoleModal';
 
 const Grain = () => (
   <div 
@@ -89,7 +90,6 @@ const Grain = () => (
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   // OS-style window manager for popup apps (Agno, Settings, Lisyan, Weather, Calculator)
   const wm = useWindows();
@@ -306,7 +306,7 @@ export default function App() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isWeatherOpen, setIsWeatherOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account'>('appearance');
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account'>('appearance');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   // Login screen preview overlay (dev tool — does NOT log out)
@@ -339,6 +339,44 @@ export default function App() {
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [topbarTemp, setTopbarTemp] = useState<number | null>(null);
 
+  // Weather widget states & persistence
+  const [isWeatherDisabled, setIsWeatherDisabled] = useState<boolean>(() => {
+    return localStorage.getItem('linkerru_weather_disabled') === 'true';
+  });
+  const [weatherLocationMode, setWeatherLocationMode] = useState<'auto' | 'custom'>(() => {
+    return (localStorage.getItem('linkerru_weather_location_mode') as 'auto' | 'custom') || 'auto';
+  });
+  const [weatherCustomCity, setWeatherCustomCity] = useState<string>(() => {
+    return localStorage.getItem('linkerru_weather_custom_city') || '';
+  });
+  const [weatherError, setWeatherError] = useState<boolean>(false);
+  const [isWeatherOptionsOpen, setIsWeatherOptionsOpen] = useState<boolean>(false);
+
+  // App notification permissions state & prompt modal
+  const [appNotifPermissions, setAppNotifPermissions] = useState<Record<string, 'allowed' | 'denied'>>(() => {
+    try {
+      const saved = localStorage.getItem('linkerru_app_notifications');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [pendingNotifPromptApp, setPendingNotifPromptApp] = useState<{ id: string; name: string } | null>(null);
+
+  const handleAppNotifPermissionToggle = (appId: string, allowed: boolean) => {
+    setAppNotifPermissions((prev) => {
+      const updated = { ...prev, [appId]: allowed ? ('allowed' as const) : ('denied' as const) };
+      localStorage.setItem('linkerru_app_notifications', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const checkAndPromptAppNotifPermission = (appId: string, appName: string) => {
+    if (appNotifPermissions[appId] === undefined) {
+      setPendingNotifPromptApp({ id: appId, name: appName });
+    }
+  };
+
   useEffect(() => {
     const syncUnit = () => {
       const saved = (localStorage.getItem('linkerru_temp_unit') as 'C' | 'F') || 'C';
@@ -346,26 +384,60 @@ export default function App() {
     };
     window.addEventListener('linkerru_temp_unit_changed', syncUnit);
 
+    const fetchTopWeatherByCity = async (cityName: string) => {
+      try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1`);
+        const geoData = await geoRes.json();
+        if (geoData && geoData.results && geoData.results.length > 0) {
+          const { latitude, longitude, name } = geoData.results[0];
+          setWeatherCustomCity(name);
+          localStorage.setItem('linkerru_weather_custom_city', name);
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m`);
+          const data = await res.json();
+          if (data && data.current && data.current.temperature_2m !== undefined) {
+            setTopbarTemp(Math.round(data.current.temperature_2m));
+            setWeatherError(false);
+          } else {
+            setWeatherError(true);
+          }
+        } else {
+          setWeatherError(true);
+        }
+      } catch (err) {
+        console.warn('Failed custom city weather fetch:', err);
+        setWeatherError(true);
+      }
+    };
+
     const fetchTopWeather = async (lat: string, lon: string) => {
       try {
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`);
         const data = await res.json();
         if (data && data.current && data.current.temperature_2m !== undefined) {
           setTopbarTemp(Math.round(data.current.temperature_2m));
+          setWeatherError(false);
+        } else {
+          setWeatherError(true);
         }
       } catch (err) {
         console.warn('Failed to fetch topbar weather', err);
+        setWeatherError(true);
       }
     };
 
     const loadWeather = () => {
+      if (isWeatherDisabled) return;
+      if (weatherLocationMode === 'custom' && weatherCustomCity) {
+        fetchTopWeatherByCity(weatherCustomCity);
+        return;
+      }
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => fetchTopWeather(pos.coords.latitude.toString(), pos.coords.longitude.toString()),
-          () => fetchTopWeather('52.52', '13.41')
+          () => setWeatherError(true)
         );
       } else {
-        fetchTopWeather('52.52', '13.41');
+        setWeatherError(true);
       }
     };
 
@@ -376,7 +448,7 @@ export default function App() {
       window.removeEventListener('linkerru_temp_unit_changed', syncUnit);
       clearInterval(interval);
     };
-  }, []);
+  }, [isWeatherDisabled, weatherLocationMode, weatherCustomCity]);
 
   // --- Toast Manager State ---
   const [pomodoroRunning, setPomodoroRunning] = useState(false);
@@ -1255,7 +1327,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     localStorage.setItem('linkerru_theme', final);
   };
 
-  const handleOpenSettings = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account' = 'appearance') => {
+  const handleOpenSettings = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account' = 'appearance') => {
     playChime('click');
     openSettingsWindow(tab);
   };
@@ -1293,7 +1365,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
-  const openSettingsWindow = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'links' | 'toggles' | 'developer' | 'account' = 'appearance') => {
+  const openSettingsWindow = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account' = 'appearance') => {
     setSettingsInitialTab(tab);
     wm.open({
       id: 'settings',
@@ -1344,12 +1416,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             isAuthenticated={isAuthenticated}
             nickname={nickname}
             onNicknameChange={(n) => { setNickname(n); localStorage.setItem('linkerru_nickname', n); }}
-            customLinks={customLinks}
-            onLinksChange={handleLinksChange}
             activeToggles={activeToggles}
             onTogglesChange={handleTogglesChange}
             isOptimizedEngine={isOptimizedEngine}
-            onTriggerAdmin={() => setIsAdminOpen(true)}
             onOptimizedEngineToggle={() => {
               const n = !isOptimizedEngine;
               setIsOptimizedEngine(n);
@@ -1383,6 +1452,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const handleOpenSubConvert = () => {
     playChime('click');
+    checkAndPromptAppNotifPermission('subconvert', 'Сабконверт');
     wm.open({
       id: 'subconvert',
       title: 'SubConvert',
@@ -1407,6 +1477,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const handleOpenExtensions = () => {
     playChime('click');
+    checkAndPromptAppNotifPermission('extensions', 'Расширения');
     wm.open({
       id: 'extensions',
       title: lang === 'ru' ? 'Расширения' : 'Extensions',
@@ -1421,6 +1492,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openLisyanWindow = () => {
+    checkAndPromptAppNotifPermission('lisyan', 'Lisyan Connect');
     wm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
@@ -1455,6 +1527,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const [activeSupportContactId, setActiveSupportContactId] = useState<string | null>(null);
 
   const openCalculatorWindow = () => {
+    checkAndPromptAppNotifPermission('calculator', 'Калькулятор');
     wm.open({
       id: 'calculator',
       title: lang === 'ru' ? 'Калькулятор' : 'Calculator',
@@ -1469,6 +1542,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openKeepsWindow = () => {
+    checkAndPromptAppNotifPermission('keeps', 'Заметки');
     wm.open({
       id: 'keeps',
       title: lang === 'ru' ? 'Заметки' : 'Keeps',
@@ -1532,6 +1606,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openWeatherWindow = () => {
+    if (isWeatherDisabled || weatherError) {
+      setIsWeatherOptionsOpen(true);
+      return;
+    }
     wm.open({
       id: 'weather',
       title: lang === 'ru' ? 'Погода' : 'Weather',
@@ -1554,6 +1632,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openNexusGameBox = () => {
+    checkAndPromptAppNotifPermission('nexus', 'Nexus Game Box');
     wm.open({
       id: 'nexusgamebox',
       title: 'Nexus Game Box',
@@ -2054,21 +2133,36 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       <header className="flex justify-between items-center max-w-7xl mx-auto w-full mb-8 flex-wrap gap-4" id="app-topbar">
         <div className="flex flex-wrap items-center gap-3">
           {/* Weather Pill */}
-          <button
-            onClick={() => {
-              playChime('click');
-              openWeatherWindow();
-            }}
-            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
-            id="topbar-weather-pill"
-          >
-            <CloudSun size={16} className="text-[var(--on-surface-var)]" />
-            <span>
-              {topbarTemp !== null
-                ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
-                : (tempUnit === 'F' ? '--°F' : '--°C')}
-            </span>
-          </button>
+          {!isWeatherDisabled && (
+            <button
+              onClick={() => {
+                playChime('click');
+                if (weatherError) {
+                  setIsWeatherOptionsOpen(true);
+                } else {
+                  openWeatherWindow();
+                }
+              }}
+              className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+              id="topbar-weather-pill"
+            >
+              {weatherError ? (
+                <>
+                  <div className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-500 font-bold">{lang === 'ru' ? 'Ошибка' : 'Error'}</span>
+                </>
+              ) : (
+                <>
+                  <CloudSun size={16} className="text-[var(--on-surface-var)]" />
+                  <span>
+                    {topbarTemp !== null
+                      ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
+                      : (tempUnit === 'F' ? '--°F' : '--°C')}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Calendar Pill */}
           <button
@@ -2409,16 +2503,25 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="flex-1 flex flex-col justify-center my-auto py-1">
             <div className="grid grid-cols-4 gap-2" id="app-grid">
               {/* Weather App Shortcut */}
-              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
-                playChime('click');
-                openWeatherWindow();
-              }}>
-                {isMinimized('weather') && <div className="running-pill-mini" />}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
-                  <CloudSun size={18} className="text-white" />
+              {!isWeatherDisabled && (
+                <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                  playChime('click');
+                  if (weatherError) {
+                    setIsWeatherOptionsOpen(true);
+                  } else {
+                    openWeatherWindow();
+                  }
+                }}>
+                  {isMinimized('weather') && <div className="running-pill-mini" />}
+                  <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
+                    <CloudSun size={18} className="text-white" />
+                    {weatherError && (
+                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white border border-[var(--surface)]">!</span>
+                    )}
+                  </div>
+                  <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
                 </div>
-                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
-              </div>
+              )}
 
               {/* Settings App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
@@ -3038,12 +3141,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                       setNickname(n);
                       localStorage.setItem('linkerru_nickname', n);
                     }}
-                    customLinks={customLinks}
-                    onLinksChange={handleLinksChange}
                     activeToggles={activeToggles}
                     onTogglesChange={handleTogglesChange}
                     isOptimizedEngine={isOptimizedEngine}
-                    onTriggerAdmin={() => setIsAdminOpen(true)}
             onOptimizedEngineToggle={() => {
                       const n = !isOptimizedEngine;
                       setIsOptimizedEngine(n);
@@ -3152,6 +3252,37 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         )}
       </AnimatePresence>
 
+      {/* Weather Location / Options Modal */}
+      <WeatherLocationErrorModal
+        isOpen={isWeatherOptionsOpen}
+        onClose={() => setIsWeatherOptionsOpen(false)}
+        lang={lang}
+        currentCity={weatherCustomCity}
+        locationMode={weatherLocationMode}
+        onSetCustomCity={(city) => {
+          setWeatherLocationMode('custom');
+          setWeatherCustomCity(city);
+          localStorage.setItem('linkerru_weather_location_mode', 'custom');
+          localStorage.setItem('linkerru_weather_custom_city', city);
+          setWeatherError(false);
+        }}
+        onDisableWidget={() => {
+          setIsWeatherDisabled(true);
+          localStorage.setItem('linkerru_weather_disabled', 'true');
+        }}
+      />
+
+      {/* Internal App Notification Permission Prompt Modal */}
+      <AppNotifPromptModal
+        isOpen={!!pendingNotifPromptApp}
+        appId={pendingNotifPromptApp?.id || ''}
+        appName={pendingNotifPromptApp?.name || ''}
+        lang={lang}
+        onRespond={(appId, allowed) => {
+          handleAppNotifPermissionToggle(appId, allowed);
+          setPendingNotifPromptApp(null);
+        }}
+      />
 
     </motion.div>
     </>

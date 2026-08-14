@@ -57,7 +57,27 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
   useEffect(() => {
     if (!isOpen) return;
 
-    const fetchByLocation = () => {
+    const fetchByLocation = async () => {
+      const mode = localStorage.getItem('linkerru_weather_location_mode');
+      const customCity = localStorage.getItem('linkerru_weather_custom_city');
+
+      if (mode === 'custom' && customCity) {
+        try {
+          const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(customCity)}&count=1`);
+          const geoData = await geoRes.json();
+          if (geoData && geoData.results && geoData.results.length > 0) {
+            const { latitude, longitude } = geoData.results[0];
+            setLatStr(latitude.toString());
+            setLonStr(longitude.toString());
+            lastCoordsRef.current = { lat: latitude, lon: longitude };
+            loadWeather(latitude, longitude);
+            return;
+          }
+        } catch (e) {
+          console.warn('Failed custom city geocoding in modal:', e);
+        }
+      }
+
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
