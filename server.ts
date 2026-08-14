@@ -2,6 +2,9 @@ import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import { createServer as createViteServer } from 'vite';
+import { db } from './src/db/index';
+import { transcripts } from './src/db/schema';
+import { desc, eq } from 'drizzle-orm';
 
 const DEFAULT_LANGUAGES = ['ru', 'en'];
 const INNERTUBE_API_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
@@ -157,187 +160,42 @@ function parseCaptionData(raw: string) {
   return snippets;
 }
 
-// Multi-strategy robust transcript retriever
 async function getTranscript(videoId: string, preferredLanguages?: string | string[]) {
   const oembed = await fetchVideoOEmbed(videoId);
-  const targetLanguages = normalizeLanguages(preferredLanguages);
-  const requestedLang = targetLanguages[0] || 'en';
+  const languages = normalizeLanguages(preferredLanguages);
 
-  let snippets: { start: number; duration: number; text: string }[] = [];
-  let languageName = requestedLang === 'ru' ? 'Русский' : 'English';
-  let languageCode = requestedLang;
+  let transcript: any;
+  let language = "en";
+  let languageCode = "en";
   let isGenerated = false;
-  let availableLanguages: { code: string; name: string; generated: boolean }[] = [];
+  let snippets: { start: number; duration: number; text: string }[] = [];
+  let lastError: any;
 
-  // Strategy 1: Try youtube-transcript-plus
   try {
-    const { YoutubeTranscript } = await import('youtube-transcript-plus');
+    const { YoutubeTranscript } = await import("youtube-transcript");
+    const result = await YoutubeTranscript.fetchTranscript(videoId, {
+      lang: languages[0],
+    });
+    transcript = result;
+  } catch (error: any) {
     try {
-      const res = await YoutubeTranscript.fetchTranscript(videoId, { lang: requestedLang });
-      if (res && res.length > 0) {
-        snippets = res.map((r: any) => ({
-          start: Math.round((r.offset || 0) * 100) / 100,
-          duration: Math.round((r.duration || 0) * 100) / 100,
-          text: decodeHtmlEntities(r.text || '').replace(/\s+/g, ' ').trim(),
-        })).filter((s: any) => Boolean(s.text));
-      }
-    } catch {
-      // Fallback without strict language constraint
-      const res = await YoutubeTranscript.fetchTranscript(videoId);
-      if (res && res.length > 0) {
-        snippets = res.map((r: any) => ({
-          start: Math.round((r.offset || 0) * 100) / 100,
-          duration: Math.round((r.duration || 0) * 100) / 100,
-          text: decodeHtmlEntities(r.text || '').replace(/\s+/g, ' ').trim(),
-        })).filter((s: any) => Boolean(s.text));
-      }
-    }
-  } catch {
-    // Proceed to next strategy
-  }
-
-  // Strategy 2: Try youtube-transcript
-  if (snippets.length === 0) {
-    try {
-      const { YoutubeTranscript: YT } = await import('youtube-transcript');
-      try {
-        const res = await YT.fetchTranscript(videoId, { lang: requestedLang });
-        if (res && res.length > 0) {
-          snippets = res.map((r: any) => ({
-            start: Math.round(((r.offset || 0) / 1000) * 100) / 100,
-            duration: Math.round(((r.duration || 0) / 1000) * 100) / 100,
-            text: decodeHtmlEntities(r.text || '').replace(/\s+/g, ' ').trim(),
-          })).filter((s: any) => Boolean(s.text));
-        }
-      } catch {
-        const res = await YT.fetchTranscript(videoId);
-        if (res && res.length > 0) {
-          snippets = res.map((r: any) => ({
-            start: Math.round(((r.offset || 0) / 1000) * 100) / 100,
-            duration: Math.round(((r.duration || 0) / 1000) * 100) / 100,
-            text: decodeHtmlEntities(r.text || '').replace(/\s+/g, ' ').trim(),
-          })).filter((s: any) => Boolean(s.text));
-        }
-      }
-    } catch {
-      // Proceed to next strategy
+      const { YoutubeTranscript } = await import("youtube-transcript");
+      const result = await YoutubeTranscript.fetchTranscript(videoId);
+      transcript = result;
+    } catch (fallbackError) {
+      lastError = error;
     }
   }
 
-  // Strategy 3: Try Watch Page Scrape (captionTracks in ytInitialPlayerResponse)
-  if (snippets.length === 0) {
-    try {
-      const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const watchRes = await fetchWithTimeout(watchUrl, {
-        headers: {
-          'User-Agent': BROWSER_USER_AGENT,
-          'Accept-Language': `${requestedLang},en-US;q=0.9,en;q=0.8`,
-        },
-      }, 7000);
-
-      if (watchRes.ok) {
-        const html = await watchRes.text();
-        const jsonMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
-        if (jsonMatch) {
-          const playerData = JSON.parse(jsonMatch[1]);
-          const captionTracks = playerData.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-          if (captionTracks.length > 0) {
-            availableLanguages = captionTracks.map((t: any) => ({
-              code: t.languageCode || 'unknown',
-              name: t.name?.simpleText || t.name?.runs?.[0]?.text || t.languageCode || 'Track',
-              generated: t.kind === 'asr',
-            }));
-
-            // Pick preferred track
-            let chosen = captionTracks.find((t: any) => (t.languageCode || '').toLowerCase().startsWith(requestedLang));
-            if (!chosen) chosen = captionTracks[0];
-
-            if (chosen && chosen.baseUrl) {
-              const capRes = await fetchWithTimeout(chosen.baseUrl + '&fmt=json3', {
-                headers: { 'User-Agent': BROWSER_USER_AGENT },
-              }, 7000);
-              if (capRes.ok) {
-                const rawCap = await capRes.text();
-                snippets = parseCaptionData(rawCap);
-                if (snippets.length > 0) {
-                  languageCode = chosen.languageCode || requestedLang;
-                  languageName = chosen.name?.simpleText || chosen.name?.runs?.[0]?.text || languageCode;
-                  isGenerated = chosen.kind === 'asr';
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch {
-      // Proceed to next strategy
-    }
+  if (transcript && Array.isArray(transcript)) {
+    snippets = transcript.map((r: any) => ({
+      start: Math.round(((r.offset || 0) / 1000) * 100) / 100,
+      duration: Math.round(((r.duration || 0) / 1000) * 100) / 100,
+      text: decodeHtmlEntities(r.text || '').replace(/\s+/g, ' ').trim(),
+    })).filter((s: any) => Boolean(s.text));
   }
 
-  // Strategy 4: Try Android InnerTube Player API
-  if (snippets.length === 0) {
-    try {
-      const response = await fetchWithTimeout(
-        INNERTUBE_PLAYER_URL + '?key=' + INNERTUBE_API_KEY + '&prettyPrint=false',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': USER_AGENT,
-            'X-YouTube-Client-Name': '3',
-            'X-YouTube-Client-Version': ANDROID_CLIENT_VERSION,
-            'Origin': 'https://www.youtube.com',
-          },
-          body: JSON.stringify({
-            context: {
-              client: {
-                clientName: 'ANDROID',
-                clientVersion: ANDROID_CLIENT_VERSION,
-                androidSdkVersion: 34,
-                hl: requestedLang,
-              },
-            },
-            videoId: videoId,
-          }),
-        },
-        7000
-      );
-
-      if (response.ok) {
-        const playerData = await response.json();
-        const captions = playerData.captions && playerData.captions.playerCaptionsTracklistRenderer;
-        const tracks = (captions && captions.captionTracks) || [];
-        if (tracks.length > 0) {
-          availableLanguages = tracks.map((t: any) => ({
-            code: t.languageCode || '',
-            name: t.name?.simpleText || t.name?.runs?.[0]?.text || t.languageCode || 'Track',
-            generated: t.kind === 'asr',
-          }));
-
-          let track = tracks.find((t: any) => (t.languageCode || '').toLowerCase().startsWith(requestedLang));
-          if (!track) track = tracks[0];
-
-          const captionResponse = await fetchWithTimeout(track.baseUrl + '&fmt=json3', {
-            headers: { 'User-Agent': USER_AGENT },
-          }, 7000);
-
-          if (captionResponse.ok) {
-            const raw = await captionResponse.text();
-            snippets = parseCaptionData(raw);
-            if (snippets.length > 0) {
-              languageCode = track.languageCode || requestedLang;
-              languageName = track.name?.simpleText || track.name?.runs?.[0]?.text || languageCode;
-              isGenerated = track.kind === 'asr';
-            }
-          }
-        }
-      }
-    } catch {
-      // Proceed
-    }
-  }
-
-  // Strategy 5: Try Invidious Public API Mirror fallback
+  // Fallback Strategy: Invidious
   if (snippets.length === 0) {
     const mirrors = [
       'https://inv.nadeko.net',
@@ -351,7 +209,7 @@ async function getTranscript(videoId: string, preferredLanguages?: string | stri
         if (capListRes.ok) {
           const capList = await capListRes.json();
           if (Array.isArray(capList.captions) && capList.captions.length > 0) {
-            let targetCap = capList.captions.find((c: any) => (c.languageCode || '').toLowerCase().startsWith(requestedLang));
+            let targetCap = capList.captions.find((c: any) => (c.languageCode || '').toLowerCase().startsWith(languages[0]));
             if (!targetCap) targetCap = capList.captions[0];
 
             if (targetCap && targetCap.url) {
@@ -361,8 +219,8 @@ async function getTranscript(videoId: string, preferredLanguages?: string | stri
                 const subText = await subRes.text();
                 snippets = parseCaptionData(subText);
                 if (snippets.length > 0) {
-                  languageCode = targetCap.languageCode || requestedLang;
-                  languageName = targetCap.label || languageCode;
+                  languageCode = targetCap.languageCode || languages[0];
+                  language = targetCap.label || languageCode;
                   break;
                 }
               }
@@ -375,11 +233,29 @@ async function getTranscript(videoId: string, preferredLanguages?: string | stri
     }
   }
 
+  // Fallback Strategy: youtube-caption-extractor
   if (snippets.length === 0) {
-    throw new Error(
-      `No subtitles or transcripts are available for video "${videoId}". Subtitles may be disabled by the creator, the video may be age-restricted/private, or YouTube requires manual browser verification.`
-    );
+    try {
+      const { getSubtitles } = await import('youtube-caption-extractor');
+      const res = await getSubtitles({ videoID: videoId, lang: languages[0] });
+      if (res && res.length > 0) {
+        snippets = res.map((r: any) => ({
+          start: Math.round(parseFloat(r.start || '0') * 100) / 100,
+          duration: Math.round(parseFloat(r.dur || '0') * 100) / 100,
+          text: decodeHtmlEntities(r.text || '').replace(/\s+/g, ' ').trim(),
+        })).filter((s: any) => Boolean(s.text));
+      }
+    } catch {
+      // Proceed
+    }
   }
+
+  if (snippets.length === 0) {
+    if (lastError) throw lastError;
+    throw new Error(`No subtitles or transcripts are available for video "${videoId}". Subtitles may be disabled by the creator, the video may be age-restricted/private, or YouTube requires manual browser verification.`);
+  }
+
+  const text = snippets.map((s: any) => s.text).join(' ');
 
   const title = (oembed && oembed.title) || `YouTube Video (${videoId})`;
   const author = (oembed && oembed.author_name) || null;
@@ -390,17 +266,13 @@ async function getTranscript(videoId: string, preferredLanguages?: string | stri
     title,
     author,
     thumbnail,
-    language: languageName,
+    language,
     languageCode,
     isGenerated,
     snippetCount: snippets.length,
-    text: snippets.map((s) => s.text).join(' '),
+    text,
     snippets,
-    availableLanguages: availableLanguages.length > 0 ? availableLanguages : [{
-      code: languageCode,
-      name: languageName,
-      generated: isGenerated,
-    }],
+    availableLanguages: [{ code: languageCode, name: language, generated: isGenerated }],
   };
 }
 
@@ -425,76 +297,54 @@ async function startServer() {
       }
 
       // Check if we already have this transcript cached
-      const cached = transcriptsDb.get(videoId);
-      if (cached) {
+      const cachedRecord = await db.select().from(transcripts).where(eq(transcripts.videoId, videoId)).get();
+      if (cachedRecord) {
         return res.json({
           success: true,
           cached: true,
-          data: cached,
+          data: cachedRecord,
         });
       }
 
       const transcriptData = await getTranscript(videoId, languages);
 
-      const record: TranscriptRecord = {
-        id: `${videoId}_${Date.now()}`,
+      const record = {
         videoId,
-        videoTitle: transcriptData.title || videoUrl,
         title: transcriptData.title || videoUrl,
         author: transcriptData.author || '',
         thumbnail: transcriptData.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
         language: transcriptData.language,
-        languageCode: transcriptData.languageCode,
-        isGenerated: transcriptData.isGenerated,
         content: transcriptData.text,
-        text: transcriptData.text,
-        snippetCount: transcriptData.snippetCount,
-        snippets: transcriptData.snippets,
-        availableLanguages: transcriptData.availableLanguages || [],
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       };
 
-      transcriptsDb.set(videoId, record);
+      const inserted = await db.insert(transcripts).values(record).returning().get();
 
       return res.json({
         success: true,
         cached: false,
-        data: record,
+        data: inserted,
       });
     } catch (error: any) {
-      console.error('Transcript fetch error:', error);
-      let errorMessage = 'Failed to fetch transcript';
-
-      if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('could not retrieve transcripts') || msg.includes('no subtitles') || msg.includes('disabled')) {
-          errorMessage = 'No transcripts available for this video';
-        } else if (msg.includes('video is not available') || msg.includes('private') || msg.includes('unavailable')) {
-          errorMessage = 'Video is not available or is private';
-        } else if (msg.includes('bot') || msg.includes('sign in to confirm')) {
-          errorMessage = 'YouTube requires sign-in verification for this video. Use the "Import File" button to upload .srt/.vtt manually.';
-        } else {
-          errorMessage = error.message;
-        }
+      const isKnownError = error?.message?.includes('Transcript is disabled') || error?.message?.includes('No subtitles');
+      if (!isKnownError) {
+        console.error('Transcript fetch error:', error);
       }
-
       return res.status(400).json({
         success: false,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : String(error),
         details: error instanceof Error ? error.message : String(error),
       });
     }
   };
 
-  const handleListTranscripts = (_req: express.Request, res: express.Response) => {
+  const handleListTranscripts = async (_req: express.Request, res: express.Response) => {
     try {
-      const list = Array.from(transcriptsDb.values())
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 50);
+      const list = await db.select().from(transcripts).orderBy(desc(transcripts.createdAt)).limit(50);
 
       return res.json({
         success: true,
-        data: list,
+        transcripts: list,
       });
     } catch (error) {
       console.error('List transcripts error:', error);

@@ -700,7 +700,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return reject('No canvas ctx');
         canvas.width = 64;
         canvas.height = 64;
@@ -1396,6 +1396,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           activePalette={activePalette}
           playChime={playChime}
           triggerToast={triggerToast}
+          openAgnoGPT={openAgnoWindow}
         />
       ),
     });

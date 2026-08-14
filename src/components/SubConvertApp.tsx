@@ -20,7 +20,8 @@ import {
   Share2,
   ChevronDown,
   ChevronUp,
-  Upload
+  Bot,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Material3Palette } from '../types';
@@ -60,6 +61,7 @@ interface SubConvertAppProps {
   activePalette?: Material3Palette;
   playChime?: (type?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
   triggerToast?: (text: string) => void;
+  openAgnoGPT?: () => void;
 }
 
 const PRESET_LANGUAGES = [
@@ -71,12 +73,189 @@ const PRESET_LANGUAGES = [
   { code: 'ja', labelRu: 'Японский', labelEn: 'Japanese' },
 ];
 
+function extractVideoId(input: string): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|live\/))([\w-]{11})/);
+  return match ? match[1] : trimmed;
+}
+
+function parseSubtitleContent(content: string): Snippet[] {
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+
+  // 1. JSON
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed.snippets)) return parsed.snippets;
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // not json
+    }
+  }
+
+  // 2. SRT / WebVTT
+  if (trimmed.includes('-->')) {
+    const parsedSnippets: Snippet[] = [];
+    const blocks = trimmed.replace(/\r\n/g, '\n').split(/\n\s*\n/);
+    for (const block of blocks) {
+      const lines = block.trim().split('\n');
+      if (lines.length >= 2) {
+        const timeLine = lines.find((l) => l.includes('-->'));
+        if (timeLine) {
+          const parts = timeLine.split('-->');
+          const parseSec = (tStr: string) => {
+            const cleaned = tStr.trim().replace(',', '.');
+            const tParts = cleaned.split(':');
+            if (tParts.length === 3) {
+              return parseFloat(tParts[0]) * 3600 + parseFloat(tParts[1]) * 60 + parseFloat(tParts[2]);
+            } else if (tParts.length === 2) {
+              return parseFloat(tParts[0]) * 60 + parseFloat(tParts[1]);
+            }
+            return 0;
+          };
+          const start = parseSec(parts[0]);
+          const end = parseSec(parts[1]);
+          const textLines = lines.slice(lines.indexOf(timeLine) + 1).join(' ').trim();
+          if (textLines) {
+            parsedSnippets.push({
+              start: Math.round(start * 100) / 100,
+              duration: Math.round(Math.max(0.5, end - start) * 100) / 100,
+              text: textLines.replace(/<[^>]*>/g, ''),
+            });
+          }
+        }
+      }
+    }
+    if (parsedSnippets.length > 0) return parsedSnippets;
+  }
+
+  // 3. YouTube text with timestamp format or simple lines
+  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean);
+  const parsedSnippets: Snippet[] = [];
+  let curSec = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const tsMatch = line.match(/^(\d{1,2}:)?\d{1,2}:\d{2}$/);
+    if (tsMatch && i + 1 < lines.length) {
+      const p = line.split(':');
+      const sec = p.length === 3 ? parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]) : parseInt(p[0]) * 60 + parseInt(p[1]);
+      curSec = sec;
+      const text = lines[++i];
+      if (text) {
+        parsedSnippets.push({ start: curSec, duration: 3, text });
+      }
+    } else {
+      parsedSnippets.push({
+        start: i * 3,
+        duration: 3,
+        text: line,
+      });
+    }
+  }
+
+  return parsedSnippets;
+}
+
+const TRANSCRIPT_API = "https://youtube-transcript.ai/transcript/{ID}.txt";
+const HISTORY_KEY = "linkerru_subconvert_history";
+
+function parseClockToSeconds(token: string): number {
+  const parts = token.split(":").map((n) => parseInt(n, 10) || 0);
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return 0;
+}
+
+function parseTimestampLine(line: string): { start: number, duration: number, text: string } | null {
+  const m = line.match(/^\[(\d+(?::\d{1,2}){1,2})\]\s*(.*)$/);
+  if (!m) return null;
+  const text = m[2].trim();
+  if (!text) return null;
+  return { start: parseClockToSeconds(m[1]), duration: 2, text }; // Defaulting duration to 2s for simplicity in UI
+}
+
+function parseMarkdown(markdown: string, videoId: string): TranscriptData {
+  const lines = markdown.split(/\r?\n/);
+  let title = "YouTube Video";
+  let language = "en";
+  let availableLanguages: any[] = [];
+  const snippets: any[] = [];
+
+  let inBody = false;
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+
+    const titleMatch = line.match(/^# Transcript:\s*(.*)$/);
+    if (titleMatch) title = titleMatch[1].trim();
+
+    const metaMatch = line.match(/^Language:\s*(\S+)/);
+    if (metaMatch) language = metaMatch[1];
+
+    const langsMatch = line.match(/^Other available languages:\s*(.*)$/);
+    if (langsMatch) {
+      availableLanguages = langsMatch[1].split(',').map((s) => ({
+        code: s.trim().split(' ')[0],
+        name: s.trim(),
+        generated: false,
+      }));
+    }
+
+    if (/^## Transcript\s*$/.test(line)) {
+      inBody = true;
+      continue;
+    }
+    if (inBody && /^---\s*$/.test(line)) break;
+
+    if (inBody) {
+      const parsed = parseTimestampLine(line);
+      if (parsed) snippets.push(parsed);
+    }
+  }
+
+  return {
+    videoId,
+    title,
+    author: "YouTube",
+    thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    language,
+    languageCode: language,
+    isGenerated: false,
+    snippetCount: snippets.length,
+    text: snippets.map((s) => s.text).join(' '),
+    snippets,
+    availableLanguages: availableLanguages.length > 0 ? availableLanguages : [{ code: language, name: language, generated: false }]
+  };
+}
+
+async function fetchClientTranscript(videoId: string, targetLang?: string): Promise<TranscriptData> {
+  const langQuery = targetLang && targetLang !== 'auto' ? `?lang=${encodeURIComponent(targetLang)}` : '';
+  const url = TRANSCRIPT_API.replace("{ID}", encodeURIComponent(videoId)) + langQuery;
+  
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Transcript service responded with HTTP ${res.status}.`);
+  }
+  const markdown = await res.text();
+  const parsed = parseMarkdown(markdown, videoId);
+  
+  if (parsed.snippets.length === 0) {
+    throw new Error("This video has no subtitles available.");
+  }
+  
+  return parsed;
+}
+
+
 export function SubConvertApp({
   lang,
   theme = 'dark',
   activePalette,
   playChime,
   triggerToast,
+  openAgnoGPT,
 }: SubConvertAppProps) {
   const [videoUrl, setVideoUrl] = useState('');
   const [preferredLang, setPreferredLang] = useState(lang === 'ru' ? 'ru' : 'en');
@@ -87,98 +266,27 @@ export function SubConvertApp({
   const [filterQuery, setFilterQuery] = useState('');
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recentTranscripts, setRecentTranscripts] = useState<any[]>([]);
 
   const primaryColor = activePalette?.primary || 'var(--accent)';
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const content = event.target?.result as string;
-        if (!content) return;
-
-        let parsedSnippets: Snippet[] = [];
-        const filename = file.name.toLowerCase();
-
-        if (filename.endsWith('.json')) {
-          const parsed = JSON.parse(content);
-          if (Array.isArray(parsed.snippets)) {
-            parsedSnippets = parsed.snippets;
-          } else if (Array.isArray(parsed)) {
-            parsedSnippets = parsed;
-          }
-        } else if (filename.endsWith('.srt') || filename.endsWith('.vtt')) {
-          const blocks = content.replace(/\r\n/g, '\n').split(/\n\s*\n/);
-          for (const block of blocks) {
-            const lines = block.trim().split('\n');
-            if (lines.length >= 2) {
-              const timeLine = lines.find((l) => l.includes('-->'));
-              if (timeLine) {
-                const parts = timeLine.split('-->');
-                const parseSec = (tStr: string) => {
-                  const cleaned = tStr.trim().replace(',', '.');
-                  const tParts = cleaned.split(':');
-                  if (tParts.length === 3) {
-                    return parseFloat(tParts[0]) * 3600 + parseFloat(tParts[1]) * 60 + parseFloat(tParts[2]);
-                  } else if (tParts.length === 2) {
-                    return parseFloat(tParts[0]) * 60 + parseFloat(tParts[1]);
-                  }
-                  return 0;
-                };
-                const start = parseSec(parts[0]);
-                const end = parseSec(parts[1]);
-                const textLines = lines.slice(lines.indexOf(timeLine) + 1).join(' ').trim();
-                if (textLines) {
-                  parsedSnippets.push({
-                    start: Math.round(start * 100) / 100,
-                    duration: Math.round(Math.max(0.5, end - start) * 100) / 100,
-                    text: textLines.replace(/<[^>]*>/g, ''),
-                  });
-                }
-              }
-            }
-          }
-        } else {
-          const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
-          parsedSnippets = lines.map((l, i) => ({
-            start: i * 3,
-            duration: 3,
-            text: l,
-          }));
+  const fetchRecentTranscripts = React.useCallback(async () => {
+    try {
+      const raw = window.localStorage.getItem(HISTORY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setRecentTranscripts(parsed);
         }
-
-        if (parsedSnippets.length === 0) {
-          throw new Error(lang === 'ru' ? 'Не удалось прочитать субтитры из файла' : 'Could not parse subtitle file');
-        }
-
-        setData({
-          videoId: file.name.replace(/\.[^/.]+$/, ''),
-          title: file.name,
-          author: lang === 'ru' ? 'Импортированный файл' : 'Imported File',
-          thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=480&auto=format&fit=crop&q=60',
-          language: 'Auto',
-          languageCode: 'auto',
-          isGenerated: false,
-          snippetCount: parsedSnippets.length,
-          text: parsedSnippets.map((s) => s.text).join(' '),
-          snippets: parsedSnippets,
-          availableLanguages: [{ code: 'auto', name: 'Auto', generated: false }],
-        });
-
-        setError(null);
-        playChime?.('victory');
-        triggerToast?.(lang === 'ru' ? `Файл ${file.name} импортирован (${parsedSnippets.length} строк)` : `Imported ${file.name} (${parsedSnippets.length} lines)`);
-      } catch (err: any) {
-        setError(err?.message || (lang === 'ru' ? 'Ошибка чтения файла' : 'Failed to read file'));
-        playChime?.('alert');
       }
-    };
-    reader.readAsText(file);
-  };
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchRecentTranscripts();
+  }, [fetchRecentTranscripts]);
 
   const handleFetch = async (targetLang?: string, targetUrl?: string) => {
     const queryUrl = (targetUrl !== undefined ? targetUrl : videoUrl).trim();
@@ -193,27 +301,44 @@ export function SubConvertApp({
     playChime?.('click');
 
     const chosenLang = targetLang !== undefined ? targetLang : preferredLang;
+    const vidId = extractVideoId(queryUrl);
 
     try {
-      const res = await fetch('/api/subconvert/fetch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoUrl: queryUrl,
-          languages: chosenLang ? chosenLang : undefined,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || (lang === 'ru' ? 'Не удалось извлечь субтитры' : 'Failed to extract subtitles'));
+      if (!vidId) {
+        throw new Error(lang === 'ru' ? 'Неверная ссылка на YouTube-видео' : 'Invalid YouTube video URL');
       }
 
-      setData(json.data);
+      const loadedData = await fetchClientTranscript(vidId, chosenLang);
+
+      setData(loadedData);
+      
+      // Save to localStorage history
+      setRecentTranscripts(prev => {
+        const historyItem = {
+          id: `${vidId}_${Date.now()}`,
+          videoId: vidId,
+          title: loadedData.title,
+          thumbnail: loadedData.thumbnail,
+          author: loadedData.author,
+          language: loadedData.language
+        };
+        const next = [historyItem, ...prev.filter(h => h.videoId !== vidId)].slice(0, 15);
+        try {
+          window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+        } catch { /* ignore */ }
+        return next;
+      });
+
       playChime?.('victory');
-      triggerToast?.(lang === 'ru' ? `Субтитры успешно загружены (${json.data.snippetCount} строк)` : `Subtitles loaded (${json.data.snippetCount} lines)`);
+      triggerToast?.(lang === 'ru' ? `Субтитры успешно загружены (${loadedData.snippetCount} строк)` : `Subtitles loaded (${loadedData.snippetCount} lines)`);
     } catch (err: any) {
-      setError(err?.message || (lang === 'ru' ? 'Ошибка загрузки' : 'Extraction error'));
+      let errorMessage = err?.message || '';
+      if (errorMessage.includes('Transcript is disabled') || errorMessage.includes('No subtitles')) {
+        errorMessage = lang === 'ru' 
+          ? 'Субтитры недоступны для этого видео (возможно отключены автором, либо YouTube блокирует серверные запросы).' 
+          : 'Transcripts are disabled by the author, or YouTube is blocking the request.';
+      }
+      setError(errorMessage || (lang === 'ru' ? 'Ошибка загрузки' : 'Extraction error'));
       playChime?.('alert');
     } finally {
       setIsLoading(false);
@@ -283,6 +408,22 @@ export function SubConvertApp({
     downloadFile(filename, JSON.stringify(data, null, 2), 'application/json');
   };
 
+  const handleAnalyzeAgno = async () => {
+    if (!data) return;
+    try {
+      await navigator.clipboard.writeText(data.text);
+      setCopiedType('agno');
+      setTimeout(() => setCopiedType(null), 2000);
+      playChime?.('click');
+      triggerToast?.(lang === 'ru' ? 'Текст скопирован. Открываем AgnoGPT...' : 'Text copied. Opening AgnoGPT...');
+      if (openAgnoGPT) {
+        openAgnoGPT();
+      }
+    } catch (err) {
+      triggerToast?.(lang === 'ru' ? 'Не удалось скопировать текст' : 'Failed to copy text');
+    }
+  };
+
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -304,15 +445,6 @@ export function SubConvertApp({
 
   return (
     <div className="h-full flex flex-col bg-[var(--surface)] text-[var(--on-surface)] overflow-y-auto select-text font-sans">
-      {/* Hidden file input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        accept=".srt,.vtt,.json,.txt"
-        className="hidden"
-      />
-
       {/* HEADER BAR */}
       <div className="p-4 md:p-6 border-b border-[var(--outline-var)] bg-[var(--surface-dim)]/40 shrink-0">
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -326,14 +458,8 @@ export function SubConvertApp({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base md:text-lg font-black tracking-tight text-[var(--on-surface)]">
-                  SubConvert
+                  SubConvertYT
                 </h2>
-                <span
-                  className="px-2 py-0.5 rounded-full text-[10px] font-black text-white"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  YouTube
-                </span>
               </div>
               <p className="text-xs text-[var(--on-surface-var)] font-medium">
                 {lang === 'ru'
@@ -342,17 +468,7 @@ export function SubConvertApp({
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] hover:bg-[var(--container-high)] text-xs font-bold text-[var(--on-surface)] transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              title={lang === 'ru' ? 'Импортировать .srt / .vtt / .txt файл' : 'Import .srt / .vtt / .txt file'}
-            >
-              <Upload size={13} />
-              <span className="hidden sm:inline">{lang === 'ru' ? 'Импорт файла' : 'Import File'}</span>
-            </button>
-
             {data && (
               <button
                 onClick={() => {
@@ -464,15 +580,6 @@ export function SubConvertApp({
           <div className="flex-1">
             <span className="font-bold">{lang === 'ru' ? 'Не удалось извлечь субтитры:' : 'Could not extract subtitles:'}</span>
             <p className="mt-0.5 text-red-300 leading-relaxed">{error}</p>
-            <div className="mt-2.5 flex items-center gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <Upload size={12} />
-                <span>{lang === 'ru' ? 'Загрузить файл .srt / .vtt / .txt вручную' : 'Upload .srt / .vtt / .txt file manually'}</span>
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -629,6 +736,15 @@ export function SubConvertApp({
             {/* DOWNLOAD & COPY BUTTONS */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <button
+                onClick={handleAnalyzeAgno}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                style={{ backgroundColor: primaryColor }}
+                title="Analyze in AgnoGPT"
+              >
+                {copiedType === 'agno' ? <Check size={13} className="text-white" /> : <Bot size={13} />}
+                <span>{copiedType === 'agno' ? (lang === 'ru' ? 'Открываем...' : 'Opening...') : (lang === 'ru' ? 'Анализ в AgnoGPT' : 'Analyze in AgnoGPT')}</span>
+              </button>
+              <button
                 onClick={handleCopyText}
                 className="px-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] hover:bg-[var(--container-high)] text-xs font-bold text-[var(--on-surface)] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
@@ -716,22 +832,59 @@ export function SubConvertApp({
           </div>
         </div>
       ) : (
-        /* EMPTY STATE / PROMO */
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div
-            className="w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-4 shadow-lg"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Subtitles size={32} />
+        /* EMPTY STATE / PROMO & RECENT TRANSCRIPTS */
+        <div className="flex-1 flex flex-col p-4 md:p-6 overflow-y-auto min-h-0">
+          <div className="flex flex-col items-center justify-center py-8 text-center shrink-0">
+            <div
+              className="w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-4 shadow-lg"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Subtitles size={32} />
+            </div>
+            <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">
+              {lang === 'ru' ? 'Конвертируйте YouTube-видео в субтитры' : 'Convert YouTube videos to subtitles'}
+            </h3>
+            <p className="text-xs md:text-sm text-[var(--on-surface-var)] max-w-md mt-1.5 leading-relaxed">
+              {lang === 'ru'
+                ? 'Вставьте ссылку на любое видео YouTube сверху для моментального извлечения полного текста, таймкодов и экспорта в .TXT, .SRT или .JSON.'
+                : 'Paste any YouTube video link above to instantly extract transcripts, timestamps, and export to .TXT, .SRT, or .JSON formats.'}
+            </p>
           </div>
-          <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">
-            {lang === 'ru' ? 'Конвертируйте YouTube-видео в субтитры' : 'Convert YouTube videos to subtitles'}
-          </h3>
-          <p className="text-xs md:text-sm text-[var(--on-surface-var)] max-w-md mt-1.5 leading-relaxed">
-            {lang === 'ru'
-              ? 'Вставьте ссылку на любое видео YouTube сверху для моментального извлечения полного текста, таймкодов и экспорта в .TXT, .SRT или .JSON.'
-              : 'Paste any YouTube video link above to instantly extract transcripts, timestamps, and export to .TXT, .SRT, or .JSON formats.'}
-          </p>
+
+          {recentTranscripts && recentTranscripts.length > 0 && (
+            <div className="mt-8">
+              <h4 className="text-sm font-bold text-[var(--on-surface)] mb-4">
+                {lang === 'ru' ? 'Недавние транскрипты' : 'Recent Transcripts'}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {recentTranscripts.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      setVideoUrl(t.videoId);
+                      handleFetch(undefined, t.videoId);
+                    }}
+                    className="p-3 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--outline)] transition-all cursor-pointer flex gap-3 group"
+                  >
+                    <div className="w-16 h-12 rounded-lg bg-black overflow-hidden shrink-0">
+                      <img src={t.thumbnail} alt={t.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[var(--on-surface)] line-clamp-2 leading-snug">
+                        {t.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-[var(--on-surface-var)] truncate">{t.author}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--surface)] text-[var(--on-surface)] uppercase font-black">
+                          {t.language}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
