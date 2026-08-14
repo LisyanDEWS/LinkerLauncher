@@ -1,4 +1,5 @@
 import { ExtensionsManager } from './components/ExtensionsManager';
+import { SubConvertApp } from './components/SubConvertApp';
 import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -47,6 +48,7 @@ import {
   Server,
   ExternalLink,
   HelpCircle, MessageCircle,
+  Subtitles,
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette } from './types';
@@ -1376,6 +1378,29 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
+  const handleOpenSubConvert = () => {
+    playChime('click');
+    wm.open({
+      id: 'subconvert',
+      title: 'SubConvert',
+      icon: <Subtitles size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 860,
+      initialHeight: 640,
+      minWidth: 420,
+      minHeight: 380,
+      render: () => (
+        <SubConvertApp
+          lang={lang}
+          theme={theme}
+          activePalette={activePalette}
+          playChime={playChime}
+          triggerToast={triggerToast}
+        />
+      ),
+    });
+  };
+
   const handleOpenExtensions = () => {
     playChime('click');
     wm.open({
@@ -2316,7 +2341,39 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
       {/* --- ROW 2: EXTRA CARDS AND ACCENT PILLS BUTTONS --- */}
       <section className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4" id="row2-bento-grid">
-        {/* LOCKED CARD 2 (was 6, now 5) */}
+        {/* SUBCONVERT CARD (placed before Extensions) */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-subconvert">
+          <div className="flex justify-between items-start h-[44px]">
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
+              <Subtitles size={22} />
+            </div>
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[9px] font-black text-[var(--accent)] select-none">
+              <Sparkles size={11} />
+              <span>YouTube</span>
+            </div>
+          </div>
+          <div className="flex-1 mt-3 flex flex-col pr-8">
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">
+              SubConvert
+            </h3>
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+              {lang === 'ru'
+                ? 'Конвертер YouTube-видео в субтитры и транскрипты (.txt, .srt, .json).'
+                : 'YouTube video to subtitles converter (.txt, .srt, .json).'}
+            </p>
+          </div>
+          <div className="mt-4 flex items-end">
+            <button
+              onClick={handleOpenSubConvert}
+              className="w-full py-3 rounded-full text-xs font-extrabold transition-all border text-center text-[var(--surface)] border-transparent cursor-pointer"
+              style={{ background: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+            >
+              {lang === 'ru' ? 'Открыть' : 'Open'}
+            </button>
+          </div>
+        </div>
+
+        {/* EXTENSIONS CARD */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-locked-2">
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
@@ -2417,72 +2474,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </span>
         </div>
 
-        {/* PANEL: Quick Links — max 4 (2 default + 2 custom) */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative group" id="panel-links">
-          <button
-            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
-            title={lang === 'ru' ? 'Изменить ссылки' : 'Edit Links'}
-            onClick={() => {
-              playChime('click');
-              handleOpenSettings('links');
-            }}
-          >
-            <Edit2 size={14} />
-          </button>
-          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider h-[32px]">
-            <Link2 size={16} />
-            <span>{t.ph_links}</span>
-            <span className="ml-auto text-[10px] tabular-nums text-[var(--outline)]">{customLinks.length}/{MAX_QUICK_LINKS}</span>
-          </div>
-
-          <div className="flex flex-col gap-2 flex-1 justify-center my-auto">
-            {customLinks.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-[11px] text-[var(--outline)] italic">
-                {lang === 'ru' ? 'Нет ссылок' : 'No links'}
-              </div>
-            ) : (
-              customLinks.map((link, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (!link.url || link.url === 'https://') return;
-                      playChime('click');
-                      window.open(link.url, '_blank', 'noopener,noreferrer');
-                    }}
-                    className="flex-1 inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 overflow-hidden"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = activePalette.primary;
-                      e.currentTarget.style.color = '#fff';
-                      e.currentTarget.style.borderColor = 'transparent';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--on-surface)';
-                      e.currentTarget.style.borderColor = 'var(--outline)';
-                    }}
-                    title={link.url}
-                  >
-                    <Globe size={13} className="shrink-0" />
-                    <span className="truncate text-left">{link.name || (lang === 'ru' ? 'Без названия' : 'Untitled')}</span>
-                  </button>
-                  <button
-                    onClick={() => handleCopyLink(link.url)}
-                    className="h-8 w-8 shrink-0 flex items-center justify-center rounded-2xl border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-                    title={lang === 'ru' ? 'Копировать' : 'Copy Link'}
-                  >
-                    <Copy size={13} />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="text-[9px] font-black tracking-widest text-[var(--outline)] uppercase text-center mt-auto">
-            {t.ph_community}
-          </div>
-        </div>
-
-        {/* PANEL: Quick Toggles — max 4 (theme/language/sound/contrast) */}
+        {/* PANEL: Quick Toggles */}
         <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative group" id="panel-quicktoggles">
           <button
             className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
