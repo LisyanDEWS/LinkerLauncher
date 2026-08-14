@@ -29,16 +29,20 @@
 
 .panel-gradient {
   background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
-              linear-gradient(135deg, var(--outline-var), transparent) border-box;
+              linear-gradient(135deg, color-mix(in srgb, var(--outline-var) 75%, rgba(255,255,255,0.3)), transparent 70%) border-box;
   border: 1px solid transparent;
-  box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: 0 16px 40px -12px rgba(0,0,0,0.2), inset 0 1px 1px 0 rgba(255,255,255,0.16), inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 
 .panel-bg-gradient {
   background: linear-gradient(var(--panel-bg), var(--panel-bg)) padding-box,
-              linear-gradient(135deg, var(--outline-var), transparent) border-box;
+              linear-gradient(135deg, color-mix(in srgb, var(--outline-var) 75%, rgba(255,255,255,0.3)), transparent 70%) border-box;
   border: 1px solid transparent;
-  box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: 0 16px 40px -12px rgba(0,0,0,0.2), inset 0 1px 1px 0 rgba(255,255,255,0.16), inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 
 /* Material 3 Soft Squash Toggle */

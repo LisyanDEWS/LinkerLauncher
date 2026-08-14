@@ -107,6 +107,7 @@ export default function App() {
 
   const [dynamicPalette, setDynamicPalette] = useState<Material3Palette | null>(null);
   const [wallpaperLuminance, setWallpaperLuminance] = useState<number | null>(null);
+  const [wallpaperHeaderAvgHex, setWallpaperHeaderAvgHex] = useState<string | null>(null);
   const [wallpaperApplyNonce, setWallpaperApplyNonce] = useState<number>(0);
 
   const [fontFamily, setFontFamily] = useState<string>(() => {
@@ -658,39 +659,101 @@ export default function App() {
     setToasts(p => [...p, { id, text }]);
   };
 
-const extractDominantColor = (imageUrl: string): Promise<string> => {
+interface WallpaperAnalysis {
+  dominantHex: string;
+  headerAvgHex: string;
+  headerLuminance: number;
+  overallLuminance: number;
+}
+
+const getRelativeLuminance = (hex: string): number => {
+  try {
+    const clean = hex.replace('#', '');
+    const r = parseInt(clean.slice(0, 2), 16) || 0;
+    const g = parseInt(clean.slice(2, 4), 16) || 0;
+    const b = parseInt(clean.slice(4, 6), 16) || 0;
+    const sRGB = [r / 255, g / 255, b / 255].map((val) =>
+      val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4)
+    );
+    return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
+  } catch {
+    return 0.5;
+  }
+};
+
+const getContrastRatio = (hex1: string, hex2: string): number => {
+  const lum1 = getRelativeLuminance(hex1);
+  const lum2 = getRelativeLuminance(hex2);
+  const lighter = Math.max(lum1, lum2);
+  const darker = Math.min(lum1, lum2);
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return reject('No ctx');
-      canvas.width = 64;
-      canvas.height = 64;
-      ctx.drawImage(img, 0, 0, 64, 64);
-      const data = ctx.getImageData(0, 0, 64, 64).data;
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const brightness = (data[i] * 299 + data[i+1] * 587 + data[i+2] * 114) / 1000;
-        if (brightness > 30 && brightness < 225) { // filter out too dark/light
-          r += data[i];
-          g += data[i+1];
-          b += data[i+2];
-          count++;
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject('No canvas ctx');
+        canvas.width = 64;
+        canvas.height = 64;
+        ctx.drawImage(img, 0, 0, 64, 64);
+        
+        const fullData = ctx.getImageData(0, 0, 64, 64).data;
+        const headerData = ctx.getImageData(0, 0, 64, 20).data;
+
+        // Sample top header area
+        let hr = 0, hg = 0, hb = 0;
+        const headerPixels = headerData.length / 4;
+        for (let i = 0; i < headerData.length; i += 4) {
+          hr += headerData[i];
+          hg += headerData[i + 1];
+          hb += headerData[i + 2];
         }
-      }
-      if (count === 0) {
-        for (let i = 0; i < data.length; i += 4) {
-          r += data[i]; g += data[i+1]; b += data[i+2];
+        hr = Math.floor(hr / headerPixels);
+        hg = Math.floor(hg / headerPixels);
+        hb = Math.floor(hb / headerPixels);
+        const headerAvgHex = `#${((1 << 24) + (hr << 16) + (hg << 8) + hb).toString(16).slice(1)}`;
+        const headerLuminance = (hr * 299 + hg * 587 + hb * 114) / 1000;
+
+        // Sample dominant accent color
+        let r = 0, g = 0, b = 0, count = 0;
+        let or = 0, og = 0, ob = 0;
+        const totalPixels = fullData.length / 4;
+        for (let i = 0; i < fullData.length; i += 4) {
+          or += fullData[i];
+          og += fullData[i + 1];
+          ob += fullData[i + 2];
+          const brightness = (fullData[i] * 299 + fullData[i + 1] * 587 + fullData[i + 2] * 114) / 1000;
+          if (brightness > 30 && brightness < 225) {
+            r += fullData[i];
+            g += fullData[i + 1];
+            b += fullData[i + 2];
+            count++;
+          }
         }
-        count = data.length / 4;
+        if (count === 0) {
+          r = or; g = og; b = ob;
+          count = totalPixels;
+        }
+        r = Math.floor(r / count);
+        g = Math.floor(g / count);
+        b = Math.floor(b / count);
+        const dominantHex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        const overallLuminance = (Math.floor(or / totalPixels) * 299 + Math.floor(og / totalPixels) * 587 + Math.floor(ob / totalPixels) * 114) / 1000;
+
+        resolve({
+          dominantHex,
+          headerAvgHex,
+          headerLuminance,
+          overallLuminance,
+        });
+      } catch (err) {
+        reject(err);
       }
-      r = Math.floor(r / count);
-      g = Math.floor(g / count);
-      b = Math.floor(b / count);
-      const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-      resolve(hex);
     };
     img.onerror = () => reject('Image load failed');
     img.src = imageUrl;
@@ -702,6 +765,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
     let isMounted = true;
     if (!mainWallpaper || mainWallpaper === 'none') {
       setWallpaperLuminance(theme === 'dark' ? 20 : 220);
+      setWallpaperHeaderAvgHex(theme === 'dark' ? '#08080a' : '#fafafa');
       return;
     }
 
@@ -713,13 +777,10 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
       mainWallpaper.startsWith('url(')
     )) {
       const cleanUrl = mainWallpaper.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
-      extractDominantColor(cleanUrl).then((hex) => {
+      extractWallpaperAnalysis(cleanUrl).then((analysis) => {
         if (!isMounted) return;
-        const r = parseInt(hex.slice(1, 3), 16) || 0;
-        const g = parseInt(hex.slice(3, 5), 16) || 0;
-        const b = parseInt(hex.slice(5, 7), 16) || 0;
-        const lum = (r * 299 + g * 587 + b * 114) / 1000;
-        setWallpaperLuminance(lum);
+        setWallpaperLuminance(analysis.headerLuminance);
+        setWallpaperHeaderAvgHex(analysis.headerAvgHex);
 
         const adjust = (color: string, amount: number) => {
           return '#' + color.replace(/^#/, '').replace(/../g, c => ('0' + Math.min(255, Math.max(0, parseInt(c, 16) + amount)).toString(16)).substr(-2));
@@ -729,10 +790,10 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           id: 'dynamic_wallpaper',
           nameRu: 'Адаптивная (Обои)',
           nameEn: 'Adaptive (Wallpaper)',
-          primary: hex,
-          secondary: adjust(hex, 25),
-          tertiary: adjust(hex, -25),
-          lightBg: lum < 140 ? '#121212' : '#F5F5F5',
+          primary: analysis.dominantHex,
+          secondary: adjust(analysis.dominantHex, 25),
+          tertiary: adjust(analysis.dominantHex, -25),
+          lightBg: analysis.headerLuminance < 140 ? '#121212' : '#F5F5F5',
           darkBg: '#121212'
         };
 
@@ -753,11 +814,13 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
       }).catch((err) => {
         console.warn('Failed to calculate wallpaper luminance:', err);
         if (isMounted) {
-          setWallpaperLuminance(30);
+          setWallpaperLuminance(theme === 'dark' ? 30 : 200);
+          setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
         }
       });
     } else {
       setWallpaperLuminance(theme === 'dark' ? 30 : 200);
+      setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
     }
 
     return () => { isMounted = false; };
@@ -879,13 +942,13 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
       root.style.setProperty('--bg', '#08080a');
       root.style.setProperty('--surface-dim', '#0e0e11');
 
-      // ── Section 2/4: SURFACES (cards, panels, containers — layered elevation) ──
+      // ── Section 2/4: SURFACES (cards, panels, containers — layered elevation & glassy transparency) ──
       root.style.setProperty('--surface', '#151518');
       root.style.setProperty('--surface-bright', '#1e1e22');
       root.style.setProperty('--container', '#1a1a1e');
       root.style.setProperty('--container-high', '#26262c');
-      root.style.setProperty('--card-bg', `color-mix(in srgb, #151518 78%, ${activePalette.primary} 22%)`);
-      root.style.setProperty('--panel-bg', `color-mix(in srgb, #151518 86%, ${activePalette.primary} 14%)`);
+      root.style.setProperty('--card-bg', `color-mix(in srgb, color-mix(in srgb, #121216 72%, ${activePalette.primary} 28%) 58%, transparent)`);
+      root.style.setProperty('--panel-bg', `color-mix(in srgb, color-mix(in srgb, #121216 80%, ${activePalette.primary} 20%) 52%, transparent)`);
 
       // ── Section 3/4: CONTENT (text, icons, outlines — contrast & readability) ──
       root.style.setProperty('--on-surface', '#fafafa');
@@ -908,8 +971,8 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
       root.style.setProperty('--surface-bright', '#ffffff');
       root.style.setProperty('--container', '#f4f4f5');
       root.style.setProperty('--container-high', '#e4e4e7');
-      root.style.setProperty('--card-bg', `color-mix(in srgb, #ffffff 70%, ${activePalette.primary} 30%)`);
-      root.style.setProperty('--panel-bg', `color-mix(in srgb, #ffffff 80%, ${activePalette.primary} 20%)`);
+      root.style.setProperty('--card-bg', `color-mix(in srgb, color-mix(in srgb, #ffffff 72%, ${activePalette.primary} 28%) 62%, transparent)`);
+      root.style.setProperty('--panel-bg', `color-mix(in srgb, color-mix(in srgb, #ffffff 80%, ${activePalette.primary} 20%) 56%, transparent)`);
 
       // ── Section 3/4: CONTENT ──
       root.style.setProperty('--on-surface', '#09090b');
@@ -937,17 +1000,50 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
 
     root.style.setProperty('--font-sans', fontFamily);
 
-    const isDarkBg = (wallpaperLuminance !== null ? wallpaperLuminance < 140 : (mainWallpaper && mainWallpaper !== 'none')) || theme === 'dark';
-    root.style.setProperty('--on-wallpaper-surface', isDarkBg ? '#ffffff' : '#000000');
-    root.style.setProperty('--wallpaper-text-shadow', isDarkBg 
-      ? '0 2px 20px rgba(0,0,0,0.98), 0 1px 6px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,1)' 
-      : '0 2px 20px rgba(255,255,255,0.98), 0 1px 6px rgba(255,255,255,0.95), 0 0 3px rgba(255,255,255,1)');
+    // ── Section 5/5: ADAPTIVE ON-WALLPAPER CONTRAST ──
+    let bgHex = '#08080a';
+    if (mainWallpaper && mainWallpaper !== 'none') {
+      if (wallpaperHeaderAvgHex) {
+        bgHex = wallpaperHeaderAvgHex;
+      } else if (wallpaperLuminance !== null) {
+        bgHex = wallpaperLuminance < 140 ? '#121212' : '#f0f0f0';
+      } else {
+        bgHex = theme === 'dark' ? '#121212' : '#f0f0f0';
+      }
+    } else {
+      bgHex = theme === 'dark' ? '#08080a' : '#fafafa';
+    }
+
+    const themeColor = activePalette.primary;
+    const crTheme = getContrastRatio(themeColor, bgHex);
+    const crWhite = getContrastRatio('#ffffff', bgHex);
+    const crBlack = getContrastRatio('#09090b', bgHex);
+
+    // If theme color provides great contrast against the background (>= 3.8:1) and is not plain monochrome,
+    // use theme color; otherwise pick the highest contrast between pure white and dark black.
+    let titleColor: string;
+    let titleMode: 'theme' | 'white' | 'black';
+
+    if (crTheme >= 3.8 && activePaletteId !== 'monochrome') {
+      titleColor = themeColor;
+      titleMode = 'theme';
+    } else if (crWhite >= crBlack) {
+      titleColor = '#ffffff';
+      titleMode = 'white';
+    } else {
+      titleColor = '#09090b';
+      titleMode = 'black';
+    }
+
+    root.style.setProperty('--wallpaper-title-color', titleColor);
+    root.style.setProperty('--wallpaper-title-mode', titleMode);
+    root.style.setProperty('--on-wallpaper-surface', crWhite >= crBlack ? '#ffffff' : '#09090b');
 
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.backgroundColor = isContrast 
       ? (theme === 'dark' ? '#000000' : '#ffffff') 
       : (theme === 'dark' ? '#09090b' : '#fafafa');
-  }, [theme, activePalette, activePaletteId, isContrast, fontFamily, wallpaperLuminance, wallpaperApplyNonce]);
+  }, [theme, activePalette, activePaletteId, isContrast, fontFamily, wallpaperLuminance, wallpaperHeaderAvgHex, mainWallpaper, wallpaperApplyNonce]);
 
   // --- Optimized Engine Effects ---
   useEffect(() => {
@@ -1922,7 +2018,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               playChime('click');
               openWeatherWindow();
             }}
-            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-md"
+            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-weather-pill"
           >
             <CloudSun size={16} className="text-[var(--on-surface-var)]" />
@@ -1939,7 +2035,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               playChime('click');
               setIsCalendarOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-md"
+            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-calendar-pill"
           >
             <CalendarIcon size={16} className="text-[var(--on-surface-var)]" />
@@ -1949,7 +2045,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           {/* Battery Pill */}
           {batteryLvl !== null && (
             <div
-              className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 cursor-default backdrop-blur-md"
+              className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 cursor-default backdrop-blur-xl"
               title={isCharging ? (lang === 'ru' ? 'Заряжается' : 'Charging') : (lang === 'ru' ? 'От батареи' : 'On battery')}
             >
               {isCharging
@@ -1965,7 +2061,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               playChime('click');
               setIsClockOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--surface)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] border border-[var(--outline-var)] shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-md"
+            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-clock-pill"
           >
             <Clock size={16} className="text-[var(--on-surface-var)]" />
@@ -1980,10 +2076,10 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               playChime('click');
               setIsQuickSettingsOpen(true);
             }}
-            className="flex items-center gap-2.5 bg-[var(--surface)] h-11 border border-[var(--outline-var)] pl-1.5 pr-4.5 rounded-full shadow-sm cursor-pointer transition-all hover:bg-[var(--surface-dim)] group hover:scale-[1.02] active:scale-95"
+            className="flex items-center gap-2.5 bg-[var(--surface)]/70 h-11 border border-[var(--outline-var)]/80 pl-1.5 pr-4.5 rounded-full shadow-sm cursor-pointer transition-all hover:bg-[var(--surface)] group hover:scale-[1.02] active:scale-95 backdrop-blur-xl"
             id="topbar-settings-pill"
           >
-            <div className="w-8 h-8 rounded-full bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center transition-all group-hover:bg-[var(--container-high)]">
+            <div className="w-8 h-8 rounded-full bg-[var(--container)]/80 border border-[var(--outline-var)]/80 flex items-center justify-center transition-all group-hover:bg-[var(--container-high)]">
               <Settings size={15} className="text-[var(--on-surface-var)]" />
             </div>
             <span className="text-xs font-black text-[var(--on-surface)] capitalize select-none">
@@ -1996,7 +2092,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               playChime('click');
               setIsNotificationsOpen(true);
             }}
-            className="w-11 h-11 relative rounded-full bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="w-11 h-11 relative rounded-full bg-[var(--surface)]/70 border border-[var(--outline-var)]/80 flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-notifications"
           >
             <Bell size={18} />
@@ -2009,7 +2105,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               playChime('click');
               handleOpenSettings();
             }}
-            className="w-11 h-11 rounded-full bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="w-11 h-11 rounded-full bg-[var(--surface)]/70 border border-[var(--outline-var)]/80 flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-avatar"
             title={t.page_appearance}
           >
@@ -2046,7 +2142,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
               : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
             }
             alt="LinkerRu Logo"
-            className={`h-12 w-12 md:h-14 md:w-14 rounded-2xl object-cover transition-opacity border border-[var(--outline-var)] shadow-lg ${theme === "dark" ? "bg-black" : "bg-white"}`}
+            className={`h-12 w-12 md:h-14 md:w-14 rounded-full object-cover transition-opacity border border-[var(--outline-var)] shadow-sm ${theme === "dark" ? "bg-black" : "bg-white"}`}
             referrerPolicy="no-referrer"
           />
           <AnimatePresence mode="wait">
@@ -2058,8 +2154,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                 transition={{ duration: 0.5 }}
                 className="text-4xl md:text-6xl font-black tracking-tighter transition-colors duration-300"
                 style={{
-                  color: 'var(--on-wallpaper-surface, var(--on-surface))',
-                  textShadow: 'var(--wallpaper-text-shadow)'
+                  color: 'var(--wallpaper-title-color, var(--on-wallpaper-surface, var(--on-surface)))',
                 }}
               >
                 LinkerRu:Re
@@ -2072,8 +2167,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
                 transition={{ duration: 0.6, ease: 'easeOut' }}
                 className="text-3xl md:text-5xl font-black tracking-tight leading-tight transition-colors duration-300"
                 style={{
-                  color: 'var(--on-wallpaper-surface, var(--on-surface))',
-                  textShadow: 'var(--wallpaper-text-shadow)'
+                  color: 'var(--wallpaper-title-color, var(--on-wallpaper-surface, var(--on-surface)))',
                 }}
               >
                 {greetingText}
