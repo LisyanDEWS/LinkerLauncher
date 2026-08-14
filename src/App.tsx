@@ -108,6 +108,7 @@ export default function App() {
   const [dynamicPalette, setDynamicPalette] = useState<Material3Palette | null>(null);
   const [wallpaperLuminance, setWallpaperLuminance] = useState<number | null>(null);
   const [wallpaperHeaderAvgHex, setWallpaperHeaderAvgHex] = useState<string | null>(null);
+  const [wallpaperTitleColor, setWallpaperTitleColor] = useState<string | null>(null);
   const [wallpaperApplyNonce, setWallpaperApplyNonce] = useState<number>(0);
 
   const [fontFamily, setFontFamily] = useState<string>(() => {
@@ -664,6 +665,7 @@ interface WallpaperAnalysis {
   headerAvgHex: string;
   headerLuminance: number;
   overallLuminance: number;
+  titleSuggestedColor: string;
 }
 
 const getRelativeLuminance = (hex: string): number => {
@@ -719,6 +721,31 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         const headerAvgHex = `#${((1 << 24) + (hr << 16) + (hg << 8) + hb).toString(16).slice(1)}`;
         const headerLuminance = (hr * 299 + hg * 587 + hb * 114) / 1000;
 
+        // Sample precise area directly behind the main greeting title (y: 10%..28%, x: 4%..85%)
+        let titleR = 0, titleG = 0, titleB = 0;
+        let darkPixelCount = 0;
+        let totalTitlePixels = 0;
+        for (let y = 6; y <= 18; y++) {
+          for (let x = 2; x <= 54; x++) {
+            const idx = (y * 64 + x) * 4;
+            const pr = fullData[idx];
+            const pg = fullData[idx + 1];
+            const pb = fullData[idx + 2];
+            titleR += pr;
+            titleG += pg;
+            titleB += pb;
+            const lum = (pr * 299 + pg * 587 + pb * 114) / 1000;
+            if (lum < 135) {
+              darkPixelCount++;
+            }
+            totalTitlePixels++;
+          }
+        }
+        const titleLuminance = totalTitlePixels > 0 ? (titleR * 299 + titleG * 587 + titleB * 114) / (totalTitlePixels * 1000) : 128;
+        const darkFraction = totalTitlePixels > 0 ? darkPixelCount / totalTitlePixels : 0;
+        // If the title spans across dark elements or a dark background, title will be pure white; otherwise pure black
+        const titleSuggestedColor = (darkFraction > 0.18 || titleLuminance < 135) ? '#ffffff' : '#09090b';
+
         // Sample dominant accent color
         let r = 0, g = 0, b = 0, count = 0;
         let or = 0, og = 0, ob = 0;
@@ -750,6 +777,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           headerAvgHex,
           headerLuminance,
           overallLuminance,
+          titleSuggestedColor,
         });
       } catch (err) {
         reject(err);
@@ -766,6 +794,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     if (!mainWallpaper || mainWallpaper === 'none') {
       setWallpaperLuminance(theme === 'dark' ? 20 : 220);
       setWallpaperHeaderAvgHex(theme === 'dark' ? '#08080a' : '#fafafa');
+      setWallpaperTitleColor(theme === 'dark' ? '#ffffff' : '#09090b');
       return;
     }
 
@@ -781,6 +810,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         if (!isMounted) return;
         setWallpaperLuminance(analysis.headerLuminance);
         setWallpaperHeaderAvgHex(analysis.headerAvgHex);
+        setWallpaperTitleColor(analysis.titleSuggestedColor);
 
         const adjust = (color: string, amount: number) => {
           return '#' + color.replace(/^#/, '').replace(/../g, c => ('0' + Math.min(255, Math.max(0, parseInt(c, 16) + amount)).toString(16)).substr(-2));
@@ -816,11 +846,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         if (isMounted) {
           setWallpaperLuminance(theme === 'dark' ? 30 : 200);
           setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
+          setWallpaperTitleColor(theme === 'dark' ? '#ffffff' : '#09090b');
         }
       });
     } else {
       setWallpaperLuminance(theme === 'dark' ? 30 : 200);
       setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
+      setWallpaperTitleColor(theme === 'dark' ? '#ffffff' : '#09090b');
     }
 
     return () => { isMounted = false; };
@@ -1001,43 +1033,23 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     root.style.setProperty('--font-sans', fontFamily);
 
     // ── Section 5/5: ADAPTIVE ON-WALLPAPER CONTRAST ──
-    let bgHex = '#08080a';
-    if (mainWallpaper && mainWallpaper !== 'none') {
-      if (wallpaperHeaderAvgHex) {
-        bgHex = wallpaperHeaderAvgHex;
+    const hasWallpaper = !!(mainWallpaper && mainWallpaper !== 'none');
+    let titleColor = '#ffffff';
+
+    if (hasWallpaper) {
+      if (wallpaperTitleColor) {
+        titleColor = wallpaperTitleColor;
       } else if (wallpaperLuminance !== null) {
-        bgHex = wallpaperLuminance < 140 ? '#121212' : '#f0f0f0';
+        titleColor = wallpaperLuminance < 140 ? '#ffffff' : '#09090b';
       } else {
-        bgHex = theme === 'dark' ? '#121212' : '#f0f0f0';
+        titleColor = theme === 'dark' ? '#ffffff' : '#09090b';
       }
     } else {
-      bgHex = theme === 'dark' ? '#08080a' : '#fafafa';
-    }
-
-    const themeColor = activePalette.primary;
-    const crTheme = getContrastRatio(themeColor, bgHex);
-    const crWhite = getContrastRatio('#ffffff', bgHex);
-    const crBlack = getContrastRatio('#09090b', bgHex);
-
-    // If theme color provides great contrast against the background (>= 3.8:1) and is not plain monochrome,
-    // use theme color; otherwise pick the highest contrast between pure white and dark black.
-    let titleColor: string;
-    let titleMode: 'theme' | 'white' | 'black';
-
-    if (crTheme >= 3.8 && activePaletteId !== 'monochrome') {
-      titleColor = themeColor;
-      titleMode = 'theme';
-    } else if (crWhite >= crBlack) {
-      titleColor = '#ffffff';
-      titleMode = 'white';
-    } else {
-      titleColor = '#09090b';
-      titleMode = 'black';
+      titleColor = theme === 'dark' ? '#ffffff' : '#09090b';
     }
 
     root.style.setProperty('--wallpaper-title-color', titleColor);
-    root.style.setProperty('--wallpaper-title-mode', titleMode);
-    root.style.setProperty('--on-wallpaper-surface', crWhite >= crBlack ? '#ffffff' : '#09090b');
+    root.style.setProperty('--on-wallpaper-surface', titleColor);
 
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.backgroundColor = isContrast 
@@ -2305,13 +2317,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       {/* --- ROW 2: EXTRA CARDS AND ACCENT PILLS BUTTONS --- */}
       <section className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4" id="row2-bento-grid">
         {/* LOCKED CARD 2 (was 6, now 5) */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group" id="card-locked-2" onClick={handleOpenExtensions}>
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-locked-2">
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
               <Puzzle size={22} />
-            </div>
-            <div className="w-8 h-8 rounded-full border border-[var(--outline)] flex items-center justify-center bg-[var(--surface)] text-[var(--on-surface)] opacity-0 group-hover:opacity-100 transition-opacity">
-              <ExternalLink size={14} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2322,9 +2331,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               {lang === 'ru' ? 'Менеджер расширений и плагинов.' : 'Extensions and plugins manager.'}
             </p>
           </div>
-          <button className="mt-4 w-full py-3 bg-[var(--accent)] text-white border border-[var(--accent)] rounded-full text-xs font-black select-none pointer-events-none shadow-sm shadow-[var(--accent)]/20">
-            {lang === 'ru' ? 'Открыть' : 'Open'}
-          </button>
+          <div className="mt-4 flex items-end">
+            <button
+              onClick={handleOpenExtensions}
+              className="w-full py-3 rounded-full text-xs font-extrabold transition-all border text-center text-[var(--surface)] border-transparent cursor-pointer"
+              style={{ background: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+            >
+              {lang === 'ru' ? 'Открыть' : 'Open'}
+            </button>
+          </div>
         </div>
 
         {/* WIDGET 5: App Launcher */}
