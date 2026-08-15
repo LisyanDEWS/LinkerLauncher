@@ -374,8 +374,9 @@ export function WindowManagerLayer({
                       <div className="h-6 w-px shrink-0" style={{ background: 'var(--outline-var)' }} />
                     )}
                   <motion.button
-                    whileHover={{ y: -2, scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
+                    whileHover={{ scaleX: 1.08, scaleY: 1.02 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     onClick={() => {
                       if (isMinimized) {
                         wm.restore(w.id);

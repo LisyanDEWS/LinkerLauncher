@@ -81,7 +81,7 @@ export default function OnboardingModal({
   const [panicSound, setPanicSound] = useState<string>(() => localStorage.getItem('linkerru_panic_sound') || 'opal_bell');
 
   const selectedPalette = useMemo(() => {
-    return materialPalettes.find(p => p.id === activePaletteId) || materialPalettes[0];
+    return materialPalettes.find(p => p.id === activePaletteId) || materialPalettes.find(p => p.id === 'monochrome') || materialPalettes[0];
   }, [activePaletteId]);
 
   const linkerLogo = theme === 'dark' 

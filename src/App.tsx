@@ -708,7 +708,7 @@ export default function App() {
         }
       } catch (e) {}
     }
-    return materialPalettes.find((p) => p.id === activePaletteId) || materialPalettes[0];
+    return materialPalettes.find((p) => p.id === activePaletteId) || materialPalettes.find((p) => p.id === 'monochrome') || materialPalettes[0];
   }, [activePaletteId, dynamicPalette, wallpaperApplyNonce]);
 
   type ToastMessage = { id: string, text: string };

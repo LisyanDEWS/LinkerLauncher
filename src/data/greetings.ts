@@ -206,15 +206,12 @@ export function getGreeting(
     return holiday[lang].replace('{name}', name);
   }
 
-  // 2. 25% chance to show a day-of-week greeting (random from pool)
-  //    Only on weekdays (Mon-Fri) to make it feel special
-  if (dayOfWeek >= 1 && dayOfWeek <= 5 && Math.random() < 0.25) {
+  // 2. Deterministic check for day-of-week greeting based on date seed (no Math.random)
+  const dateSeed = date.getFullYear() * 10000 + month * 100 + day;
+  if (dayOfWeek >= 1 && dayOfWeek <= 5 && (dateSeed % 4 === 0)) {
     const pool = daysGeneral[lang];
-    const dayIndex = dayOfWeek - 1; // Mon=0, Tue=1, Wed=2, Thu=3, Fri=4
-    if (Math.random() < 0.5) {
-      return pool[dayIndex].replace('{name}', name);
-    }
-    return pool[Math.floor(Math.random() * pool.length)].replace('{name}', name);
+    const dayIndex = (dayOfWeek - 1) % pool.length;
+    return pool[dayIndex].replace('{name}', name);
   }
 
   // 3. Time-of-day greeting (deterministic by hour)

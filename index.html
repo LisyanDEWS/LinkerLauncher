@@ -43,20 +43,44 @@
           var bg = c ? (isDark ? '#000000' : '#ffffff') : (isDark ? '#08080a' : '#fafafa');
           var surface = c ? bg : (isDark ? '#151518' : '#ffffff');
           var surfaceDim = c ? bg : (isDark ? '#0e0e11' : '#f4f4f5');
+          var surfaceBright = c ? bg : (isDark ? '#1e1e22' : '#ffffff');
+          var container = c ? bg : (isDark ? '#1a1a1e' : '#f4f4f5');
+          var containerHigh = c ? bg : (isDark ? '#26262c' : '#e4e4e7');
+
           var onSurface = c ? (isDark ? '#ffffff' : '#000000') : (isDark ? '#fafafa' : '#09090b');
           var onSurfaceVar = c ? (isDark ? '#f4f4f5' : '#09090b') : (isDark ? '#b4b4c0' : '#52525b');
           var outline = c ? (isDark ? '#d4d4d8' : '#18181b') : (isDark ? '#34343a' : '#d4d4d8');
           var outlineVar = c ? (isDark ? '#a1a1aa' : '#3f3f46') : (isDark ? '#44444c' : '#e4e4e7');
 
+          var primaryHex = p.primary;
+          var cardBg = c ? (isDark ? '#000000' : '#ffffff') : (isDark 
+            ? 'color-mix(in srgb, color-mix(in srgb, #121216 72%, ' + primaryHex + ' 28%) 58%, transparent)'
+            : 'color-mix(in srgb, color-mix(in srgb, #ffffff 72%, ' + primaryHex + ' 28%) 62%, transparent)');
+          var panelBg = c ? (isDark ? '#000000' : '#ffffff') : (isDark 
+            ? 'color-mix(in srgb, color-mix(in srgb, #121216 80%, ' + primaryHex + ' 20%) 52%, transparent)'
+            : 'color-mix(in srgb, color-mix(in srgb, #ffffff 80%, ' + primaryHex + ' 20%) 56%, transparent)');
+          var iconTint = isDark
+            ? 'color-mix(in srgb, #151518 60%, ' + primaryHex + ' 40%)'
+            : 'color-mix(in srgb, #ffffff 70%, ' + primaryHex + ' 30%)';
+
           doc.style.backgroundColor = bg;
           doc.style.setProperty('--bg', bg);
           doc.style.setProperty('--surface', surface);
           doc.style.setProperty('--surface-dim', surfaceDim);
-          doc.style.setProperty('--surface-bright', surface);
+          doc.style.setProperty('--surface-bright', surfaceBright);
+          doc.style.setProperty('--container', container);
+          doc.style.setProperty('--container-high', containerHigh);
+          doc.style.setProperty('--card-bg', cardBg);
+          doc.style.setProperty('--panel-bg', panelBg);
           doc.style.setProperty('--on-surface', onSurface);
           doc.style.setProperty('--on-surface-var', onSurfaceVar);
           doc.style.setProperty('--outline', outline);
           doc.style.setProperty('--outline-var', outlineVar);
+          doc.style.setProperty('--icon-tint', iconTint);
+
+          doc.style.setProperty('--shadow-1', isDark ? '0 1px 2px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.35)' : '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)');
+          doc.style.setProperty('--shadow-2', isDark ? '0 6px 16px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35)' : '0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04)');
+          doc.style.setProperty('--shadow-3', isDark ? '0 16px 40px rgba(0,0,0,0.6), 0 6px 12px rgba(0,0,0,0.4)' : '0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.05)');
 
           doc.style.setProperty('--accent', p.primary);
           doc.style.setProperty('--on-accent', '#ffffff');

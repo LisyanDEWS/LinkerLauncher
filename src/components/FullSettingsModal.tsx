@@ -417,7 +417,7 @@ export default function FullSettingsModal({
 
   // Helper to retrieve the current active palette object
   const activePalette = useMemo(() => {
-    return materialPalettes.find((p) => p.id === activePaletteId) || materialPalettes[0];
+    return materialPalettes.find((p) => p.id === activePaletteId) || materialPalettes.find((p) => p.id === 'monochrome') || materialPalettes[0];
   }, [activePaletteId]);
 
   const backgrounds = useMemo(() => {
@@ -433,6 +433,44 @@ export default function FullSettingsModal({
       { id: 'gradient-4', name: 'Gradient 4', style: `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)` },
     ];
   }, [activePalette]);
+
+  // Unified Wallpapers list: Recent items first, filled with Recommended items (no duplicates)
+  const combinedWallpapers = useMemo(() => {
+    const list: Array<{ id: string; name: string; category?: string; preview: string; full: string; isRecent: boolean }> = [];
+    const seen = new Set<string>();
+
+    for (const wp of recentExtWallpapers) {
+      const key = wp.full || wp.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: wp.id,
+          name: wp.name,
+          category: wp.category || (lang === 'ru' ? 'Недавно' : 'Recent'),
+          preview: wp.preview || wp.full,
+          full: wp.full,
+          isRecent: true,
+        });
+      }
+    }
+
+    for (const wp of RECOMMENDED_EXT_WALLPAPERS) {
+      const key = wp.full || wp.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: wp.id,
+          name: wp.name,
+          category: wp.category,
+          preview: wp.preview,
+          full: wp.full,
+          isRecent: false,
+        });
+      }
+    }
+
+    return list;
+  }, [recentExtWallpapers, lang]);
 
   // List of all items for search indexing
   const searchableSettings = useMemo(() => {
@@ -952,129 +990,62 @@ export default function FullSettingsModal({
                               ))}
                             </div>
 
-                            {/* Promo Banner for Wallpaper+ Extension */}
-                            <div className="mt-2 p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/5 border border-purple-500/20 relative overflow-hidden flex flex-col gap-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/20 shrink-0">
-                                    <Paintbrush size={20} />
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-black text-[var(--on-surface)]">
-                                        {lang === 'ru' ? 'Пакет обоев «Обои+»' : '«Wallpaper+» Extension Pack'}
-                                      </span>
-                                      <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-600 dark:text-purple-300 font-extrabold text-[9px] uppercase tracking-wider">
-                                        {lang === 'ru' ? 'Расширение' : 'Extension'}
-                                      </span>
-                                    </div>
-                                    <p className="text-[11px] text-[var(--on-surface-var)] mt-0.5 leading-snug">
-                                      {lang === 'ru'
-                                        ? 'Каталог из 150+ 4K и Pixel-Art обоев с встроенным движком мгновенной установки'
-                                        : '150+ 4K and Pixel-Art wallpaper library with direct desktop engine'}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {!isWallpaperPlusInstalled ? (
-                                  <button
-                                    onClick={() => handleInstallWallpaperPlus()}
-                                    disabled={isDownloadingWallpaperPlus}
-                                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 shrink-0 cursor-pointer disabled:opacity-50"
-                                  >
-                                    <Download size={13} />
-                                    {lang === 'ru' ? 'Скачать пакет' : 'Get Pack'}
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      if (wm) {
-                                        wm.open({
-                                          id: 'wallpaper-plus',
-                                          title: 'Wallpaper+',
-                                          icon: <Paintbrush size={14} className="text-[var(--on-surface)]" />,
-                                          singleton: true,
-                                          initialWidth: 1024,
-                                          initialHeight: 720,
-                                          minWidth: 460,
-                                          minHeight: 340,
-                                          render: () => (
-                                            <iframe
-                                              src="/wallpaper-ext.html"
-                                              title="Wallpaper+"
-                                              className="w-full h-full border-none bg-[var(--bg)]"
-                                            />
-                                          ),
-                                        });
-                                      } else {
-                                        triggerToast?.(lang === 'ru' ? 'Запуск Wallpaper+...' : 'Launching Wallpaper+...');
-                                      }
-                                    }}
-                                    className="px-3.5 py-2 rounded-xl bg-[var(--surface-dim)] hover:bg-[var(--surface-bright)] border border-[var(--outline-var)] text-[var(--on-surface)] font-extrabold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
-                                  >
-                                    <ExternalLink size={13} />
-                                    {lang === 'ru' ? 'Открыть Обои+' : 'Open Wallpaper+'}
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Download Progress Bar Animation */}
-                              {isDownloadingWallpaperPlus && (
-                                <div className="flex flex-col gap-1.5 pt-2 border-t border-purple-500/20">
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-purple-600 dark:text-purple-300">
-                                    <span className="flex items-center gap-1.5">
-                                      <Loader2 size={12} className="animate-spin" />
-                                      {downloadStatusText || (lang === 'ru' ? 'Загрузка пакета...' : 'Downloading package...')}
-                                    </span>
-                                    <span className="tabular-nums">{downloadProgress}%</span>
-                                  </div>
-                                  <div className="w-full h-2 bg-purple-500/10 rounded-full overflow-hidden border border-purple-500/20">
-                                    <div
-                                      className="h-full bg-purple-600 transition-all duration-200"
-                                      style={{ width: `${downloadProgress}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Row: Recommended Wallpapers from Extension */}
+                            {/* Single Unified Wallpapers Row (Recent + Recommended with uniform compact sizing) */}
                             <div className="flex flex-col gap-2 mt-2">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--on-surface)]">
                                   <Sparkles size={14} className="text-purple-500" />
-                                  <span>{lang === 'ru' ? 'Рекомендованные обои из Обои+' : 'Recommended from Wallpaper+'}</span>
-                                </div>
-                                {!isWallpaperPlusInstalled && (
-                                  <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                                    {lang === 'ru' ? 'Автоустановка Обои+' : 'Auto-installs Wallpaper+'}
+                                  <span>
+                                    {lang === 'ru'
+                                      ? 'Недавно использованные и рекомендованные обои'
+                                      : 'Recently used & recommended wallpapers'}
                                   </span>
+                                </div>
+                                {recentExtWallpapers.length > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      setRecentExtWallpapers([]);
+                                      localStorage.removeItem('linkerru_recent_ext_wallpapers');
+                                    }}
+                                    className="text-[10px] font-bold text-[var(--on-surface-var)] hover:text-red-500 transition-colors cursor-pointer"
+                                  >
+                                    {lang === 'ru' ? 'Очистить историю' : 'Clear history'}
+                                  </button>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
-                                {RECOMMENDED_EXT_WALLPAPERS.map((wp) => {
+                              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+                                {combinedWallpapers.map((wp) => {
                                   const isSelected = mainWallpaper === wp.full;
                                   return (
                                     <div
                                       key={wp.id}
                                       onClick={() => {
-                                        if (!isWallpaperPlusInstalled) {
+                                        if (!isWallpaperPlusInstalled && !wp.isRecent) {
                                           handleInstallWallpaperPlus(() => handleApplyExtWallpaper(wp));
                                         } else {
                                           handleApplyExtWallpaper(wp);
                                         }
                                       }}
-                                      className={`group relative shrink-0 w-36 h-20 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
+                                      className={`group relative shrink-0 w-32 h-18 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
                                         isSelected
                                           ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-95'
                                           : 'border-[var(--outline-var)] hover:border-[var(--accent)] hover:scale-[1.02]'
                                       }`}
                                     >
                                       <img src={wp.preview} alt={wp.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-2 flex flex-col justify-end">
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-1.5 flex flex-col justify-end">
                                         <span className="text-[10px] font-extrabold text-white truncate drop-shadow">{wp.name}</span>
-                                        <span className="text-[8px] font-medium text-white/70 uppercase tracking-wider">{wp.category}</span>
+                                        <div className="flex items-center justify-between">
+                                          {wp.category && (
+                                            <span className="text-[8px] font-medium text-white/70 uppercase tracking-wider truncate max-w-[70px]">{wp.category}</span>
+                                          )}
+                                          {wp.isRecent && (
+                                            <span className="text-[8px] font-bold text-amber-300 bg-black/40 px-1 rounded ml-auto">
+                                              {lang === 'ru' ? 'Недавно' : 'Recent'}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                       {isSelected && (
                                         <div className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-sm">
@@ -1086,54 +1057,6 @@ export default function FullSettingsModal({
                                 })}
                               </div>
                             </div>
-
-                            {/* Row: Recently Used Extension Wallpapers */}
-                            {recentExtWallpapers.length > 0 && (
-                              <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-[var(--outline-var)]/60">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--on-surface)]">
-                                    <History size={14} className="text-[var(--on-surface-var)]" />
-                                    <span>{lang === 'ru' ? 'Недавно использованные из расширений' : 'Recently used from extensions'}</span>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setRecentExtWallpapers([]);
-                                      localStorage.removeItem('linkerru_recent_ext_wallpapers');
-                                    }}
-                                    className="text-[10px] font-bold text-[var(--on-surface-var)] hover:text-red-500 transition-colors cursor-pointer"
-                                  >
-                                    {lang === 'ru' ? 'Очистить историю' : 'Clear history'}
-                                  </button>
-                                </div>
-
-                                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
-                                  {recentExtWallpapers.map((wp) => {
-                                    const isSelected = mainWallpaper === wp.full;
-                                    return (
-                                      <div
-                                        key={wp.id}
-                                        onClick={() => handleApplyExtWallpaper(wp)}
-                                        className={`group relative shrink-0 w-32 h-18 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                                          isSelected
-                                            ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-95'
-                                            : 'border-[var(--outline-var)] hover:border-[var(--accent)] hover:scale-[1.02]'
-                                        }`}
-                                      >
-                                        <img src={wp.preview || wp.full} alt={wp.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-2 flex flex-col justify-end">
-                                          <span className="text-[10px] font-extrabold text-white truncate drop-shadow">{wp.name}</span>
-                                        </div>
-                                        {isSelected && (
-                                          <div className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-sm">
-                                            <Check size={10} />
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </div>
 
