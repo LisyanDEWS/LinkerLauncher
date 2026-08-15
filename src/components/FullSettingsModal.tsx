@@ -34,7 +34,59 @@ import {
   Smartphone,
   Eye,
   EyeOff,
+  Paintbrush,
+  Download,
+  ExternalLink,
+  Sparkles,
+  History,
+  Blocks,
 } from 'lucide-react';
+import { useWindows } from './WindowManager';
+
+const RECOMMENDED_EXT_WALLPAPERS = [
+  {
+    id: 'ext-braies',
+    name: 'Озеро Брайес',
+    category: '4K Ultra',
+    preview: 'https://images.pexels.com/photos/1525041/pexels-photo-1525041.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
+    full: 'https://images.pexels.com/photos/1525041/pexels-photo-1525041.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+  },
+  {
+    id: 'ext-pixel-city',
+    name: 'Неоновый мегаполис',
+    category: 'Pixel Art',
+    preview: 'https://images.pexels.com/photos/1632044/pexels-photo-1632044.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
+    full: 'https://images.pexels.com/photos/1632044/pexels-photo-1632044.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+  },
+  {
+    id: 'ext-space-nebula',
+    name: 'Туманность Северная Америка',
+    category: 'Space 4K',
+    preview: 'https://images.pexels.com/photos/9160637/pexels-photo-9160637.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
+    full: 'https://images.pexels.com/photos/9160637/pexels-photo-9160637.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+  },
+  {
+    id: 'ext-ny-night',
+    name: 'Нью-Йорк: ночь',
+    category: 'City 4K',
+    preview: 'https://images.pexels.com/photos/3075993/pexels-photo-3075993.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
+    full: 'https://images.pexels.com/photos/3075993/pexels-photo-3075993.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+  },
+  {
+    id: 'ext-lilac-spectrum',
+    name: 'Лиловый спектр',
+    category: 'Abstract',
+    preview: 'https://images.pexels.com/photos/7135028/pexels-photo-7135028.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
+    full: 'https://images.pexels.com/photos/7135028/pexels-photo-7135028.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+  },
+  {
+    id: 'ext-misty-slope',
+    name: 'Туманный склон',
+    category: 'Dark',
+    preview: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
+    full: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+  },
+];
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
 import { translations } from '../data/translations';
@@ -54,6 +106,9 @@ const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
 };
 
 interface FullSettingsModalProps {
+  wm?: ReturnType<typeof useWindows>;
+  playChime?: (type?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
+  triggerToast?: (text: string) => void;
   isOpen: boolean;
   onClose: () => void;
   lang: Language;
@@ -110,6 +165,9 @@ interface FullSettingsModalProps {
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account';
 
 export default function FullSettingsModal({
+  wm,
+  playChime,
+  triggerToast,
   isOpen,
   onClose: _onClose,
   lang,
@@ -165,6 +223,114 @@ export default function FullSettingsModal({
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileContent, setShowMobileContent] = useState(false);
+
+  // --- Installed extensions state ---
+  const [installedExtensions, setInstalledExtensions] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('linkerru_installed_extensions');
+      return saved ? JSON.parse(saved) : ['wallpaper-plus'];
+    } catch {
+      return ['wallpaper-plus'];
+    }
+  });
+
+  const isWallpaperPlusInstalled = installedExtensions.includes('wallpaper-plus');
+
+  // --- Download simulation state for Wallpaper+ ---
+  const [isDownloadingWallpaperPlus, setIsDownloadingWallpaperPlus] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadStatusText, setDownloadStatusText] = useState('');
+
+  // --- Recent extension wallpapers state ---
+  const [recentExtWallpapers, setRecentExtWallpapers] = useState<Array<{ id: string; name: string; preview: string; full: string }>>(() => {
+    try {
+      const saved = localStorage.getItem('linkerru_recent_ext_wallpapers');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Sync recent extension wallpapers if mainWallpaper is set to a remote image URL
+  useEffect(() => {
+    if (
+      mainWallpaper &&
+      mainWallpaper !== 'none' &&
+      !mainWallpaper.startsWith('gradient') &&
+      !mainWallpaper.startsWith('linear-gradient') &&
+      !mainWallpaper.startsWith('radial-gradient') &&
+      !mainWallpaper.startsWith('conic-gradient') &&
+      !mainWallpaper.startsWith('var(--bg)')
+    ) {
+      setRecentExtWallpapers((prev) => {
+        const exists = prev.some((item) => item.full === mainWallpaper);
+        if (!exists) {
+          const recMatch = RECOMMENDED_EXT_WALLPAPERS.find((r) => r.full === mainWallpaper);
+          const newItem = {
+            id: recMatch?.id || 'ext-' + Date.now(),
+            name: recMatch?.name || (lang === 'ru' ? 'Обои из Wallpaper+' : 'Wallpaper+ Image'),
+            preview: recMatch?.preview || mainWallpaper,
+            full: mainWallpaper,
+          };
+          const updated = [newItem, ...prev].slice(0, 10);
+          localStorage.setItem('linkerru_recent_ext_wallpapers', JSON.stringify(updated));
+          return updated;
+        }
+        return prev;
+      });
+    }
+  }, [mainWallpaper, lang]);
+
+  const handleInstallWallpaperPlus = (onFinished?: () => void) => {
+    if (isDownloadingWallpaperPlus) return;
+    playChime?.('click');
+    setIsDownloadingWallpaperPlus(true);
+    setDownloadProgress(0);
+    setDownloadStatusText(lang === 'ru' ? 'Подключение к серверу...' : 'Connecting to server...');
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 18) + 12;
+      if (progress < 40) {
+        setDownloadStatusText(lang === 'ru' ? 'Загрузка 4K ресурсов Обои+...' : 'Downloading 4K Wallpaper+ assets...');
+      } else if (progress < 80) {
+        setDownloadStatusText(lang === 'ru' ? 'Распаковка библиотеки...' : 'Unpacking library...');
+      } else if (progress < 100) {
+        setDownloadStatusText(lang === 'ru' ? 'Регистрация манифеста...' : 'Registering manifest...');
+      }
+
+      if (progress >= 100) {
+        progress = 100;
+        setDownloadProgress(100);
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsDownloadingWallpaperPlus(false);
+          setInstalledExtensions((prev) => {
+            const next = Array.from(new Set([...prev, 'wallpaper-plus']));
+            localStorage.setItem('linkerru_installed_extensions', JSON.stringify(next));
+            return next;
+          });
+          playChime?.('victory');
+          triggerToast?.(lang === 'ru' ? 'Расширение «Обои+» успешно установлено!' : '«Wallpaper+» extension installed!');
+          onFinished?.();
+        }, 300);
+      } else {
+        setDownloadProgress(progress);
+      }
+    }, 200);
+  };
+
+  const handleApplyExtWallpaper = (item: { id: string; name: string; preview: string; full: string }) => {
+    onMainWallpaperChange(item.full);
+    setRecentExtWallpapers((prev) => {
+      const filtered = prev.filter((i) => i.full !== item.full && i.id !== item.id);
+      const updated = [item, ...filtered].slice(0, 10);
+      localStorage.setItem('linkerru_recent_ext_wallpapers', JSON.stringify(updated));
+      return updated;
+    });
+    playChime?.('victory');
+    triggerToast?.(lang === 'ru' ? 'Обои успешно применены!' : 'Wallpaper successfully applied!');
+  };
 
   // Track the container (window manager) width to switch between
   // wide (iPadOS split-view) and narrow (iOS stack navigation) layouts.
@@ -772,17 +938,202 @@ export default function FullSettingsModal({
                                 </div>
                               </div>
                             </div>
-                            <div className="grid grid-cols-5 gap-2 mt-2">
+
+                            {/* Standard Gradients Grid */}
+                            <div className="grid grid-cols-5 gap-2 mt-1">
                               {backgrounds.map((bg) => (
                                 <button
                                   key={bg.id}
                                   onClick={() => onMainWallpaperChange(bg.id)}
-                                  className={`h-12 rounded-xl border-2 transition-all ${mainWallpaper === bg.id ? 'border-[var(--accent)] scale-95' : 'border-[var(--outline-var)] hover:border-[var(--outline)]'}`}
+                                  className={`h-12 rounded-xl border-2 transition-all cursor-pointer ${mainWallpaper === bg.id ? 'border-[var(--accent)] scale-95 ring-2 ring-[var(--accent)]/20' : 'border-[var(--outline-var)] hover:border-[var(--outline)]'}`}
                                   style={{ background: bg.style }}
                                   title={bg.name}
                                 />
                               ))}
                             </div>
+
+                            {/* Promo Banner for Wallpaper+ Extension */}
+                            <div className="mt-2 p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/5 border border-purple-500/20 relative overflow-hidden flex flex-col gap-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/20 shrink-0">
+                                    <Paintbrush size={20} />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-black text-[var(--on-surface)]">
+                                        {lang === 'ru' ? 'Пакет обоев «Обои+»' : '«Wallpaper+» Extension Pack'}
+                                      </span>
+                                      <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-600 dark:text-purple-300 font-extrabold text-[9px] uppercase tracking-wider">
+                                        {lang === 'ru' ? 'Расширение' : 'Extension'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-[var(--on-surface-var)] mt-0.5 leading-snug">
+                                      {lang === 'ru'
+                                        ? 'Каталог из 150+ 4K и Pixel-Art обоев с встроенным движком мгновенной установки'
+                                        : '150+ 4K and Pixel-Art wallpaper library with direct desktop engine'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {!isWallpaperPlusInstalled ? (
+                                  <button
+                                    onClick={() => handleInstallWallpaperPlus()}
+                                    disabled={isDownloadingWallpaperPlus}
+                                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 shrink-0 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Download size={13} />
+                                    {lang === 'ru' ? 'Скачать пакет' : 'Get Pack'}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      if (wm) {
+                                        wm.open({
+                                          id: 'wallpaper-plus',
+                                          title: 'Wallpaper+',
+                                          icon: <Paintbrush size={14} className="text-[var(--on-surface)]" />,
+                                          singleton: true,
+                                          initialWidth: 1024,
+                                          initialHeight: 720,
+                                          minWidth: 460,
+                                          minHeight: 340,
+                                          render: () => (
+                                            <iframe
+                                              src="/wallpaper-ext.html"
+                                              title="Wallpaper+"
+                                              className="w-full h-full border-none bg-[var(--bg)]"
+                                            />
+                                          ),
+                                        });
+                                      } else {
+                                        triggerToast?.(lang === 'ru' ? 'Запуск Wallpaper+...' : 'Launching Wallpaper+...');
+                                      }
+                                    }}
+                                    className="px-3.5 py-2 rounded-xl bg-[var(--surface-dim)] hover:bg-[var(--surface-bright)] border border-[var(--outline-var)] text-[var(--on-surface)] font-extrabold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                                  >
+                                    <ExternalLink size={13} />
+                                    {lang === 'ru' ? 'Открыть Обои+' : 'Open Wallpaper+'}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Download Progress Bar Animation */}
+                              {isDownloadingWallpaperPlus && (
+                                <div className="flex flex-col gap-1.5 pt-2 border-t border-purple-500/20">
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-purple-600 dark:text-purple-300">
+                                    <span className="flex items-center gap-1.5">
+                                      <Loader2 size={12} className="animate-spin" />
+                                      {downloadStatusText || (lang === 'ru' ? 'Загрузка пакета...' : 'Downloading package...')}
+                                    </span>
+                                    <span className="tabular-nums">{downloadProgress}%</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-purple-500/10 rounded-full overflow-hidden border border-purple-500/20">
+                                    <div
+                                      className="h-full bg-purple-600 transition-all duration-200"
+                                      style={{ width: `${downloadProgress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Row: Recommended Wallpapers from Extension */}
+                            <div className="flex flex-col gap-2 mt-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--on-surface)]">
+                                  <Sparkles size={14} className="text-purple-500" />
+                                  <span>{lang === 'ru' ? 'Рекомендованные обои из Обои+' : 'Recommended from Wallpaper+'}</span>
+                                </div>
+                                {!isWallpaperPlusInstalled && (
+                                  <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                    {lang === 'ru' ? 'Автоустановка Обои+' : 'Auto-installs Wallpaper+'}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+                                {RECOMMENDED_EXT_WALLPAPERS.map((wp) => {
+                                  const isSelected = mainWallpaper === wp.full;
+                                  return (
+                                    <div
+                                      key={wp.id}
+                                      onClick={() => {
+                                        if (!isWallpaperPlusInstalled) {
+                                          handleInstallWallpaperPlus(() => handleApplyExtWallpaper(wp));
+                                        } else {
+                                          handleApplyExtWallpaper(wp);
+                                        }
+                                      }}
+                                      className={`group relative shrink-0 w-36 h-20 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
+                                        isSelected
+                                          ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-95'
+                                          : 'border-[var(--outline-var)] hover:border-[var(--accent)] hover:scale-[1.02]'
+                                      }`}
+                                    >
+                                      <img src={wp.preview} alt={wp.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-2 flex flex-col justify-end">
+                                        <span className="text-[10px] font-extrabold text-white truncate drop-shadow">{wp.name}</span>
+                                        <span className="text-[8px] font-medium text-white/70 uppercase tracking-wider">{wp.category}</span>
+                                      </div>
+                                      {isSelected && (
+                                        <div className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-sm">
+                                          <Check size={10} />
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Row: Recently Used Extension Wallpapers */}
+                            {recentExtWallpapers.length > 0 && (
+                              <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-[var(--outline-var)]/60">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--on-surface)]">
+                                    <History size={14} className="text-[var(--on-surface-var)]" />
+                                    <span>{lang === 'ru' ? 'Недавно использованные из расширений' : 'Recently used from extensions'}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setRecentExtWallpapers([]);
+                                      localStorage.removeItem('linkerru_recent_ext_wallpapers');
+                                    }}
+                                    className="text-[10px] font-bold text-[var(--on-surface-var)] hover:text-red-500 transition-colors cursor-pointer"
+                                  >
+                                    {lang === 'ru' ? 'Очистить историю' : 'Clear history'}
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+                                  {recentExtWallpapers.map((wp) => {
+                                    const isSelected = mainWallpaper === wp.full;
+                                    return (
+                                      <div
+                                        key={wp.id}
+                                        onClick={() => handleApplyExtWallpaper(wp)}
+                                        className={`group relative shrink-0 w-32 h-18 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
+                                          isSelected
+                                            ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-95'
+                                            : 'border-[var(--outline-var)] hover:border-[var(--accent)] hover:scale-[1.02]'
+                                        }`}
+                                      >
+                                        <img src={wp.preview || wp.full} alt={wp.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-2 flex flex-col justify-end">
+                                          <span className="text-[10px] font-extrabold text-white truncate drop-shadow">{wp.name}</span>
+                                        </div>
+                                        {isSelected && (
+                                          <div className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-sm">
+                                            <Check size={10} />
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
 

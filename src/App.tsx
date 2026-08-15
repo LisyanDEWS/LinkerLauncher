@@ -377,6 +377,39 @@ export default function App() {
     }
   };
 
+  const handleEnableGeolocation = () => {
+    setWeatherLocationMode('auto');
+    localStorage.setItem('linkerru_weather_location_mode', 'auto');
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m`);
+            const data = await res.json();
+            if (data && data.current && data.current.temperature_2m !== undefined) {
+              setTopbarTemp(Math.round(data.current.temperature_2m));
+              setWeatherError(false);
+            } else {
+              setWeatherError(true);
+            }
+          } catch (e) {
+            setWeatherError(true);
+          }
+        },
+        () => setWeatherError(true)
+      );
+    } else {
+      setWeatherError(true);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      document.documentElement.classList.remove('preload-no-transition');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const syncUnit = () => {
       const saved = (localStorage.getItem('linkerru_temp_unit') as 'C' | 'F') || 'C';
@@ -1379,6 +1412,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       render: () => (
         <div className="h-full w-full">
           <FullSettingsModal
+            wm={wm}
+            playChime={playChime}
+            triggerToast={triggerToast}
             isOpen={true}
             embedded={true}
             onClose={() => wm.close('settings')}
@@ -3065,6 +3101,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               return (
                 <div className="h-full w-full">
                   <FullSettingsModal
+                    wm={wm}
+                    playChime={playChime}
+                    triggerToast={triggerToast}
                     isOpen={true}
                     embedded={true}
                     onClose={() => wm.close('settings')}
@@ -3259,6 +3298,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         lang={lang}
         currentCity={weatherCustomCity}
         locationMode={weatherLocationMode}
+        onEnableGeolocation={handleEnableGeolocation}
         onSetCustomCity={(city) => {
           setWeatherLocationMode('custom');
           setWeatherCustomCity(city);

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="preload-no-transition">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,10 +11,61 @@
         try {
           var t = localStorage.getItem('linkerru_theme') || 'light';
           var c = localStorage.getItem('linkerru_contrast') === 'true';
-          document.documentElement.setAttribute('data-theme', t);
-          document.documentElement.style.backgroundColor = c
-            ? (t === 'dark' ? '#000000' : '#ffffff')
-            : (t === 'dark' ? '#09090b' : '#fafafa');
+          var accentId = localStorage.getItem('linkerru_accent') || 'monochrome';
+          var customPalette = localStorage.getItem('linkerru_custom_palette');
+          var font = localStorage.getItem('linkerru_font');
+
+          var palettes = {
+            'sage_khaki': { primary: '#8FA882', secondary: '#A3BA92', tertiary: '#435B37' },
+            'true_olive': { primary: '#7B8E6F', secondary: '#8CA17F', tertiary: '#3A4B32' },
+            'lavender_orchid': { primary: '#B39DDB', secondary: '#CE93D8', tertiary: '#5E35B1' },
+            'ocean_teal': { primary: '#80CBC4', secondary: '#4DB6AC', tertiary: '#006064' },
+            'terracotta_sand': { primary: '#D4A373', secondary: '#E9C46A', tertiary: '#8B5D33' },
+            'classic_slate': { primary: '#78909C', secondary: '#90A4AE', tertiary: '#37474F' },
+            'rose_gold': { primary: '#D4AF37', secondary: '#E6C27A', tertiary: '#8C6D1F' },
+            'forest_moss': { primary: '#22C55E', secondary: '#4ADE80', tertiary: '#15803D' },
+            'monochrome': { primary: '#404040', secondary: '#737373', tertiary: '#171717' }
+          };
+
+          var p = palettes[accentId] || palettes['monochrome'];
+          if (customPalette) {
+            try {
+              var parsed = JSON.parse(customPalette);
+              if (parsed && parsed.primary) p = parsed;
+            } catch(e) {}
+          }
+
+          var doc = document.documentElement;
+          var isDark = t === 'dark';
+
+          doc.setAttribute('data-theme', t);
+
+          var bg = c ? (isDark ? '#000000' : '#ffffff') : (isDark ? '#08080a' : '#fafafa');
+          var surface = c ? bg : (isDark ? '#151518' : '#ffffff');
+          var surfaceDim = c ? bg : (isDark ? '#0e0e11' : '#f4f4f5');
+          var onSurface = c ? (isDark ? '#ffffff' : '#000000') : (isDark ? '#fafafa' : '#09090b');
+          var onSurfaceVar = c ? (isDark ? '#f4f4f5' : '#09090b') : (isDark ? '#b4b4c0' : '#52525b');
+          var outline = c ? (isDark ? '#d4d4d8' : '#18181b') : (isDark ? '#34343a' : '#d4d4d8');
+          var outlineVar = c ? (isDark ? '#a1a1aa' : '#3f3f46') : (isDark ? '#44444c' : '#e4e4e7');
+
+          doc.style.backgroundColor = bg;
+          doc.style.setProperty('--bg', bg);
+          doc.style.setProperty('--surface', surface);
+          doc.style.setProperty('--surface-dim', surfaceDim);
+          doc.style.setProperty('--surface-bright', surface);
+          doc.style.setProperty('--on-surface', onSurface);
+          doc.style.setProperty('--on-surface-var', onSurfaceVar);
+          doc.style.setProperty('--outline', outline);
+          doc.style.setProperty('--outline-var', outlineVar);
+
+          doc.style.setProperty('--accent', p.primary);
+          doc.style.setProperty('--on-accent', '#ffffff');
+          doc.style.setProperty('--accent-secondary', p.secondary || p.primary);
+          doc.style.setProperty('--accent-tertiary', p.tertiary || p.primary);
+
+          if (font) {
+            doc.style.setProperty('--font-sans', font);
+          }
         } catch (e) {}
       })();
     </script>

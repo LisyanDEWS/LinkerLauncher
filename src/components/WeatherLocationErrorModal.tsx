@@ -8,6 +8,7 @@ interface WeatherLocationErrorModalProps {
   lang: 'ru' | 'en';
   onSetCustomCity: (city: string) => void;
   onDisableWidget: () => void;
+  onEnableGeolocation?: () => void;
   currentCity?: string;
   locationMode?: 'auto' | 'custom';
 }
@@ -32,6 +33,7 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
   lang,
   onSetCustomCity,
   onDisableWidget,
+  onEnableGeolocation,
   currentCity = '',
   locationMode = 'auto',
 }) => {
@@ -89,7 +91,34 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                   : 'Unable to detect your current location automatically. Select an option:'}
               </p>
 
-              {/* Option 1: Add location manually */}
+              {/* Option 1: Allow / Request Geolocation */}
+              <button
+                onClick={() => {
+                  if (onEnableGeolocation) {
+                    onEnableGeolocation();
+                  }
+                  onClose();
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:bg-[var(--surface-bright)] transition-all text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <Globe size={18} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-extrabold text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
+                      {lang === 'ru' ? 'Разрешить геолокацию' : 'Allow Geolocation'}
+                    </div>
+                    <div className="text-[11px] text-[var(--on-surface-var)]">
+                      {lang === 'ru'
+                        ? 'Попробовать снова определить авто-позицию браузера'
+                        : 'Try auto-detecting location via browser again'}
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Add location manually */}
               <button
                 onClick={() => setActiveView('manual')}
                 className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:bg-[var(--surface-bright)] transition-all text-left group"

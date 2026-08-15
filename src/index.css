@@ -14,6 +14,13 @@ body, #root {
   transition: background-color 0.4s ease, color 0.4s ease;
 }
 
+.preload-no-transition,
+.preload-no-transition *,
+.preload-no-transition *::before,
+.preload-no-transition *::after {
+  transition: none !important;
+}
+
 /* Custom scrollbar helpers */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
