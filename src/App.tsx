@@ -2741,32 +2741,32 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
         {/* COLUMN 2: News bullet notes */}
         <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative" id="panel-news">
-          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-3">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-2">
             <Newspaper size={16} />
             <span>{t.ph_news}</span>
           </div>
 
-          <p className="text-xs font-semibold text-[var(--on-surface)] leading-relaxed flex-1 overflow-y-auto pr-1 scrollbar-thin whitespace-pre-line">
-            {t.ph_news_text}
-          </p>
+          <div className="text-xs font-semibold text-[var(--on-surface)] leading-relaxed flex-1 flex flex-col justify-between">
+            <p className="whitespace-pre-line opacity-90">
+              {t.ph_news_bullets}
+            </p>
 
-          <div className="mt-2 flex items-center justify-end gap-1 text-[var(--accent)] select-none">
-            <span className="text-[10px] font-semibold italic text-[var(--accent)] opacity-85 tracking-tight">
-              {lang === 'ru' ? 'канал справа' : 'channel on the right'}
-            </span>
-            <svg 
-              className="w-12 h-6 text-[var(--accent)] overflow-visible transform translate-y-0.5 animate-pulse" 
-              viewBox="0 0 50 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2.2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              {/* Handwritten curved arrow */}
-              <path d="M 4 18 Q 22 2 44 10" />
-              <path d="M 36 5 L 46 11 L 38 18" />
-            </svg>
+            <div className="mt-3 pt-2 border-t border-[var(--outline-var)]/30 flex items-center gap-2 flex-wrap text-[var(--accent)] font-bold text-xs select-none">
+              <span>{t.ph_news_channel_note}</span>
+              <svg 
+                className="w-10 h-5 text-[var(--accent)] shrink-0 animate-pulse transform translate-y-0.5" 
+                viewBox="0 0 40 20" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                {/* Handwritten arrow pointing right to support panel channel */}
+                <path d="M 2 12 Q 18 6 32 10" />
+                <path d="M 24 4 L 34 10 L 26 16" />
+              </svg>
+            </div>
           </div>
         </div>
 
