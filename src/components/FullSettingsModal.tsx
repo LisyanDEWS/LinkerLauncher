@@ -228,9 +228,9 @@ export default function FullSettingsModal({
   const [installedExtensions, setInstalledExtensions] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('linkerru_installed_extensions');
-      return saved ? JSON.parse(saved) : ['wallpaper-plus'];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['wallpaper-plus'];
+      return [];
     }
   });
 

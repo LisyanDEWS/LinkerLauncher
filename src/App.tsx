@@ -2289,7 +2289,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       <section className="max-w-7xl mx-auto w-full mb-8 text-left" id="branding-heading">
         <div className="flex items-center gap-2.5 mb-3">
           <span
-            className="inline-flex items-center px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest bg-[var(--surface)]/80 text-[var(--accent)] border border-[var(--outline-var)]/60 rounded-xl select-none backdrop-blur-md shadow-xs"
+            className="inline-flex items-center justify-center h-7 px-3.5 text-[10px] font-black uppercase tracking-widest bg-[var(--surface)]/80 text-[var(--accent)] border border-[var(--outline-var)]/60 rounded-xl select-none backdrop-blur-md shadow-xs leading-none"
             id="branding-tag"
           >
             LinkerRu × Lisyan
@@ -2299,7 +2299,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               openChangelogWindow();
             }}
-            className="inline-flex items-center gap-1.5 bg-[var(--surface)]/80 border border-[var(--outline-var)]/60 px-3.5 py-1.5 rounded-xl text-[10px] font-black text-[var(--on-surface-var)] backdrop-blur-md shadow-xs hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 h-7 px-3.5 bg-[var(--surface)]/80 border border-[var(--outline-var)]/60 rounded-xl text-[10px] font-black text-[var(--on-surface-var)] backdrop-blur-md shadow-xs hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer leading-none"
             id="version-pill"
           >
             <History size={12} />
@@ -2536,7 +2536,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <span className="text-[10px] tabular-nums text-[var(--outline)] font-bold">4/4</span>
           </div>
           
-          <div className="flex-1 flex flex-col justify-center my-auto py-1">
+          <div className="flex-1 flex flex-col justify-between mt-2">
             <div className="grid grid-cols-4 gap-2" id="app-grid">
               {/* Weather App Shortcut */}
               {!isWeatherDisabled && (
@@ -2604,10 +2604,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               </div>
             </div>
           </div>
-
-          <span className="text-[9px] font-black uppercase tracking-widest text-[var(--outline)] text-center mt-auto">
-            Quick Apps
-          </span>
         </div>
 
         {/* PANEL: Quick Toggles */}
@@ -2740,25 +2736,37 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <button onClick={() => { playChime('click'); handleOpenSettings('account'); }} className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm">
               {lang === 'ru' ? 'Управление аккаунтом' : 'Manage Account'}
             </button>
-            <p className="text-[9px] text-[var(--on-surface-var)] text-center select-none font-semibold">
-              {t.ph_danger_hint}
-            </p>
           </div>
         </div>
 
         {/* COLUMN 2: News bullet notes */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px]" id="panel-news">
-          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-4">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative" id="panel-news">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-3">
             <Newspaper size={16} />
             <span>{t.ph_news}</span>
           </div>
 
-          <p className="text-sm font-semibold text-[var(--on-surface)] leading-relaxed flex-1 overflow-y-auto pr-1 scrollbar-thin">
+          <p className="text-xs font-semibold text-[var(--on-surface)] leading-relaxed flex-1 overflow-y-auto pr-1 scrollbar-thin whitespace-pre-line">
             {t.ph_news_text}
           </p>
 
-          <div className="text-[10px] text-[var(--outline)] font-black uppercase mt-4 text-center">
-            build stable · {lang === 'ru' ? 'актуально' : 'up to date'}
+          <div className="mt-2 flex items-center justify-end gap-1 text-[var(--accent)] select-none">
+            <span className="text-[10px] font-semibold italic text-[var(--accent)] opacity-85 tracking-tight">
+              {lang === 'ru' ? 'канал справа' : 'channel on the right'}
+            </span>
+            <svg 
+              className="w-12 h-6 text-[var(--accent)] overflow-visible transform translate-y-0.5 animate-pulse" 
+              viewBox="0 0 50 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2.2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              {/* Handwritten curved arrow */}
+              <path d="M 4 18 Q 22 2 44 10" />
+              <path d="M 36 5 L 46 11 L 38 18" />
+            </svg>
           </div>
         </div>
 

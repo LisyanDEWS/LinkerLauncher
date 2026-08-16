@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Blocks, Paintbrush, Download, Check, Trash2, Search, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Blocks, Paintbrush, Download, Check, Trash2, Search, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useWindows } from './WindowManager';
 
@@ -19,18 +19,16 @@ interface ExtensionItem {
   size: string;
   author: string;
   icon: React.ReactNode;
-  accentColor: string;
-  featured?: boolean;
 }
 
 export function ExtensionsManager({ lang, wm, playChime, triggerToast }: ExtensionsManagerProps) {
-  // Installed extensions state persisted in localStorage
+  // Installed extensions state persisted in localStorage (defaults to empty list until installed)
   const [installedIds, setInstalledIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('linkerru_installed_extensions');
-      return saved ? JSON.parse(saved) : ['wallpaper-plus']; // Wallpaper+ installed by default or toggleable
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['wallpaper-plus'];
+      return [];
     }
   });
 
@@ -57,8 +55,6 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
       size: '1.2 MB',
       author: 'Linker Studio',
       icon: <Paintbrush size={24} />,
-      accentColor: '#8b5cf6',
-      featured: true,
     },
   ];
 
@@ -238,21 +234,11 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
               <div>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm"
-                      style={{ backgroundColor: ext.accentColor }}
-                    >
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-[var(--accent)] text-white shadow-sm">
                       {ext.icon}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-sm text-[var(--on-surface)]">{ext.name}</h3>
-                        {ext.featured && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium text-[10px] flex items-center gap-1">
-                            <ShieldCheck size={10} /> Verified
-                          </span>
-                        )}
-                      </div>
+                      <h3 className="font-bold text-sm text-[var(--on-surface)]">{ext.name}</h3>
                       <p className="text-[11px] text-[var(--on-surface-var)]">
                         {ext.category} • {ext.version} • {ext.size}
                       </p>
