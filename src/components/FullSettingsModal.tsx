@@ -30,7 +30,6 @@ import {
   StickyNote,
   Calculator,
   Gamepad2,
-  Puzzle,
   Smartphone,
   Eye,
   EyeOff,
@@ -1487,11 +1486,12 @@ export default function FullSettingsModal({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {[
                               { id: 'subconvert', name: 'Сабконверт', nameEn: 'SubConvert', Icon: Subtitles },
+                              { id: 'weather', name: 'Погода', nameEn: 'Weather', Icon: CloudSun },
                               { id: 'lisyan', name: 'Lisyan Connect', nameEn: 'Lisyan Connect', Icon: MessageCircle },
                               { id: 'keeps', name: 'Заметки (Keeps)', nameEn: 'Notes (Keeps)', Icon: StickyNote },
                               { id: 'calculator', name: 'Калькулятор', nameEn: 'Calculator', Icon: Calculator },
                               { id: 'nexus', name: 'Nexus Game Box', nameEn: 'Nexus Game Box', Icon: Gamepad2 },
-                              { id: 'extensions', name: 'Расширения', nameEn: 'Extensions', Icon: Puzzle },
+                              { id: 'extensions', name: 'Расширения', nameEn: 'Extensions', Icon: Blocks },
                             ].map((appItem) => {
                               const isAllowed = appNotifPermissions[appItem.id] !== 'denied';
                               const AppIcon = appItem.Icon;

@@ -15,7 +15,6 @@ import {
   CloudSun,
   Settings,
   Blocks,
-  Puzzle,
   User,
   History,
   Globe,
@@ -459,7 +458,6 @@ export default function App() {
     };
 
     const loadWeather = () => {
-      if (isWeatherDisabled) return;
       if (weatherLocationMode === 'custom' && weatherCustomCity) {
         fetchTopWeatherByCity(weatherCustomCity);
         return;
@@ -467,10 +465,10 @@ export default function App() {
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => fetchTopWeather(pos.coords.latitude.toString(), pos.coords.longitude.toString()),
-          () => setWeatherError(true)
+          () => fetchTopWeatherByCity(weatherCustomCity || 'Москва')
         );
       } else {
-        setWeatherError(true);
+        fetchTopWeatherByCity(weatherCustomCity || 'Москва');
       }
     };
 
@@ -1517,7 +1515,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     wm.open({
       id: 'extensions',
       title: lang === 'ru' ? 'Расширения' : 'Extensions',
-      icon: <Puzzle size={14} className="text-[var(--on-surface)]" />,
+      icon: <Blocks size={14} className="text-[var(--on-surface)]" />,
       singleton: true,
       initialWidth: 700,
       initialHeight: 520,
@@ -2169,36 +2167,21 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       <header className="flex justify-between items-center max-w-7xl mx-auto w-full mb-8 flex-wrap gap-4" id="app-topbar">
         <div className="flex flex-wrap items-center gap-3">
           {/* Weather Pill */}
-          {!isWeatherDisabled && (
-            <button
-              onClick={() => {
-                playChime('click');
-                if (weatherError) {
-                  setIsWeatherOptionsOpen(true);
-                } else {
-                  openWeatherWindow();
-                }
-              }}
-              className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
-              id="topbar-weather-pill"
-            >
-              {weatherError ? (
-                <>
-                  <div className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-red-500 font-bold">{lang === 'ru' ? 'Ошибка' : 'Error'}</span>
-                </>
-              ) : (
-                <>
-                  <CloudSun size={16} className="text-[var(--on-surface-var)]" />
-                  <span>
-                    {topbarTemp !== null
-                      ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
-                      : (tempUnit === 'F' ? '--°F' : '--°C')}
-                  </span>
-                </>
-              )}
-            </button>
-          )}
+          <button
+            onClick={() => {
+              playChime('click');
+              openWeatherWindow();
+            }}
+            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            id="topbar-weather-pill"
+          >
+            <CloudSun size={16} className="text-[var(--on-surface-var)]" />
+            <span>
+              {topbarTemp !== null
+                ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
+                : (tempUnit === 'F' ? '--°F' : '--°C')}
+            </span>
+          </button>
 
           {/* Calendar Pill */}
           <button
@@ -2504,7 +2487,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-locked-2">
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
-              <Puzzle size={22} />
+              <Blocks size={22} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2539,25 +2522,19 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="flex-1 flex flex-col justify-between mt-2">
             <div className="grid grid-cols-4 gap-2" id="app-grid">
               {/* Weather App Shortcut */}
-              {!isWeatherDisabled && (
-                <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
-                  playChime('click');
-                  if (weatherError) {
-                    setIsWeatherOptionsOpen(true);
-                  } else {
-                    openWeatherWindow();
-                  }
-                }}>
-                  {isMinimized('weather') && <div className="running-pill-mini" />}
-                  <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
-                    <CloudSun size={18} className="text-white" />
-                    {weatherError && (
-                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white border border-[var(--surface)]">!</span>
-                    )}
-                  </div>
-                  <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
+              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                playChime('click');
+                openWeatherWindow();
+              }}>
+                {isMinimized('weather') && <div className="running-pill-mini" />}
+                <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
+                  <CloudSun size={18} className="text-white" />
+                  {weatherError && (
+                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white border border-[var(--surface)]">!</span>
+                  )}
                 </div>
-              )}
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
+              </div>
 
               {/* Settings App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {

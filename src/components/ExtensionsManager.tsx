@@ -246,7 +246,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
                   </div>
 
                   {isInstalled && (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold text-[10px] flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-semibold text-[10px] flex items-center gap-1">
                       <Check size={10} /> {lang === 'ru' ? 'Установлено' : 'Installed'}
                     </span>
                   )}
