@@ -2302,7 +2302,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
             }
             alt="LinkerRu Logo"
-            className="h-12 w-12 md:h-14 md:w-14 rounded-full object-cover transition-opacity border border-[var(--btn-border)] shadow-md bg-[#060608] p-1"
+            className={`h-12 w-12 md:h-14 md:w-14 rounded-full object-cover transition-opacity border border-[var(--btn-border)] shadow-md p-1 ${theme === 'dark' ? 'bg-[#060608]' : 'bg-white'}`}
             referrerPolicy="no-referrer"
           />
           <AnimatePresence mode="wait">
@@ -2343,8 +2343,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
           {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] flex items-center justify-center shadow-inner">
-              <Globe size={20} className="text-[var(--on-surface)]" />
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] flex items-center justify-center shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
+              <Globe size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2359,7 +2359,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 playChime('click');
                 openLinkerRoute();
               }}
-              className="flex-1 py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              }}
               id="proxy-card-open-btn"
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
@@ -2373,8 +2379,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center shadow-inner">
-              <Bot size={20} className="text-[var(--on-surface)]" />
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
+              <Bot size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2390,7 +2396,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                   playChime('click');
                   openAgnoWindow();
                 }}
-                className="flex-1 py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                  borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                  color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                  boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+                }}
                 id="agno-card-open-btn"
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
@@ -2405,7 +2417,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2.5 shadow-inner">
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2.5 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
               <img 
                 src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
                 alt="Lisyan Connect" 
@@ -2422,7 +2434,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="flex items-center justify-between mt-4">
             <div className="flex gap-2 flex-1">
               <button
-                className="flex-1 py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                  borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                  color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                  boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+                }}
                 onClick={() => { playChime('click'); openLisyanWindow(); }}
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
@@ -2434,7 +2452,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* WIDGET 4: Nexus Game Box NGB */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner">
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
               <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB" className="w-full h-full object-contain brightness-0 invert" />
             </div>
           </div>
@@ -2447,7 +2465,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="mt-4 flex items-end">
             <button
               onClick={openNexusGameBox}
-              className="w-full py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              }}
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
@@ -2460,8 +2484,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* SUBCONVERT CARD (placed before Extensions) */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-subconvert">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 text-[var(--on-surface)] shadow-inner">
-              <Subtitles size={22} />
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
+              <Subtitles size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2477,7 +2501,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="mt-4 flex items-end">
             <button
               onClick={handleOpenSubConvert}
-              className="w-full py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              }}
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
@@ -2487,8 +2517,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* EXTENSIONS CARD */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-locked-2">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 text-[var(--on-surface)] shadow-inner">
-              <Blocks size={22} />
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
+              <Blocks size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2502,7 +2532,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="mt-4 flex items-end">
             <button
               onClick={handleOpenExtensions}
-              className="w-full py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              }}
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
