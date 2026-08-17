@@ -1078,28 +1078,31 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
     if (theme === 'dark') {
       // ── Section 1/4: BASE (deepest layer — page background, app canvas) ──
-      root.style.setProperty('--bg', '#08080a');
-      root.style.setProperty('--surface-dim', '#0e0e11');
+      root.style.setProperty('--bg', '#000000');
+      root.style.setProperty('--surface-dim', '#060608');
 
       // ── Section 2/4: SURFACES (cards, panels, containers — layered elevation & glassy transparency) ──
-      root.style.setProperty('--surface', '#151518');
-      root.style.setProperty('--surface-bright', '#1e1e22');
-      root.style.setProperty('--container', '#1a1a1e');
-      root.style.setProperty('--container-high', '#26262c');
-      root.style.setProperty('--card-bg', `color-mix(in srgb, color-mix(in srgb, #121216 72%, ${activePalette.primary} 28%) 58%, transparent)`);
-      root.style.setProperty('--panel-bg', `color-mix(in srgb, color-mix(in srgb, #121216 80%, ${activePalette.primary} 20%) 52%, transparent)`);
+      root.style.setProperty('--surface', '#0d0d10');
+      root.style.setProperty('--surface-bright', '#141418');
+      root.style.setProperty('--container', '#101014');
+      root.style.setProperty('--container-high', '#18181f');
+      root.style.setProperty('--card-bg', `color-mix(in srgb, color-mix(in srgb, #060608 85%, ${activePalette.primary} 15%) 65%, transparent)`);
+      root.style.setProperty('--panel-bg', `color-mix(in srgb, color-mix(in srgb, #060608 90%, ${activePalette.primary} 10%) 60%, transparent)`);
 
-      // ── Section 3/4: CONTENT (text, icons, outlines — contrast & readability) ──
-      root.style.setProperty('--on-surface', '#fafafa');
-      root.style.setProperty('--on-surface-var', '#b4b4c0');
-      root.style.setProperty('--outline', '#34343a');
-      root.style.setProperty('--outline-var', '#44444c');
-      root.style.setProperty('--icon-tint', `color-mix(in srgb, #151518 60%, ${activePalette.primary} 40%)`);
+      // ── Section 3/4: CONTENT & UNIFIED BUTTON TOKENS ──
+      root.style.setProperty('--on-surface', '#ffffff');
+      root.style.setProperty('--on-surface-var', '#a1a1aa');
+      root.style.setProperty('--outline', '#222226');
+      root.style.setProperty('--outline-var', '#2e2e36');
+      root.style.setProperty('--icon-tint', `color-mix(in srgb, #0d0d10 60%, ${activePalette.primary} 40%)`);
+      root.style.setProperty('--btn-bg', 'rgba(16, 16, 20, 0.85)');
+      root.style.setProperty('--btn-hover', 'rgba(26, 26, 32, 0.95)');
+      root.style.setProperty('--btn-border', 'rgba(255, 255, 255, 0.08)');
 
       // ── Section 4/4: ELEVATION (shadows — depth perception per M3 levels 1-3) ──
-      root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.35)');
-      root.style.setProperty('--shadow-2', '0 6px 16px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.35)');
-      root.style.setProperty('--shadow-3', '0 16px 40px rgba(0,0,0,0.6), 0 6px 12px rgba(0,0,0,0.4)');
+      root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4)');
+      root.style.setProperty('--shadow-2', '0 6px 16px rgba(0,0,0,0.65), 0 2px 6px rgba(0,0,0,0.45)');
+      root.style.setProperty('--shadow-3', '0 16px 40px rgba(0,0,0,0.75), 0 6px 12px rgba(0,0,0,0.5)');
     } else {
       // ── Section 1/4: BASE ──
       root.style.setProperty('--bg', '#fafafa');
@@ -1113,12 +1116,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       root.style.setProperty('--card-bg', `color-mix(in srgb, color-mix(in srgb, #ffffff 72%, ${activePalette.primary} 28%) 62%, transparent)`);
       root.style.setProperty('--panel-bg', `color-mix(in srgb, color-mix(in srgb, #ffffff 80%, ${activePalette.primary} 20%) 56%, transparent)`);
 
-      // ── Section 3/4: CONTENT ──
+      // ── Section 3/4: CONTENT & UNIFIED BUTTON TOKENS ──
       root.style.setProperty('--on-surface', '#09090b');
       root.style.setProperty('--on-surface-var', '#52525b');
       root.style.setProperty('--outline', '#d4d4d8');
       root.style.setProperty('--outline-var', '#e4e4e7');
       root.style.setProperty('--icon-tint', `color-mix(in srgb, #ffffff 70%, ${activePalette.primary} 30%)`);
+      root.style.setProperty('--btn-bg', 'rgba(244, 244, 245, 0.85)');
+      root.style.setProperty('--btn-hover', 'rgba(228, 228, 231, 0.95)');
+      root.style.setProperty('--btn-border', 'rgba(0, 0, 0, 0.08)');
 
       // ── Section 4/4: ELEVATION ──
       root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)');
@@ -2172,7 +2178,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               openWeatherWindow();
             }}
-            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-weather-pill"
           >
             <CloudSun size={16} className="text-[var(--on-surface-var)]" />
@@ -2189,7 +2195,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsCalendarOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-calendar-pill"
           >
             <CalendarIcon size={16} className="text-[var(--on-surface-var)]" />
@@ -2199,7 +2205,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           {/* Battery Pill */}
           {batteryLvl !== null && (
             <div
-              className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 cursor-default backdrop-blur-xl"
+              className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 cursor-default backdrop-blur-xl"
               title={isCharging ? (lang === 'ru' ? 'Заряжается' : 'Charging') : (lang === 'ru' ? 'От батареи' : 'On battery')}
             >
               {isCharging
@@ -2215,7 +2221,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsClockOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--surface)]/70 h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] border border-[var(--outline-var)]/80 shadow-md shadow-black/5 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-clock-pill"
           >
             <Clock size={16} className="text-[var(--on-surface-var)]" />
@@ -2230,10 +2236,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsQuickSettingsOpen(true);
             }}
-            className="flex items-center gap-2.5 bg-[var(--surface)]/70 h-11 border border-[var(--outline-var)]/80 pl-1.5 pr-4.5 rounded-full shadow-sm cursor-pointer transition-all hover:bg-[var(--surface)] group hover:scale-[1.02] active:scale-95 backdrop-blur-xl"
+            className="flex items-center gap-2.5 bg-[var(--btn-bg)] h-11 border border-[var(--btn-border)] pl-1.5 pr-4.5 rounded-full shadow-sm cursor-pointer transition-all hover:bg-[var(--btn-hover)] group hover:scale-[1.02] active:scale-95 backdrop-blur-xl"
             id="topbar-settings-pill"
           >
-            <div className="w-8 h-8 rounded-full bg-[var(--container)]/80 border border-[var(--outline-var)]/80 flex items-center justify-center transition-all group-hover:bg-[var(--container-high)]">
+            <div className="w-8 h-8 rounded-full bg-[var(--container)] border border-[var(--btn-border)] flex items-center justify-center transition-all group-hover:bg-[var(--container-high)]">
               <Settings size={15} className="text-[var(--on-surface-var)]" />
             </div>
             <span className="text-xs font-black text-[var(--on-surface)] capitalize select-none">
@@ -2246,7 +2252,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsNotificationsOpen(true);
             }}
-            className="w-11 h-11 relative rounded-full bg-[var(--surface)]/70 border border-[var(--outline-var)]/80 flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="w-11 h-11 relative rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-notifications"
           >
             <Bell size={18} />
@@ -2259,7 +2265,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               handleOpenSettings();
             }}
-            className="w-11 h-11 rounded-full bg-[var(--surface)]/70 border border-[var(--outline-var)]/80 flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="w-11 h-11 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-avatar"
             title={t.page_appearance}
           >
@@ -2272,7 +2278,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       <section className="max-w-7xl mx-auto w-full mb-8 text-left" id="branding-heading">
         <div className="flex items-center gap-2.5 mb-3">
           <span
-            className="inline-flex items-center justify-center h-7 px-3.5 text-[10px] font-black uppercase tracking-widest bg-[var(--surface)]/80 text-[var(--accent)] border border-[var(--outline-var)]/60 rounded-xl select-none backdrop-blur-md shadow-xs leading-none"
+            className="inline-flex items-center justify-center h-7 px-3.5 text-[10px] font-black uppercase tracking-widest bg-[var(--btn-bg)] text-[var(--accent)] border border-[var(--btn-border)] rounded-xl select-none backdrop-blur-md shadow-xs leading-none"
             id="branding-tag"
           >
             LinkerRu × Lisyan
@@ -2282,7 +2288,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               openChangelogWindow();
             }}
-            className="inline-flex items-center justify-center gap-1.5 h-7 px-3.5 bg-[var(--surface)]/80 border border-[var(--outline-var)]/60 rounded-xl text-[10px] font-black text-[var(--on-surface-var)] backdrop-blur-md shadow-xs hover:bg-[var(--surface)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer leading-none"
+            className="inline-flex items-center justify-center gap-1.5 h-7 px-3.5 bg-[var(--btn-bg)] border border-[var(--btn-border)] rounded-xl text-[10px] font-black text-[var(--on-surface-var)] backdrop-blur-md shadow-xs hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer leading-none"
             id="version-pill"
           >
             <History size={12} />
@@ -2296,7 +2302,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
             }
             alt="LinkerRu Logo"
-            className={`h-12 w-12 md:h-14 md:w-14 rounded-full object-cover transition-opacity border border-[var(--outline-var)] shadow-sm ${theme === "dark" ? "bg-black" : "bg-white"}`}
+            className="h-12 w-12 md:h-14 md:w-14 rounded-full object-cover transition-opacity border border-[var(--btn-border)] shadow-md bg-[#060608] p-1"
             referrerPolicy="no-referrer"
           />
           <AnimatePresence mode="wait">
@@ -2337,8 +2343,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
           {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] flex items-center justify-center shadow-inner">
-              <Globe size={20} className="text-white" />
+            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] flex items-center justify-center shadow-inner">
+              <Globe size={20} className="text-[var(--on-surface)]" />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2353,8 +2359,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 playChime('click');
                 openLinkerRoute();
               }}
-              className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all hover:scale-[1.02] shadow-md hover:shadow-lg active:scale-95 cursor-pointer text-center"
-              style={{ backgroundColor: activePalette.primary }}
+              className="flex-1 py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
               id="proxy-card-open-btn"
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
@@ -2368,8 +2373,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl bg-[var(--accent)] border border-[var(--outline)] overflow-hidden flex items-center justify-center shadow-inner">
-              <Bot size={20} className="text-white" />
+            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center shadow-inner">
+              <Bot size={20} className="text-[var(--on-surface)]" />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2385,8 +2390,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                   playChime('click');
                   openAgnoWindow();
                 }}
-                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center"
-                style={{ backgroundColor: activePalette.primary }}
+                className="flex-1 py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
                 id="agno-card-open-btn"
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
@@ -2401,7 +2405,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-2.5" style={{ backgroundColor: activePalette.primary }}>
+            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2.5 shadow-inner">
               <img 
                 src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
                 alt="Lisyan Connect" 
@@ -2418,8 +2422,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="flex items-center justify-between mt-4">
             <div className="flex gap-2 flex-1">
               <button
-                className="flex-1 py-3 rounded-full text-[10px] font-extrabold text-[var(--surface)] transition-all cursor-pointer text-center border-transparent"
-                style={{ backgroundColor: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+                className="flex-1 py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
                 onClick={() => { playChime('click'); openLisyanWindow(); }}
               >
                 {lang === 'ru' ? 'Открыть' : 'Open'}
@@ -2431,7 +2434,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* WIDGET 4: Nexus Game Box NGB */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0" style={{ backgroundColor: activePalette.primary }}>
+            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner">
               <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB" className="w-full h-full object-contain brightness-0 invert" />
             </div>
           </div>
@@ -2444,8 +2447,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="mt-4 flex items-end">
             <button
               onClick={openNexusGameBox}
-              className="w-full py-3 rounded-full text-xs font-extrabold transition-all border text-center text-[var(--surface)] border-transparent"
-              style={{ background: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+              className="w-full py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
@@ -2458,7 +2460,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* SUBCONVERT CARD (placed before Extensions) */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-subconvert">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
+            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 text-[var(--on-surface)] shadow-inner">
               <Subtitles size={22} />
             </div>
           </div>
@@ -2475,8 +2477,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="mt-4 flex items-end">
             <button
               onClick={handleOpenSubConvert}
-              className="w-full py-3 rounded-full text-xs font-extrabold transition-all border text-center text-[var(--surface)] border-transparent cursor-pointer"
-              style={{ background: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+              className="w-full py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
@@ -2486,7 +2487,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* EXTENSIONS CARD */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-locked-2">
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline)] overflow-hidden flex items-center justify-center p-0 text-white" style={{ backgroundColor: activePalette.primary }}>
+            <div className="w-11 h-11 rounded-2xl bg-[var(--btn-bg)] border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 text-[var(--on-surface)] shadow-inner">
               <Blocks size={22} />
             </div>
           </div>
@@ -2501,8 +2502,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="mt-4 flex items-end">
             <button
               onClick={handleOpenExtensions}
-              className="w-full py-3 rounded-full text-xs font-extrabold transition-all border text-center text-[var(--surface)] border-transparent cursor-pointer"
-              style={{ background: activePalette.primary, boxShadow: `0 4px 12px ${activePalette.primary}40` }}
+              className="w-full py-3 rounded-full text-xs font-extrabold bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] border border-[var(--btn-border)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
             >
               {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
@@ -2527,8 +2527,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 openWeatherWindow();
               }}>
                 {isMinimized('weather') && <div className="running-pill-mini" />}
-                <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
-                  <CloudSun size={18} className="text-white" />
+                <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                  <CloudSun size={18} className="text-[var(--on-surface)]" />
                   {weatherError && (
                     <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white border border-[var(--surface)]">!</span>
                   )}
@@ -2542,7 +2542,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 handleOpenSettings();
               }}>
                 {settingsMinimized && <div className="running-pill-mini" />}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <Settings size={18} className="text-[var(--on-surface)]" />
                 </div>
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">Settings</span>
@@ -2554,8 +2554,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 openCalculatorWindow();
               }}>
                 {calculatorMinimized && <div className="running-pill-mini" />}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10" style={{ backgroundColor: activePalette.primary }}>
-                  <Calculator size={18} className="text-white" />
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                  <Calculator size={18} className="text-[var(--on-surface)]" />
                 </div>
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Калькулятор' : 'Calc'}</span>
               </div>
@@ -2566,8 +2566,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 openKeepsWindow();
               }}>
                 {keepsMinimized && <div className="running-pill-mini" />}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-white/10 bg-[var(--surface-dim)]">
-                  <StickyNote size={18} className="text-[var(--accent)]" />
+                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                  <StickyNote size={18} className="text-[var(--on-surface)]" />
                 </div>
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Заметки' : 'Keeps'}</span>
               </div>
@@ -2575,7 +2575,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
             {/* Pill under 4 apps */}
             <div className="mt-2 flex items-center justify-center">
-              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--surface-dim)]/80 border border-[var(--outline-var)] text-[8.5px] font-extrabold text-[var(--on-surface-var)] shadow-xs select-none">
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] text-[8.5px] font-extrabold text-[var(--on-surface-var)] shadow-xs select-none">
                 <Sparkles size={10} className="text-[var(--accent)] shrink-0" />
                 <span className="truncate">{lang === 'ru' ? 'Скоро больше приложений...' : 'More apps coming soon...'}</span>
               </div>
@@ -2586,7 +2586,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* PANEL: Quick Toggles */}
         <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative group" id="panel-quicktoggles">
           <button
-            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--surface)] rounded-full border border-[var(--outline-var)] hover:bg-[var(--surface-dim)] text-[var(--on-surface)] shadow-sm z-10"
+            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--btn-bg)] rounded-full border border-[var(--btn-border)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] shadow-sm z-10"
             title={lang === 'ru' ? 'Изменить переключатели' : 'Edit Toggles'}
             onClick={() => {
               playChime('click');
@@ -2652,21 +2652,20 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                   <button
                     key={id}
                     onClick={activeCfg.onClick}
-                    className={`flex items-center gap-2 p-2 px-3 rounded-2xl border border-[var(--outline-var)] transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                    className={`flex items-center gap-2 p-2 px-3 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                       activeCfg.active
-                        ? 'text-[var(--surface)] shadow-md border-transparent'
-                        : 'bg-[var(--surface)] text-[var(--on-surface)] hover:bg-[var(--container-high)]'
+                        ? 'bg-[var(--btn-hover)] text-[var(--on-surface)] border-2 border-[var(--on-surface)]/30 shadow-md'
+                        : 'bg-[var(--btn-bg)] text-[var(--on-surface-var)] border border-[var(--btn-border)] hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)]'
                     }`}
-                    style={activeCfg.active ? { backgroundColor: activePalette.primary } : undefined}
                   >
                     <div className={`flex items-center justify-center shrink-0 w-7 h-7 rounded-xl ${
-                      activeCfg.active ? 'bg-white/20 text-white' : 'bg-[var(--container)] text-[var(--on-surface-var)]'
+                      activeCfg.active ? 'bg-[var(--on-surface)]/15 text-[var(--on-surface)]' : 'bg-[var(--container)] text-[var(--on-surface-var)]'
                     }`}>
                       {activeCfg.icon}
                     </div>
                     <div className="flex flex-col items-start text-left min-w-0">
-                      <span className={`text-[10px] font-extrabold leading-tight truncate w-full ${activeCfg.active ? 'text-white' : 'text-[var(--on-surface)]'}`}>{activeCfg.label}</span>
-                      <span className={`text-[8px] font-bold truncate w-full mt-0.5 ${activeCfg.active ? 'text-white/80' : 'text-[var(--on-surface-var)]'}`}>{activeCfg.sub}</span>
+                      <span className={`text-[10px] font-extrabold leading-tight truncate w-full ${activeCfg.active ? 'text-[var(--on-surface)]' : 'text-[var(--on-surface-var)]'}`}>{activeCfg.label}</span>
+                      <span className={`text-[8px] font-bold truncate w-full mt-0.5 ${activeCfg.active ? 'text-[var(--on-surface-var)]' : 'text-[var(--on-surface-var)]/60'}`}>{activeCfg.sub}</span>
                     </div>
                   </button>
                 );
@@ -2704,13 +2703,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 {isAuthenticated ? userAuth.currentUser?.email : 'guest@linker.os'}
               </span>
             </div>
-            <button onClick={handleDestroySession} className="h-10 w-10 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors shadow-sm" title={lang === 'ru' ? 'Выйти' : 'Log out'}>
+            <button onClick={handleDestroySession} className="h-10 w-10 rounded-2xl bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] border border-[var(--btn-border)] flex items-center justify-center text-[var(--on-surface-var)] hover:text-[var(--on-surface)] transition-all shadow-sm cursor-pointer" title={lang === 'ru' ? 'Выйти' : 'Log out'}>
               <LogOut size={16} />
             </button>
           </div>
           
           <div className="mt-4 flex flex-col gap-2">
-            <button onClick={() => { playChime('click'); handleOpenSettings('account'); }} className="w-full py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface)] hover:bg-[var(--surface-dim)] transition-colors shadow-sm">
+            <button onClick={() => { playChime('click'); handleOpenSettings('account'); }} className="w-full py-2.5 rounded-xl bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] border border-[var(--btn-border)] text-xs font-bold text-[var(--on-surface)] transition-all shadow-sm hover:scale-[1.01] active:scale-98 cursor-pointer">
               {lang === 'ru' ? 'Управление аккаунтом' : 'Manage Account'}
             </button>
           </div>
@@ -2766,18 +2765,18 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 <div
                   key={contact.id}
                   onClick={() => { playChime('click'); setActiveSupportContactId(contact.id); }}
-                  className="flex items-center justify-between p-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)] hover:border-[var(--accent)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                  className="flex items-center justify-between p-3 bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] border border-[var(--btn-border)] rounded-2xl cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--btn-hover)] text-[var(--on-surface)] flex items-center justify-center shrink-0 border border-[var(--btn-border)]">
                       <Icon size={16} />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-bold text-[var(--on-surface)] truncate">{contact.title}</span>
-                      <span className="text-[10px] text-[var(--on-surface-var)] font-semibold truncate group-hover:text-[var(--accent)] transition-colors">{contact.value}</span>
+                      <span className="text-[10px] text-[var(--on-surface-var)] font-semibold truncate group-hover:text-[var(--on-surface)] transition-colors">{contact.value}</span>
                     </div>
                   </div>
-                  <ChevronRight size={14} className="text-[var(--outline)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
+                  <ChevronRight size={14} className="text-[var(--on-surface-var)] group-hover:text-[var(--on-surface)] transition-colors shrink-0" />
                 </div>
               );
             })}
