@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle } from 'lucide-react';
 import { Language } from '../types';
 
 /**
@@ -393,7 +393,24 @@ export function WindowManagerLayer({
                       e.stopPropagation();
                       setCtxMenu({ id: w.id, x: e.clientX, y: e.clientY });
                     }}
-                    className="relative flex items-center gap-2 rounded-[1rem] px-3 py-2 text-xs font-bold transition-colors cursor-pointer overflow-hidden"
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      if (!touch) return;
+                      const timer = setTimeout(() => {
+                        try { navigator.vibrate?.(35); } catch {}
+                        setCtxMenu({ id: w.id, x: touch.clientX, y: Math.max(10, touch.clientY - 120) });
+                      }, 480);
+                      (e.currentTarget as any).__lpTimer = timer;
+                    }}
+                    onTouchMove={(e) => {
+                      const timer = (e.currentTarget as any).__lpTimer;
+                      if (timer) clearTimeout(timer);
+                    }}
+                    onTouchEnd={(e) => {
+                      const timer = (e.currentTarget as any).__lpTimer;
+                      if (timer) clearTimeout(timer);
+                    }}
+                    className="relative flex items-center gap-2 rounded-[1rem] px-3 py-2 text-xs font-bold transition-colors cursor-pointer overflow-hidden select-none"
                     style={{
                       background: isActive
                         ? 'var(--container-high)'
@@ -553,10 +570,9 @@ function WindowFrame({
   const isRu = lang === 'ru';
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resizeState = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
-
-  // Manual hide title bar toggle (no autohide timer)
-  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
 
   const onTitleMouseDown = (e: React.MouseEvent) => {
     if (win.isMaximized || isMobileLayout) return;
@@ -573,33 +589,112 @@ function WindowFrame({
     }
   };
 
+  const onTitleTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    onFocus();
+
+    // Double-tap detection for touch/tablet
+    const now = Date.now();
+    const dt = now - lastTapRef.current.time;
+    const dx = Math.abs(touch.clientX - lastTapRef.current.x);
+    const dy = Math.abs(touch.clientY - lastTapRef.current.y);
+
+    if (dt < 320 && dx < 28 && dy < 28) {
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      if (!isMobileLayout && win.allowMaximize !== false) {
+        onToggleMaximize();
+      }
+      return;
+    }
+
+    lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+
+    // Touch drag initiation
+    if (!win.isMaximized && !isMobileLayout) {
+      dragState.current = { startX: touch.clientX, startY: touch.clientY, origX: win.x, origY: win.y };
+      setIsInteracting(true);
+    }
+
+    // Long press detection for touch/tablet
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      try { navigator.vibrate?.(35); } catch {}
+      if (!isMobileLayout && win.allowMaximize !== false) {
+        onToggleMaximize();
+      }
+    }, 500);
+  };
+
+  const onResizeTouchStart = (e: React.TouchEvent) => {
+    if (win.isMaximized || isMobileLayout) return;
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    onFocus();
+    resizeState.current = { startX: touch.clientX, startY: touch.clientY, origW: win.width, origH: win.height };
+    setIsInteracting(true);
+    e.stopPropagation();
+  };
+
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number, clientY: number) => {
       if (dragState.current) {
-        const dx = e.clientX - dragState.current.startX;
-        const dy = e.clientY - dragState.current.startY;
+        const dx = clientX - dragState.current.startX;
+        const dy = clientY - dragState.current.startY;
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+          }
+        }
         const nx = Math.max(0, Math.min(window.innerWidth - 100, dragState.current.origX + dx));
         const ny = Math.max(0, Math.min(window.innerHeight - 60, dragState.current.origY + dy));
         onGeometryChange({ x: nx, y: ny });
       }
       if (resizeState.current) {
-        const dx = e.clientX - resizeState.current.startX;
-        const dy = e.clientY - resizeState.current.startY;
+        const dx = clientX - resizeState.current.startX;
+        const dy = clientY - resizeState.current.startY;
         const nw = Math.max(win.minWidth ?? 360, resizeState.current.origW + dx);
         const nh = Math.max(win.minHeight ?? 280, resizeState.current.origH + dy);
         onGeometryChange({ width: nw, height: nh });
       }
     };
-    const onUp = () => {
+
+    const onMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX, e.clientY);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onEnd = () => {
       dragState.current = null;
       resizeState.current = null;
       setIsInteracting(false);
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchcancel', onEnd);
+
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+      window.removeEventListener('touchcancel', onEnd);
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     };
   }, [win.minWidth, win.minHeight, onGeometryChange]);
 
@@ -666,6 +761,7 @@ function WindowFrame({
             }
       }
       onMouseDown={onFocus}
+      onTouchStart={onFocus}
       className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)] ${isFullScreen ? 'border-none' : 'border'}`}
       style={{
         ...frameStyle,
@@ -686,36 +782,17 @@ function WindowFrame({
         pointerEvents: win.isMinimized ? 'none' : 'auto',
       }}
     >
-      {/* Small floating Unhide button when header is hidden */}
-      {isHeaderHidden && !win.hideTitleBar && (
-        <motion.button
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsHeaderHidden(false)}
-          className="absolute top-1 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--surface)] border border-[var(--outline-var)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] shadow-md cursor-pointer backdrop-blur-md"
-          title={isRu ? 'Показать панель' : 'Show header dock'}
-        >
-          <ChevronDown size={12} />
-          <span>{isRu ? 'Панель' : 'Header'}</span>
-        </motion.button>
-      )}
-
       {/* Header bar */}
       {!win.hideTitleBar && (
         <div
           onMouseDown={onTitleMouseDown}
           onDoubleClick={onTitleDoubleClick}
-          className={`flex ${isMobileLayout ? 'h-12 px-3' : 'h-8.5 px-3 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)]`}
+          onTouchStart={onTitleTouchStart}
+          className={`flex ${isMobileLayout ? 'h-12 px-3' : 'h-8.5 px-3 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)] select-none`}
           style={{
             background: isActive
               ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
               : 'var(--surface)',
-            transform: isHeaderHidden ? 'translateY(-100%)' : 'translateY(0)',
-            height: isHeaderHidden ? 0 : undefined,
-            overflow: isHeaderHidden ? 'hidden' : undefined,
-            transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
           <div className="flex items-center gap-2">
@@ -728,15 +805,6 @@ function WindowFrame({
             {win.headerActions}
             {!isMobileLayout && (
               <>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => { e.stopPropagation(); setIsHeaderHidden(true); }}
-                  title={isRu ? 'Скрыть панель' : 'Hide header dock'}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
-                >
-                  <ChevronUp size={13} />
-                </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -781,7 +849,8 @@ function WindowFrame({
       {!win.isMaximized && !isMobileLayout && (
         <div
           onMouseDown={onResizeMouseDown}
-          className="absolute bottom-0 right-0 h-5 w-5 cursor-se-resize"
+          onTouchStart={onResizeTouchStart}
+          className="absolute bottom-0 right-0 h-6 w-6 cursor-se-resize touch-none"
           style={{
             background:
               'linear-gradient(135deg, transparent 55%, color-mix(in srgb, var(--accent) 30%, var(--outline)) 55%)',

@@ -1629,20 +1629,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const openLinkerRoute = (url?: string) => {
     if (url) setProxyInitialUrl(url);
     const activeUrl = url || proxyInitialUrl;
-    const openProxyInBlank = () => {
-      playChime('click');
-      const proxyUrl = activeUrl
-        ? `http://localhost:8080/proxy/${encodeURIComponent(activeUrl.startsWith('http') ? activeUrl : 'https://' + activeUrl)}`
-        : 'http://localhost:8080/';
-      const themeParams = `?theme=${theme}&primary=${encodeURIComponent(activePalette.primary)}&secondary=${encodeURIComponent(activePalette.secondary)}&tertiary=${encodeURIComponent(activePalette.tertiary)}`;
-      const win = window.open('about:blank', '_blank');
-      if (win) {
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Space Proxy Hub</title>
-          <style>html,body{margin:0;padding:0;overflow:hidden;width:100vw;height:100vh}iframe{display:block;width:100vw;height:100vh;border:none}</style>
-          </head><body><iframe src="${proxyUrl}${themeParams}"></iframe></body></html>`);
-        win.document.close();
-      }
-    };
     wm.open({
       id: 'proxy',
       title: 'Space Proxy Hub',
@@ -1652,17 +1638,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 650,
       minWidth: 480,
       minHeight: 380,
-      headerActions: (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={(e) => { e.stopPropagation(); openProxyInBlank(); }}
-          title={lang === 'ru' ? 'Открыть в новой вкладке' : 'Open in new tab'}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
-        >
-          <ExternalLink size={13} />
-        </motion.button>
-      ),
       render: () => (
         <LinkerRouteApp
           initialUrl={activeUrl}
@@ -1682,20 +1657,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 680,
       minWidth: 420,
       minHeight: 380,
-      headerActions: (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open('https://marking-carriers-parenting-park.trycloudflare.com/', '_blank');
-          }}
-          title={lang === 'ru' ? 'Открыть в новой вкладке' : 'Open in new tab'}
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
-        >
-          <ExternalLink size={13} />
-        </motion.button>
-      ),
       render: () => (
         <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
           <iframe
@@ -2705,9 +2666,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
               <Send size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
-            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] text-[var(--on-surface-var)] shadow-xs select-none">
-              Web Route
-            </span>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">

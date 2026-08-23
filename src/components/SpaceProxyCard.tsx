@@ -16,30 +16,24 @@ interface SpaceProxyCardProps {
   playChime: (sound?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
 }
 
-const DEFAULT_SERVERS: { id: string; nameRu: string; nameEn: string; url: string; subRu: string; subEn: string }[] = [
+const DEFAULT_SERVERS: { id: string; nameRu: string; nameEn: string; url: string }[] = [
   {
     id: 'server-1',
     nameRu: 'Сервер 1',
     nameEn: 'Server 1',
     url: 'https://english.neeb.wtf/',
-    subRu: 'Основной',
-    subEn: 'Primary',
   },
   {
     id: 'server-2',
     nameRu: 'Сервер 2',
     nameEn: 'Server 2',
     url: 'https://math.soyescalahumana.cl/',
-    subRu: 'Зеркало 2',
-    subEn: 'Mirror 2',
   },
   {
     id: 'server-3',
     nameRu: 'Сервер 3',
     nameEn: 'Server 3',
     url: 'https://sp2.simplysweetcakesoc.com/',
-    subRu: 'Зеркало 3',
-    subEn: 'Mirror 3',
   },
 ];
 
@@ -276,20 +270,15 @@ export function SpaceProxyCard({
                     className="w-full px-3.5 py-2 rounded-2xl border text-left flex items-center justify-between transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
                     style={style}
                   >
-                    <div className="flex flex-col min-w-0 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-black truncate">
-                          {isRu ? server.nameRu : server.nameEn}
-                        </span>
-                        {isSelectedPreviously && (
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-black/25 text-current shadow-xs">
-                            {isRu ? 'Выбирали ранее' : 'Previously selected'}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] opacity-80 truncate font-semibold mt-0.5">
-                        {isRu ? server.subRu : server.subEn}
+                    <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                      <span className="text-xs font-black truncate">
+                        {isRu ? server.nameRu : server.nameEn}
                       </span>
+                      {isSelectedPreviously && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-black/25 text-current shadow-xs">
+                          {isRu ? 'Выбирали ранее' : 'Previously selected'}
+                        </span>
+                      )}
                     </div>
 
                     <ChevronRight size={14} className="shrink-0 opacity-70" />
