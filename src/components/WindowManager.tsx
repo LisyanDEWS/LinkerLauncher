@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Minus, Square, Copy, Eye, XCircle } from 'lucide-react';
 import { Language } from '../types';
+import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 
 /**
  * WindowManager — OS-style window system for LinkerRu apps.
@@ -42,6 +43,9 @@ export interface WindowInstance {
   allowMaximize?: boolean;
   /** Custom action buttons rendered in the title bar (left of minimize/maximize/close). */
   headerActions?: React.ReactNode;
+  disableLoader?: boolean;
+  loadingDuration?: number;
+  loaderTitle?: string;
 }
 
 export interface OpenWindowOptions {
@@ -58,6 +62,9 @@ export interface OpenWindowOptions {
   allowMaximize?: boolean;
   /** Custom action buttons rendered in the title bar (left of minimize/maximize/close). */
   headerActions?: React.ReactNode;
+  disableLoader?: boolean;
+  loadingDuration?: number;
+  loaderTitle?: string;
 }
 
 export interface WindowManager {
@@ -107,6 +114,9 @@ export function useWindows(): WindowManager {
                   hideTitleBar: opts.hideTitleBar,
                   allowMaximize: opts.allowMaximize ?? true,
                   headerActions: opts.headerActions,
+                  disableLoader: opts.disableLoader,
+                  loadingDuration: opts.loadingDuration,
+                  loaderTitle: opts.loaderTitle,
                 }
               : w,
           );
@@ -162,6 +172,9 @@ export function useWindows(): WindowManager {
         hideTitleBar: opts.hideTitleBar || false,
         allowMaximize: opts.allowMaximize ?? true,
         headerActions: opts.headerActions,
+        disableLoader: opts.disableLoader,
+        loadingDuration: opts.loadingDuration,
+        loaderTitle: opts.loaderTitle,
       };
       return [...prev, instance];
     });
@@ -568,6 +581,33 @@ function WindowFrame({
   renderWindowContent,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
+  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions');
+  const defaultDuration = win.id === 'telegramroute' ? 3000 : 1500;
+  const duration = win.loadingDuration ?? defaultDuration;
+
+  const [loaderPhase, setLoaderPhase] = useState<'visible' | 'fading' | 'hidden'>(() => (isSystemApp ? 'hidden' : 'visible'));
+
+  useEffect(() => {
+    if (isSystemApp) {
+      setLoaderPhase('hidden');
+      return;
+    }
+    setLoaderPhase('visible');
+    const timer = setTimeout(() => {
+      setLoaderPhase('fading');
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [win.renderKey, isSystemApp, duration]);
+
+  useEffect(() => {
+    if (loaderPhase === 'fading') {
+      const timer = setTimeout(() => {
+        setLoaderPhase('hidden');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loaderPhase]);
+
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const resizeState = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
@@ -843,6 +883,38 @@ function WindowFrame({
       {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
         {renderWindowContent ? (renderWindowContent(win.id) ?? win.render()) : win.render()}
+
+        {/* Material You M3 Window Launching Loader */}
+        {!isSystemApp && loaderPhase !== 'hidden' && (
+          <div
+            className={`absolute inset-0 z-30 flex flex-col items-center justify-center select-none ${
+              loaderPhase === 'fading' ? 'pointer-events-none' : 'pointer-events-auto'
+            }`}
+            style={{
+              backdropFilter: 'blur(20px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+              background: 'color-mix(in srgb, var(--surface) 88%, transparent)',
+              opacity: loaderPhase === 'fading' ? 0 : 1,
+              transition: 'opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            <div className="flex flex-col items-center justify-center gap-3.5 px-4 text-center">
+              <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <M3LoadingIndicator size={44} color="var(--accent)" speed={1} />
+              </div>
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
+                {win.icon && (
+                  <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-85">
+                    {win.icon}
+                  </div>
+                )}
+                <span className="text-[11px] md:text-xs font-bold tracking-tight text-[var(--on-surface)]">
+                  {win.loaderTitle || win.title} — {isRu ? 'Запуск' : 'Launching'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Resize handle */}

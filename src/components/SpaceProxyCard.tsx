@@ -158,7 +158,7 @@ export function SpaceProxyCard({
 
   return (
     <div
-      className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between h-[260px] min-h-[260px] max-h-[260px] transition-all hover:scale-[1.01] active:scale-[0.99] cursor-default group relative overflow-hidden"
+      className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between h-[260px] min-h-[260px] max-h-[260px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative overflow-hidden"
       id="card-linker-route"
     >
       {proxyMinimized && (

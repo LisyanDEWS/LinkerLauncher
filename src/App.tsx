@@ -2697,7 +2697,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         </div>
 
         {/* WIDGET 5: App Launcher */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all relative overflow-hidden" id="card-app-launcher">
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden" id="card-app-launcher">
           <div className="flex justify-between items-center h-[32px]">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
               <Gamepad2 size={16} />
@@ -2777,7 +2777,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         </div>
 
         {/* PANEL: Quick Toggles */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative group" id="panel-quicktoggles">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative group" id="panel-quicktoggles">
           <button
             className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[var(--btn-bg)] rounded-full border border-[var(--btn-border)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] shadow-sm z-10"
             title={lang === 'ru' ? 'Изменить переключатели' : 'Edit Toggles'}
@@ -2871,7 +2871,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       {/* --- ROW 3: DETAILED FOOTER PANEL GROUPS --- */}
       <section className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4" id="row3-footer-grid">
         {/* COLUMN 1: Profile Details with real destroy action */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px]" id="panel-profile">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] transition-all hover:scale-[1.02] active:scale-[0.98]" id="panel-profile">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
               <User size={16} />
@@ -2909,7 +2909,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         </div>
 
         {/* COLUMN 2: News bullet notes */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] relative" id="panel-news">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[220px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="panel-news">
           <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider mb-2">
             <Newspaper size={16} />
             <span>{t.ph_news}</span>
@@ -2940,7 +2940,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         </div>
 
         {/* COLUMN 3: Support channels & contacts */}
-        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col min-h-[220px] col-span-1 md:col-span-2 lg:col-span-1" id="panel-support">
+        <div className="panel panel-bg-gradient rounded-3xl p-6 flex flex-col min-h-[220px] col-span-1 md:col-span-2 lg:col-span-1 transition-all hover:scale-[1.02] active:scale-[0.98]" id="panel-support">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider">
               <User size={16} />
