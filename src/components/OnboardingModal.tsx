@@ -84,9 +84,7 @@ export default function OnboardingModal({
     return materialPalettes.find(p => p.id === activePaletteId) || materialPalettes.find(p => p.id === 'monochrome') || materialPalettes[0];
   }, [activePaletteId]);
 
-  const linkerLogo = theme === 'dark' 
-    ? 'https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6' 
-    : 'https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142';
+  const linkerLogo = 'https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206';
 
   const fonts = [
     { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans', preview: 'Modern & Clean' },
@@ -180,11 +178,21 @@ export default function OnboardingModal({
           {/* Top Bar with Logo & Progress Indicators */}
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-[var(--outline-var)] shrink-0">
             <div className="flex items-center gap-3">
-              <img 
-                src={linkerLogo} 
-                alt="LinkerRu Logo" 
-                className={`w-10 h-10 object-contain drop-shadow-sm rounded-xl p-1 border border-[var(--outline-var)] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`} 
-              />
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center p-2 drop-shadow-sm border transition-all ${
+                  theme === 'light'
+                    ? 'bg-[var(--accent)] border-[var(--accent)]'
+                    : 'bg-black border-[var(--outline-var)]'
+                }`}
+              >
+                <img 
+                  src={linkerLogo} 
+                  alt="LinkerRu Logo" 
+                  className={`w-full h-full object-contain ${
+                    theme === 'light' ? 'brightness-0 invert' : 'brightness-0 invert'
+                  }`} 
+                />
+              </div>
               <div>
                 <h2 className="text-base font-black tracking-tight text-[var(--on-surface)]">LinkerRu :Re</h2>
                 <p className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">

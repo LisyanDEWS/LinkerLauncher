@@ -393,14 +393,18 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   transition={{ delay: 0.1, duration: 0.6 }}
                   className="flex flex-col items-center text-center mb-10"
                 >
-                  <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-5 shadow-lg overflow-hidden ${effectiveTheme === 'dark' ? 'bg-black' : 'bg-white'}`} style={{ boxShadow: '0 12px 32px -8px var(--accent)' }}>
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center mb-5 shadow-lg overflow-hidden p-3.5 transition-all ${
+                      effectiveTheme === 'dark' ? 'bg-black border border-white/10' : 'bg-[var(--accent)]'
+                    }`}
+                    style={{ boxShadow: '0 12px 32px -8px var(--accent)' }}
+                  >
                     <img
-                      src={effectiveTheme === 'dark'
-                        ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-                        : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
-                      }
+                      src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206"
                       alt="LinkerRu Logo"
-                      className="w-12 h-12 object-contain rounded-full"
+                      className={`w-full h-full object-contain ${
+                        effectiveTheme === 'light' ? 'brightness-0 invert' : 'brightness-0 invert'
+                      }`}
                     />
                   </div>
                   <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-[var(--on-surface)] leading-none">
@@ -525,14 +529,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       {/* Header + Mode Switcher */}
                       <div className="mb-6">
                         <div className="flex items-center justify-between gap-3 mb-4">
-                          <div className={`w-12 h-12 rounded-2xl border border-[var(--outline)] flex items-center justify-center ${effectiveTheme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+                          <div
+                            className={`w-12 h-12 rounded-full border flex items-center justify-center p-2.5 transition-all ${
+                              effectiveTheme === 'dark'
+                                ? 'bg-black border-[var(--outline)]'
+                                : 'bg-[var(--accent)] border-[var(--accent)]'
+                            }`}
+                          >
                             <img 
-                              src={effectiveTheme === 'dark'
-                                ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-                                : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
-                              } 
+                              src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206" 
                               alt="Logo" 
-                              className="w-8 h-8 object-contain rounded-full" 
+                              className={`w-full h-full object-contain ${
+                                effectiveTheme === 'light' ? 'brightness-0 invert' : 'brightness-0 invert'
+                              }`}
                             />
                           </div>
 

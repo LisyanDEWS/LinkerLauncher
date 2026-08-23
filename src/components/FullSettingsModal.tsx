@@ -424,6 +424,16 @@ export default function FullSettingsModal({
     const p2 = activePalette.secondary;
     const p3 = activePalette.tertiary;
 
+    if (theme === 'dark') {
+      return [
+        { id: 'none', name: 'None', style: `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)` },
+        { id: 'gradient-1', name: 'Gradient 1', style: `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 60%), linear-gradient(135deg, color-mix(in srgb, ${p1} 35%, #000 65%), color-mix(in srgb, ${p2} 25%, #000 75%), #060608)` },
+        { id: 'gradient-2', name: 'Gradient 2', style: `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, transparent 55%), radial-gradient(circle at 10% 20%, ${p2}40 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3}30 0%, transparent 50%), linear-gradient(135deg, ${p1}35, var(--bg))` },
+        { id: 'gradient-3', name: 'Gradient 3', style: `radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.18) 0%, transparent 60%), linear-gradient(to bottom right, ${p1}40 0%, transparent 100%), linear-gradient(to top right, ${p3}30 0%, transparent 100%), var(--bg)` },
+        { id: 'gradient-4', name: 'Gradient 4', style: `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%), conic-gradient(from 180deg at 50% 50%, ${p1}35 0deg, ${p2}25 120deg, ${p3}25 240deg, ${p1}35 360deg)` },
+      ];
+    }
+
     return [
       { id: 'none', name: 'None', style: 'var(--bg)' },
       { id: 'gradient-1', name: 'Gradient 1', style: `linear-gradient(135deg, ${p1}, ${p2}, ${p3})` },
@@ -431,7 +441,7 @@ export default function FullSettingsModal({
       { id: 'gradient-3', name: 'Gradient 3', style: `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)` },
       { id: 'gradient-4', name: 'Gradient 4', style: `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)` },
     ];
-  }, [activePalette]);
+  }, [activePalette, theme]);
 
   // Unified Wallpapers list: Recent items first, filled with Recommended items (no duplicates)
   const combinedWallpapers = useMemo(() => {
@@ -1936,13 +1946,21 @@ export default function FullSettingsModal({
                     {activeTab === 'about' && (
                       <div className="space-y-6" id="page-about-view">
                         <div className="p-6 bg-[var(--surface)] border border-[var(--outline-var)] rounded-3xl flex flex-col items-center justify-center text-center gap-4 py-10 shadow-sm">
-                          <img 
-                            src={theme === 'dark' 
-                              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6" 
-                              : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"} 
-                            alt="LinkerRu Logo" 
-                            className={`w-20 h-20 object-contain drop-shadow-md rounded-2xl p-2 border border-[var(--outline-var)] ${theme === 'dark' ? 'bg-black' : 'bg-white'}`} 
-                          />
+                          <div
+                            className={`w-20 h-20 rounded-full flex items-center justify-center p-3.5 drop-shadow-md border transition-all ${
+                              theme === 'light'
+                                ? 'bg-[var(--accent)] border-[var(--accent)]'
+                                : 'bg-black border-[var(--outline-var)]'
+                            }`}
+                          >
+                            <img 
+                              src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206" 
+                              alt="LinkerRu Logo" 
+                              className={`w-full h-full object-contain ${
+                                theme === 'light' ? 'brightness-0 invert' : 'brightness-0 invert'
+                              }`} 
+                            />
+                          </div>
                           <div>
                             <h3 className="text-2xl font-black text-[var(--on-surface)] tracking-tight">LinkerRu :Re</h3>
                             <p className="text-xs font-extrabold text-[var(--accent)] mt-1 tracking-widest uppercase bg-[var(--accent)]/10 px-3 py-1 rounded-full inline-block">

@@ -76,6 +76,7 @@ import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SupportQRModal, CONTACTS } from './components/SupportApp';
 import { LinkerRouteApp } from './components/LinkerRouteApp';
+import ServerModal from './components/ServerModal';
 
 const Grain = () => (
   <div 
@@ -307,6 +308,7 @@ export default function App() {
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account'>('appearance');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   // Login screen preview overlay (dev tool — does NOT log out)
   const [isLoginPreviewOpen, setIsLoginPreviewOpen] = useState(false);
@@ -1100,9 +1102,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       root.style.setProperty('--btn-border', 'rgba(255, 255, 255, 0.08)');
 
       // ── Section 4/4: ELEVATION (shadows — depth perception per M3 levels 1-3) ──
-      root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4)');
-      root.style.setProperty('--shadow-2', '0 6px 16px rgba(0,0,0,0.65), 0 2px 6px rgba(0,0,0,0.45)');
-      root.style.setProperty('--shadow-3', '0 16px 40px rgba(0,0,0,0.75), 0 6px 12px rgba(0,0,0,0.5)');
+      root.style.setProperty('--shadow-1', '0 1px 2px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2)');
+      root.style.setProperty('--shadow-2', '0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2)');
+      root.style.setProperty('--shadow-3', '0 10px 24px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.25)');
     } else {
       // ── Section 1/4: BASE ──
       root.style.setProperty('--bg', '#fafafa');
@@ -1380,6 +1382,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const settingsMinimized = isMinimized('settings');
   const calculatorMinimized = isMinimized('calculator');
   const keepsMinimized = isMinimized('keeps');
+  const extensionsMinimized = isMinimized('extensions');
   const proxyMinimized = isMinimized('proxy');
 
   const openAgnoWindow = () => {
@@ -1537,11 +1540,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       id: 'lisyan',
       title: 'Lisyan Connect',
       icon: (
-        <div className={`w-4 h-4 rounded flex items-center justify-center p-0.5 ${theme === 'dark' ? 'bg-white' : 'bg-black'}`}>
+        <div className="w-4 h-4 rounded flex items-center justify-center p-0.5 overflow-hidden">
           <img 
-            src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+            src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
             alt="Lisyan Connect" 
-            className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
+            className="w-full h-full object-contain" 
           />
         </div>
       ),
@@ -1606,7 +1609,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       const themeParams = `?theme=${theme}&primary=${encodeURIComponent(activePalette.primary)}&secondary=${encodeURIComponent(activePalette.secondary)}&tertiary=${encodeURIComponent(activePalette.tertiary)}`;
       const win = window.open('about:blank', '_blank');
       if (win) {
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LinkerRoute</title>
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Space Proxy Hub</title>
           <style>html,body{margin:0;padding:0;overflow:hidden;width:100vw;height:100vh}iframe{display:block;width:100vw;height:100vh;border:none}</style>
           </head><body><iframe src="${proxyUrl}${themeParams}"></iframe></body></html>`);
         win.document.close();
@@ -1614,7 +1617,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     };
     wm.open({
       id: 'proxy',
-      title: 'LinkerRoute',
+      title: 'Space Proxy Hub',
       icon: <Globe size={14} className="text-[var(--on-surface)]" />,
       singleton: true,
       initialWidth: 900,
@@ -1957,30 +1960,61 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const getWallpaperStyle = () => {
     if (isMobileLayout) return 'var(--bg)';
-    if (!mainWallpaper || mainWallpaper === 'none') return 'var(--bg)';
     
     // We will use standard Hex/RGB colors of the current palette
     const p1 = activePalette.primary;
     const p2 = activePalette.secondary;
     const p3 = activePalette.tertiary;
 
-    switch (mainWallpaper) {
-      case 'gradient-1': return `linear-gradient(135deg, ${p1}, ${p2}, ${p3})`;
-      case 'gradient-2': return `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))`;
-      case 'gradient-3': return `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)`;
-      case 'gradient-4': return `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)`;
-      default: {
-        if (typeof mainWallpaper === 'string' && (
-          mainWallpaper.startsWith('http://') ||
-          mainWallpaper.startsWith('https://') ||
-          mainWallpaper.startsWith('data:') ||
-          mainWallpaper.startsWith('blob:') ||
-          mainWallpaper.startsWith('url(')
-        )) {
-          const cleanUrl = mainWallpaper.startsWith('url(') ? mainWallpaper : `url("${mainWallpaper}")`;
-          return `linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.28)), ${cleanUrl} center / cover no-repeat fixed`;
+    if (theme === 'dark') {
+      if (!mainWallpaper || mainWallpaper === 'none') {
+        return `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)`;
+      }
+
+      switch (mainWallpaper) {
+        case 'gradient-1':
+          return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 60%), linear-gradient(135deg, color-mix(in srgb, ${p1} 35%, #000 65%), color-mix(in srgb, ${p2} 25%, #000 75%), #060608)`;
+        case 'gradient-2':
+          return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, transparent 55%), radial-gradient(circle at 10% 20%, ${p2}40 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3}30 0%, transparent 50%), linear-gradient(135deg, ${p1}35, var(--bg))`;
+        case 'gradient-3':
+          return `radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.18) 0%, transparent 60%), linear-gradient(to bottom right, ${p1}40 0%, transparent 100%), linear-gradient(to top right, ${p3}30 0%, transparent 100%), var(--bg)`;
+        case 'gradient-4':
+          return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%), conic-gradient(from 180deg at 50% 50%, ${p1}35 0deg, ${p2}25 120deg, ${p3}25 240deg, ${p1}35 360deg)`;
+        default: {
+          if (typeof mainWallpaper === 'string' && (
+            mainWallpaper.startsWith('http://') ||
+            mainWallpaper.startsWith('https://') ||
+            mainWallpaper.startsWith('data:') ||
+            mainWallpaper.startsWith('blob:') ||
+            mainWallpaper.startsWith('url(')
+          )) {
+            const cleanUrl = mainWallpaper.startsWith('url(') ? mainWallpaper : `url("${mainWallpaper}")`;
+            return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(0, 0, 0, 0.55) 80%), ${cleanUrl} center / cover no-repeat fixed`;
+          }
+          return `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)`;
         }
-        return 'var(--bg)';
+      }
+    } else {
+      if (!mainWallpaper || mainWallpaper === 'none') return 'var(--bg)';
+
+      switch (mainWallpaper) {
+        case 'gradient-1': return `linear-gradient(135deg, ${p1}, ${p2}, ${p3})`;
+        case 'gradient-2': return `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))`;
+        case 'gradient-3': return `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)`;
+        case 'gradient-4': return `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)`;
+        default: {
+          if (typeof mainWallpaper === 'string' && (
+            mainWallpaper.startsWith('http://') ||
+            mainWallpaper.startsWith('https://') ||
+            mainWallpaper.startsWith('data:') ||
+            mainWallpaper.startsWith('blob:') ||
+            mainWallpaper.startsWith('url(')
+          )) {
+            const cleanUrl = mainWallpaper.startsWith('url(') ? mainWallpaper : `url("${mainWallpaper}")`;
+            return `linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.28)), ${cleanUrl} center / cover no-repeat fixed`;
+          }
+          return 'var(--bg)';
+        }
       }
     }
   };
@@ -2009,11 +2043,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     <>
       <AppLoader
         imageUrls={[
-          "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6",
-          "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142",
-          "https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e",
+          "https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206",
+          "https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3",
           "https://github.com/user-attachments/assets/708555b4-14a6-4f32-9240-5ecd928ec9fd",
           "https://github.com/user-attachments/assets/6805ef80-9512-4954-9035-1b53133f26c1",
+          "https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863",
         ]}
         minDuration={2500}
         color={activePalette.primary}
@@ -2142,16 +2176,14 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
             
             <div className="flex flex-col h-full relative z-10">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border overflow-hidden p-2.5 transition-colors ${
-                theme === 'dark' ? 'bg-white border-white/20' : 'bg-black border-black/10'
-              }`}>
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--btn-border)] overflow-hidden p-3 transition-colors" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
                 <img 
-                  src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                  src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
                   alt="Lisyan Connect Logo" 
-                  className={`w-full h-full object-contain ${theme === 'dark' ? 'brightness-0' : 'brightness-0 invert'}`} 
+                  className="w-full h-full object-contain brightness-0 invert" 
                   onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} 
                 />
-                <Monitor size={32} className={`hidden ${theme === 'dark' ? 'text-black' : 'text-white'}`} />
+                <Monitor size={32} className="hidden text-white" />
               </div>
               
               <h3 className="text-3xl font-black text-[var(--on-surface)] mb-2 tracking-tight">Lisyan Connect</h3>
@@ -2296,15 +2328,22 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </button>
         </div>
         <div className="flex items-center gap-4 min-h-[56px]" id="branding-title">
-          <img
-            src={theme === 'dark'
-              ? "https://github.com/user-attachments/assets/9fad2245-28d1-4b70-a3ee-74e3d8a757e6"
-              : "https://github.com/user-attachments/assets/4d4a877a-6135-4dc5-82fc-d3705c8fc142"
-            }
-            alt="LinkerRu Logo"
-            className={`h-12 w-12 md:h-14 md:w-14 rounded-full object-cover transition-opacity border border-[var(--btn-border)] shadow-md p-1 ${theme === 'dark' ? 'bg-[#060608]' : 'bg-white'}`}
-            referrerPolicy="no-referrer"
-          />
+          <div
+            className={`h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center transition-all border shadow-md p-2.5 ${
+              theme === 'light'
+                ? 'bg-[var(--accent)] border-[var(--accent)]'
+                : 'bg-[#060608] border-[var(--btn-border)]'
+            }`}
+          >
+            <img
+              src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206"
+              alt="LinkerRu Logo"
+              className={`w-full h-full object-contain transition-all ${
+                theme === 'light' ? 'brightness-0 invert' : 'brightness-0 invert'
+              }`}
+              referrerPolicy="no-referrer"
+            />
+          </div>
           <AnimatePresence mode="wait">
             {greetingPhase === 'brand' ? (
               <motion.h1
@@ -2339,21 +2378,42 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
       {/* --- ROW 1: BENTO LAYOUT MAIN WIDGETS --- */}
       <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
-        {/* WIDGET 1: LinkerRoute */}
+        {/* WIDGET 1: Space Proxy Hub */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
           {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] flex items-center justify-center shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
               <Globe size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
+            <button
+              onClick={() => {
+                playChime('click');
+                setIsServerModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border border-[var(--btn-border)] bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] transition-all cursor-pointer shadow-xs"
+              title={lang === 'ru' ? 'Выбрать серверный узел' : 'Select proxy server'}
+            >
+              <Server size={12} className="text-[var(--accent)]" />
+              <span className="max-w-[85px] truncate">{selectedServer}</span>
+            </button>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">LinkerRoute</h3>
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Space Proxy Hub</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
-              {lang === 'ru' ? 'Шифрованный веб-туннель для обхода ограничений.' : 'Encrypted web tunnel to bypass restrictions.'}
+              {lang === 'ru' ? 'Современный, чистый веб-прокси — игры, приложения и безопасный доступ без ограничений.' : 'Modern, clean web proxy — games, apps, and unrestricted browsing.'}
             </p>
           </div>
           <div className="mt-4 flex gap-2 items-end">
+            <button
+              onClick={() => {
+                playChime('click');
+                setIsServerModalOpen(true);
+              }}
+              className="flex-1 py-3 rounded-full text-xs font-bold border border-[var(--btn-border)] bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-xs truncate px-2 flex items-center justify-center gap-1.5"
+            >
+              <Server size={13} className="text-[var(--accent)] shrink-0" />
+              <span className="truncate">{lang === 'ru' ? 'Сервер' : 'Server'}</span>
+            </button>
             <button
               onClick={() => {
                 playChime('click');
@@ -2417,9 +2477,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2.5 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
+            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
               <img 
-                src="https://github.com/user-attachments/assets/21000db8-96f5-4673-867f-efaa8e98b55e" 
+                src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
                 alt="Lisyan Connect" 
                 className="w-full h-full object-contain brightness-0 invert" 
               />
@@ -2514,25 +2574,33 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </div>
         </div>
 
-        {/* EXTENSIONS CARD */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-locked-2">
+        {/* TELEGRAM ROUTE CARD */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-telegram-route">
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-              <Blocks size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
+              <Send size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
+            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] text-[var(--on-surface-var)] shadow-xs select-none">
+              {lang === 'ru' ? 'Скоро' : 'Coming soon'}
+            </span>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">
-              {lang === 'ru' ? 'Расширения' : 'Extensions'}
+              Telegram Route
             </h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
-              {lang === 'ru' ? 'Менеджер расширений и плагинов.' : 'Extensions and plugins manager.'}
+              {lang === 'ru'
+                ? 'Безопасный веб-туннель и быстрая маршрутизация для Telegram и ботов.'
+                : 'Secure web tunnel and fast routing for Telegram services & bots.'}
             </p>
           </div>
           <div className="mt-4 flex items-end">
             <button
-              onClick={handleOpenExtensions}
-              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              onClick={() => {
+                playChime('click');
+                triggerToast(lang === 'ru' ? 'Telegram Route находится в разработке' : 'Telegram Route is coming soon');
+              }}
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm opacity-80 hover:opacity-100"
               style={{
                 backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
                 borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
@@ -2540,7 +2608,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
               }}
             >
-              {lang === 'ru' ? 'Открыть' : 'Open'}
+              {lang === 'ru' ? 'Скоро' : 'Coming soon'}
             </button>
           </div>
         </div>
@@ -2572,16 +2640,16 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
               </div>
 
-              {/* Settings App Shortcut */}
+              {/* Extensions App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
                 playChime('click');
-                handleOpenSettings();
+                handleOpenExtensions();
               }}>
-                {settingsMinimized && <div className="running-pill-mini" />}
+                {extensionsMinimized && <div className="running-pill-mini" />}
                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
-                  <Settings size={18} className="text-[var(--on-surface)]" />
+                  <Blocks size={18} className="text-[var(--on-surface)]" />
                 </div>
-                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">Settings</span>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Расширения' : 'Extensions'}</span>
               </div>
 
               {/* Calculator App Shortcut */}
@@ -3342,6 +3410,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           handleAppNotifPermissionToggle(appId, allowed);
           setPendingNotifPromptApp(null);
         }}
+      />
+
+      {/* Proxy Server Node Selector Modal */}
+      <ServerModal
+        isOpen={isServerModalOpen}
+        onClose={() => setIsServerModalOpen(false)}
+        lang={lang}
+        selectedServer={selectedServer}
+        onSelectServer={handleServerSelection}
+        primaryColor={activePalette.primary}
+        onOpenHub={(url) => openLinkerRoute(url)}
       />
 
     </motion.div>

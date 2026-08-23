@@ -1,6 +1,7 @@
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
+import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db } from './src/db/index';
 import { transcripts } from './src/db/schema';
@@ -279,7 +280,13 @@ async function getTranscript(videoId: string, preferredLanguages?: string | stri
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  });
   
   app.use(express.json({ limit: '1mb' }));
 
@@ -395,15 +402,19 @@ async function startServer() {
   // --- VITE DEV MIDDLEWARE (React) ---
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa'
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
+      appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
     // Production static serving
-    app.use(express.static('dist'));
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile('dist/index.html', { root: '.' });
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
@@ -414,5 +425,8 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
 

@@ -186,8 +186,12 @@ export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isM
                 {/* Left Panel - Branding */}
                 <div className="w-[45%] bg-[var(--surface-dim)] p-12 flex flex-col justify-between border-r border-[var(--outline)] relative overflow-hidden">
                    <div className="relative z-10 mt-8">
-                     <div className="w-16 h-16 bg-[var(--accent)] rounded-[1.5rem] flex items-center justify-center mb-8 shadow-lg shadow-[var(--accent)]/20 text-white">
-                        <Zap size={32} fill="currentColor" />
+                     <div className="w-16 h-16 bg-[var(--accent)] border border-[var(--accent)] rounded-[1.5rem] flex items-center justify-center mb-8 shadow-lg shadow-[var(--accent)]/20 overflow-hidden p-3 text-white">
+                        <img 
+                          src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
+                          alt="Lisyan Connect Logo" 
+                          className="w-full h-full object-contain brightness-0 invert" 
+                        />
                      </div>
                      <h2 className="text-5xl font-black text-[var(--on-surface)] mb-6 tracking-tight leading-[1.1]">
                        {lang === 'ru' ? 'Прямая передача' : 'Direct transfer'}
@@ -252,14 +256,18 @@ export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isM
               </div>
             ) : (
               <div className="flex flex-col h-full w-full bg-[var(--surface)] p-5 overflow-y-auto pb-8">
-                 <div className="flex items-center gap-4 mb-8 mt-2 px-2">
-                    <div className="w-12 h-12 bg-[var(--accent)] rounded-[1rem] flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 text-white shrink-0">
-                       <Zap size={24} fill="currentColor" />
-                    </div>
-                    <div>
-                       <h2 className="text-2xl font-black text-[var(--on-surface)] tracking-tight leading-none mb-1">
-                         Lisyan Connect
-                       </h2>
+                <div className="flex items-center gap-4 mb-8 mt-2 px-2">
+                  <div className="w-12 h-12 bg-[var(--accent)] border border-[var(--accent)] rounded-[1rem] flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 overflow-hidden p-2.5 shrink-0 text-white">
+                    <img 
+                      src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
+                      alt="Lisyan Connect Logo" 
+                      className="w-full h-full object-contain brightness-0 invert" 
+                    />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-[var(--on-surface)] tracking-tight leading-none mb-1">
+                      Lisyan Connect
+                    </h2>
                        <p className="text-xs font-bold text-[var(--on-surface-var)]">
                          {lang === 'ru' ? 'Прямая передача файлов' : 'Direct file transfer'}
                        </p>

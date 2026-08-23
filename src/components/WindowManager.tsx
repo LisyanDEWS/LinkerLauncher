@@ -626,46 +626,43 @@ function WindowFrame({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: isMobileLayout ? 0.98 : 0.82, y: isMobileLayout ? 20 : 36, filter: isOptimizedEngine ? 'none' : 'blur(10px)' }}
+      initial={{ opacity: 0, scale: isMobileLayout ? 0.98 : 0.92, y: isMobileLayout ? 16 : 22 }}
       animate={
         win.isMinimized
           ? {
-              opacity: [1, 1, 0.7, 0],
-              scale: [1, 0.85, 0.45, 0.08],
-              x: [0, minimizeX * 0.3, minimizeX * 0.7, minimizeX],
-              y: [0, minimizeY * 0.4, minimizeY * 0.75, minimizeY],
-              filter: isOptimizedEngine ? 'none' : ['blur(0px)', 'blur(1px)', 'blur(3px)', 'blur(6px)'],
+              opacity: 0,
+              scale: 0.6,
+              x: minimizeX,
+              y: minimizeY,
             }
           : {
               opacity: 1,
               scale: 1,
               x: 0,
               y: 0,
-              filter: 'none',
             }
       }
       exit={{
         opacity: 0,
-        scale: isMobileLayout ? 0.98 : 0.82,
-        y: isMobileLayout ? 20 : 36,
-        filter: isOptimizedEngine ? 'none' : 'blur(10px)',
+        scale: isMobileLayout ? 0.98 : 0.92,
+        y: isMobileLayout ? 16 : 20,
         transition: {
-          duration: 0.3,
-          ease: [0.4, 0, 1, 1],
+          duration: 0.16,
+          ease: 'easeOut',
         },
       }}
       transition={
         win.isMinimized
           ? {
-              duration: 0.6,
-              times: [0, 0.3, 0.65, 1],
-              ease: [0.16, 1, 0.3, 1],
+              duration: 0.24,
+              ease: [0.2, 0.9, 0.3, 1],
             }
           : {
               type: 'spring',
-              damping: isMobileLayout ? 24 : 18,
-              stiffness: isMobileLayout ? 320 : 280,
-              restDelta: 0.01,
+              damping: isMobileLayout ? 26 : 24,
+              stiffness: isMobileLayout ? 360 : 340,
+              mass: 0.7,
+              restDelta: 0.005,
             }
       }
       onMouseDown={onFocus}
@@ -682,6 +679,7 @@ function WindowFrame({
           : isActive
             ? '0 20px 50px -12px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent)'
             : 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.15))',
+        willChange: 'transform, opacity',
         transition: isInteracting
           ? 'none'
           : 'left 0.32s cubic-bezier(0.16, 1, 0.3, 1), top 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
