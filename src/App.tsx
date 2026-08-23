@@ -48,6 +48,7 @@ import {
   ExternalLink,
   HelpCircle, MessageCircle,
   Subtitles,
+  LayoutGrid,
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette } from './types';
@@ -77,6 +78,8 @@ import OnboardingModal from './components/OnboardingModal';
 import { SupportQRModal, CONTACTS } from './components/SupportApp';
 import { LinkerRouteApp } from './components/LinkerRouteApp';
 import ServerModal from './components/ServerModal';
+import { AccountManagerModal } from './components/AccountManagerModal';
+import { SpaceProxyCard } from './components/SpaceProxyCard';
 
 const Grain = () => (
   <div 
@@ -1478,6 +1481,32 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
+  const openAccountWindow = () => {
+    playChime('click');
+    wm.open({
+      id: 'account',
+      title: lang === 'ru' ? 'Менеджер аккаунта' : 'Account Manager',
+      icon: <User size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 560,
+      initialHeight: 600,
+      minWidth: 360,
+      minHeight: 380,
+      render: () => (
+        <AccountManagerModal
+          lang={lang}
+          nickname={nickname}
+          onNicknameChange={(n) => {
+            setNickname(n);
+            localStorage.setItem('linkerru_nickname', n);
+          }}
+          isAuthenticated={isAuthenticated}
+          onClose={() => wm.close('account')}
+        />
+      ),
+    });
+  };
+
   const openChangelogWindow = () => {
     wm.open({
       id: 'changelog',
@@ -1495,7 +1524,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const handleOpenSubConvert = () => {
     playChime('click');
-    checkAndPromptAppNotifPermission('subconvert', 'Сабконверт');
     wm.open({
       id: 'subconvert',
       title: 'SubConvert',
@@ -1520,7 +1548,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const handleOpenExtensions = () => {
     playChime('click');
-    checkAndPromptAppNotifPermission('extensions', 'Расширения');
     wm.open({
       id: 'extensions',
       title: lang === 'ru' ? 'Расширения' : 'Extensions',
@@ -1601,10 +1628,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const openLinkerRoute = (url?: string) => {
     if (url) setProxyInitialUrl(url);
+    const activeUrl = url || proxyInitialUrl;
     const openProxyInBlank = () => {
       playChime('click');
-      const proxyUrl = url
-        ? `http://localhost:8080/proxy/${encodeURIComponent(url.startsWith('http') ? url : 'https://' + url)}`
+      const proxyUrl = activeUrl
+        ? `http://localhost:8080/proxy/${encodeURIComponent(activeUrl.startsWith('http') ? activeUrl : 'https://' + activeUrl)}`
         : 'http://localhost:8080/';
       const themeParams = `?theme=${theme}&primary=${encodeURIComponent(activePalette.primary)}&secondary=${encodeURIComponent(activePalette.secondary)}&tertiary=${encodeURIComponent(activePalette.tertiary)}`;
       const win = window.open('about:blank', '_blank');
@@ -1637,13 +1665,47 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       ),
       render: () => (
         <LinkerRouteApp
-          lang={lang}
-          selectedServer={selectedServer}
-          onSelectServer={handleServerSelection}
-          activePalette={activePalette}
-          theme={theme}
-          initialUrl={proxyInitialUrl}
+          initialUrl={activeUrl}
         />
+      ),
+    });
+  };
+
+  const openTelegramRouteWindow = () => {
+    playChime('click');
+    wm.open({
+      id: 'telegramroute',
+      title: 'Telegram Route',
+      icon: <Send size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 960,
+      initialHeight: 680,
+      minWidth: 420,
+      minHeight: 380,
+      headerActions: (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open('https://marking-carriers-parenting-park.trycloudflare.com/', '_blank');
+          }}
+          title={lang === 'ru' ? 'Открыть в новой вкладке' : 'Open in new tab'}
+          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+        >
+          <ExternalLink size={13} />
+        </motion.button>
+      ),
+      render: () => (
+        <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
+          <iframe
+            src="https://marking-carriers-parenting-park.trycloudflare.com/"
+            className="w-full h-full border-none bg-[var(--surface)]"
+            title="Telegram Route Frame"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
+            allow="fullscreen; autoplay; clipboard-read; clipboard-write"
+          />
+        </div>
       ),
     });
   };
@@ -1675,7 +1737,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openNexusGameBox = () => {
-    checkAndPromptAppNotifPermission('nexus', 'Nexus Game Box');
     wm.open({
       id: 'nexusgamebox',
       title: 'Nexus Game Box',
@@ -2154,50 +2215,128 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </button>
         </div>
       ) : isMobileLayout ? (
-        <div className="flex flex-col flex-1 w-full max-w-md mx-auto justify-center gap-8 p-6 font-sans">
-          
-          <div className="flex justify-between items-start mb-6">
-             <div className="flex flex-col">
-               <h1 className="text-4xl font-black text-[var(--on-surface)] tracking-tight">LinkerRu<span className="text-[var(--outline-high)]">:Mobile</span></h1>
-               <div className="flex items-center gap-2 mt-2">
-                 <span className="text-xs font-extrabold text-[var(--on-surface-var)] uppercase tracking-wider bg-[var(--surface-dim)] px-2 py-1 rounded-md border border-[var(--outline)]">
-                   v.1.1m
-                 </span>
-                 <span className="text-[10px] font-bold text-[var(--outline-high)]">LISYAN X LINKERRU</span>
-               </div>
-             </div>
-             
-          </div>
-          
-          <div
-            className="group relative overflow-hidden rounded-[2rem] p-8 cursor-pointer active:scale-[0.98] transition-all shadow-xl bg-[var(--surface-dim)] border border-[var(--outline)]"
-            onClick={() => { openLisyanWindow(); }}
-          >
-            <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-[0.03] -mr-10 -mt-10 pointer-events-none bg-[var(--on-surface)]" />
-            
-            <div className="flex flex-col h-full relative z-10">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--btn-border)] overflow-hidden p-3 transition-colors" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-                <img 
-                  src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
-                  alt="Lisyan Connect Logo" 
-                  className="w-full h-full object-contain brightness-0 invert" 
-                  onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} 
+        <div className="flex flex-col flex-1 w-full max-w-md mx-auto bg-[var(--surface)] text-[var(--on-surface)] relative overflow-hidden font-sans select-none min-h-screen">
+          {/* Mobile Top Bar */}
+          <div className="flex justify-between items-center px-6 pt-8 pb-3 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] p-2 shadow-sm flex items-center justify-center">
+                <img
+                  src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206"
+                  alt="LinkerRu Logo"
+                  className={`w-full h-full object-contain ${theme === 'light' ? 'brightness-0' : 'brightness-0 invert'}`}
                 />
-                <Monitor size={32} className="hidden text-white" />
               </div>
-              
-              <h3 className="text-3xl font-black text-[var(--on-surface)] mb-2 tracking-tight">Lisyan Connect</h3>
-              <p className="text-sm font-semibold text-[var(--on-surface-var)] leading-relaxed">
-                {lang === 'ru' ? 'Быстрая P2P передача файлов между устройствами без ограничений.' : 'Fast P2P file transfer between devices without limits.'}
-              </p>
-              
-              <div className="mt-8 flex items-center gap-2 text-[var(--surface)] font-bold text-sm bg-[var(--on-surface)] self-start px-4 py-2 rounded-full border border-[var(--outline-var)] shadow-sm group-hover:opacity-90 transition-opacity">
-                {lang === 'ru' ? 'Открыть приложение' : 'Open Application'}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black tracking-tight text-[var(--on-surface)]">
+                    LinkerRu <span className="text-[var(--on-surface-var)]">:MBL</span>
+                  </span>
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--container)] border border-[var(--outline-var)] text-[var(--on-surface)]">
+                    Mobile
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
+                  LISYAN X LINKERRU
+                </span>
               </div>
             </div>
           </div>
-          
+
+          {/* Mobile Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-6 scrollbar-hide pb-28 relative z-10">
+            
+            {/* Hero Card: Lisyan Connect */}
+            <div 
+              onClick={() => { playChime('click'); openLisyanWindow(); }}
+              className="w-full rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline)] hover:border-[var(--on-surface)] p-6 flex flex-col gap-5 active:scale-[0.98] transition-all shadow-sm relative overflow-hidden group cursor-pointer"
+            >
+              <div className="flex items-start justify-between relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--on-surface)] flex items-center justify-center text-[var(--surface)] shadow-md group-hover:scale-105 transition-transform">
+                  <Monitor size={28} strokeWidth={2.2} />
+                </div>
+                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)] tracking-wider">
+                  P2P CONNECT
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1 relative z-10">
+                <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
+                  Lisyan Connect
+                </h2>
+                <p className="text-xs font-medium text-[var(--on-surface-var)] leading-relaxed">
+                  {lang === 'ru'
+                    ? 'Быстрая P2P передача файлов, синхронизация и беспроводное подключение устройств.'
+                    : 'Fast P2P file transfer, device synchronization, and wireless link.'}
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-[var(--outline-var)] flex items-center justify-between relative z-10">
+                <span className="text-xs font-bold text-[var(--on-surface)] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  {lang === 'ru' ? 'Открыть Connect' : 'Launch Connect'}
+                </span>
+                <div className="w-8 h-8 rounded-full bg-[var(--container)] flex items-center justify-center text-[var(--on-surface)] group-hover:bg-[var(--on-surface)] group-hover:text-[var(--surface)] transition-colors">
+                  <ChevronRight size={16} />
+                </div>
+              </div>
+            </div>
+
+            {/* Account Manager Card */}
+            <div className="flex flex-col gap-2.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-[var(--on-surface-var)] pl-1">
+                {lang === 'ru' ? 'Менеджер аккаунта' : 'Account Manager'}
+              </span>
+
+              <div 
+                onClick={() => { playChime('click'); openAccountWindow(); }}
+                className="p-5 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] hover:border-[var(--on-surface)] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group shadow-sm"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface)] shadow-sm">
+                    <User size={20} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black text-[var(--on-surface)]">
+                      {isAuthenticated ? (nickname || 'User') : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
+                    </span>
+                    <span className="text-xs font-semibold text-[var(--on-surface-var)] mt-0.5">
+                      {isAuthenticated ? (userAuth.currentUser?.email || (lang === 'ru' ? 'Авторизован' : 'Logged in')) : (lang === 'ru' ? 'Нажмите для управления аккаунтом' : 'Tap to manage account')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-8 h-8 rounded-full bg-[var(--container)] flex items-center justify-center text-[var(--on-surface-var)] group-hover:text-[var(--on-surface)] group-hover:bg-[var(--surface)] transition-colors">
+                  <ChevronRight size={16} />
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Bottom Navigation Bar */}
+          <div className="absolute bottom-0 left-0 right-0 h-20 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--outline)] flex items-center justify-around px-8 z-50">
+            <button 
+              onClick={() => { playChime('click'); openLisyanWindow(); }}
+              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
+            >
+              <Monitor size={20} strokeWidth={2.2} />
+              <span className="text-[10px] font-bold">Lisyan</span>
+            </button>
+            <button 
+              onClick={() => { playChime('click'); handleOpenSettings('appearance'); }}
+              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
+            >
+              <Settings size={20} strokeWidth={2.2} />
+              <span className="text-[10px] font-bold">{lang === 'ru' ? 'Настройки' : 'Settings'}</span>
+            </button>
+            <button 
+              onClick={() => { playChime('click'); openAccountWindow(); }}
+              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
+            >
+              <User size={20} strokeWidth={2.2} />
+              <span className="text-[10px] font-bold">{lang === 'ru' ? 'Аккаунт' : 'Account'}</span>
+            </button>
+          </div>
+
         </div>
       ) : (
         <>
@@ -2210,7 +2349,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               openWeatherWindow();
             }}
-            className="group flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="group hidden md:flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-weather-pill"
           >
             <motion.div
@@ -2250,7 +2389,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsCalendarOpen(true);
             }}
-            className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="hidden md:flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-calendar-pill"
           >
             <CalendarIcon size={16} className="text-[var(--on-surface-var)]" />
@@ -2260,7 +2399,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           {/* Battery Pill */}
           {batteryLvl !== null && (
             <div
-              className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 cursor-default backdrop-blur-xl"
+              className="hidden md:flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 cursor-default backdrop-blur-xl"
               title={isCharging ? (lang === 'ru' ? 'Заряжается' : 'Charging') : (lang === 'ru' ? 'От батареи' : 'On battery')}
             >
               {isCharging
@@ -2291,7 +2430,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsQuickSettingsOpen(true);
             }}
-            className="flex items-center gap-2.5 bg-[var(--btn-bg)] h-11 border border-[var(--btn-border)] pl-1.5 pr-4.5 rounded-full shadow-sm cursor-pointer transition-all hover:bg-[var(--btn-hover)] group hover:scale-[1.02] active:scale-95 backdrop-blur-xl"
+            className="hidden md:flex items-center gap-2.5 bg-[var(--btn-bg)] h-11 border border-[var(--btn-border)] pl-1.5 pr-4.5 rounded-full shadow-sm cursor-pointer transition-all hover:bg-[var(--btn-hover)] group hover:scale-[1.02] active:scale-95 backdrop-blur-xl"
             id="topbar-settings-pill"
           >
             <div className="w-8 h-8 rounded-full bg-[var(--container)] border border-[var(--btn-border)] flex items-center justify-center transition-all group-hover:bg-[var(--container-high)]">
@@ -2307,7 +2446,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               setIsNotificationsOpen(true);
             }}
-            className="w-11 h-11 relative rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="hidden md:flex w-11 h-11 relative rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-notifications"
           >
             <Bell size={18} />
@@ -2315,16 +2454,18 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               <div className="absolute top-2 right-2 w-2 h-2 rounded-full border border-[var(--surface)]" style={{ backgroundColor: activePalette.primary }} />
             )}
           </button>
+          
           <button
             onClick={() => {
               playChime('click');
-              handleOpenSettings();
+              handleOpenSettings('account');
             }}
-            className="w-11 h-11 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] flex items-center justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="flex items-center gap-2 md:w-11 md:h-11 h-11 px-4 md:px-0 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] justify-center text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-avatar"
-            title={t.page_appearance}
+            title={lang === 'ru' ? 'Менеджер аккаунта' : 'Account Manager'}
           >
             <User size={18} />
+            <span className="text-xs font-bold md:hidden">{lang === 'ru' ? 'Аккаунт' : 'Account'}</span>
           </button>
         </div>
       </header>
@@ -2402,59 +2543,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       {/* --- ROW 1: BENTO LAYOUT MAIN WIDGETS --- */}
       <main className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="row1-bento-grid">
         {/* WIDGET 1: Space Proxy Hub */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-default group relative" id="card-linker-route">
-          {proxyMinimized && <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>}
-          <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] flex items-center justify-center shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-              <Globe size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
-            </div>
-            <button
-              onClick={() => {
-                playChime('click');
-                setIsServerModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border border-[var(--btn-border)] bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] transition-all cursor-pointer shadow-xs"
-              title={lang === 'ru' ? 'Выбрать серверный узел' : 'Select proxy server'}
-            >
-              <Server size={12} className="text-[var(--accent)]" />
-              <span className="max-w-[85px] truncate">{selectedServer}</span>
-            </button>
-          </div>
-          <div className="flex-1 mt-3 flex flex-col pr-8">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Space Proxy Hub</h3>
-            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
-              {lang === 'ru' ? 'Современный, чистый веб-прокси — игры, приложения и безопасный доступ без ограничений.' : 'Modern, clean web proxy — games, apps, and unrestricted browsing.'}
-            </p>
-          </div>
-          <div className="mt-4 flex gap-2 items-end">
-            <button
-              onClick={() => {
-                playChime('click');
-                setIsServerModalOpen(true);
-              }}
-              className="flex-1 py-3 rounded-full text-xs font-bold border border-[var(--btn-border)] bg-[var(--btn-bg)] hover:bg-[var(--btn-hover)] text-[var(--on-surface)] transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-xs truncate px-2 flex items-center justify-center gap-1.5"
-            >
-              <Server size={13} className="text-[var(--accent)] shrink-0" />
-              <span className="truncate">{lang === 'ru' ? 'Сервер' : 'Server'}</span>
-            </button>
-            <button
-              onClick={() => {
-                playChime('click');
-                openLinkerRoute();
-              }}
-              className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-              style={{
-                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
-              }}
-              id="proxy-card-open-btn"
-            >
-              {lang === 'ru' ? 'Открыть' : 'Open'}
-            </button>
-          </div>
-        </div>
+        <SpaceProxyCard
+          lang={lang}
+          theme={theme}
+          activePalette={activePalette}
+          proxyMinimized={proxyMinimized}
+          onOpenHub={(url, serverName) => {
+            if (serverName) handleServerSelection(serverName);
+            openLinkerRoute(url);
+          }}
+          playChime={playChime}
+        />
 
         {/* WIDGET 2: Agno GPT */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
@@ -2599,12 +2698,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
         {/* TELEGRAM ROUTE CARD */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-telegram-route">
+          {isMinimized('telegramroute') && (
+            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+          )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-              <Send size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
+              <Send size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
             <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] text-[var(--on-surface-var)] shadow-xs select-none">
-              {lang === 'ru' ? 'Скоро' : 'Coming soon'}
+              Web Route
             </span>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -2621,9 +2723,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <button
               onClick={() => {
                 playChime('click');
-                triggerToast(lang === 'ru' ? 'Telegram Route находится в разработке' : 'Telegram Route is coming soon');
+                openTelegramRouteWindow();
               }}
-              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm opacity-80 hover:opacity-100"
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
               style={{
                 backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
                 borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
@@ -2631,7 +2733,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
               }}
             >
-              {lang === 'ru' ? 'Скоро' : 'Coming soon'}
+              {lang === 'ru' ? 'Открыть' : 'Open'}
             </button>
           </div>
         </div>
@@ -2663,7 +2765,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     <CloudSun size={18} className="text-[var(--on-surface)]" />
                   </motion.div>
                   {weatherError && (
-                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white border border-[var(--surface)]">!</span>
+                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--accent)] text-[9px] font-black text-white border border-[var(--surface)] shadow-xs">!</span>
                   )}
                 </div>
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
@@ -3332,14 +3434,18 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             case 'keeps':
               return <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />;
             case 'proxy':
+              return <LinkerRouteApp />;
+            case 'telegramroute':
               return (
-                <LinkerRouteApp
-                  lang={lang}
-                  selectedServer={selectedServer}
-                  onSelectServer={handleServerSelection}
-                  activePalette={activePalette}
-                  theme={theme}
-                />
+                <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
+                  <iframe
+                    src="https://marking-carriers-parenting-park.trycloudflare.com/"
+                    className="w-full h-full border-none bg-[var(--surface)]"
+                    title="Telegram Route Frame"
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
+                    allow="fullscreen; autoplay; clipboard-read; clipboard-write"
+                  />
+                </div>
               );
             case 'weather':
               return (

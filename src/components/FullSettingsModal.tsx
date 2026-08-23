@@ -219,7 +219,7 @@ export default function FullSettingsModal({
   isWeatherDisabled = false,
   onWeatherDisabledToggle,
 }: FullSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'appearance');
+  const [activeTab, setActiveTab] = useState<Tab>(isMobileLayout && initialTab === 'account' ? 'appearance' : (initialTab || 'appearance'));
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileContent, setShowMobileContent] = useState(false);
 
@@ -352,10 +352,10 @@ export default function FullSettingsModal({
     if (isOpen) {
       setShowMobileContent(isNarrow ? false : true);
       if (initialTab) {
-        setActiveTab(initialTab);
+        setActiveTab(isMobileLayout && initialTab === 'account' ? 'appearance' : initialTab);
       }
     }
-  }, [isOpen, initialTab, isNarrow]);
+  }, [isOpen, initialTab, isNarrow, isMobileLayout]);
 
   useEffect(() => {
     const handleOpenTab = (e: Event) => {
@@ -641,25 +641,29 @@ export default function FullSettingsModal({
 
               {/* Sidebar Tabs */}
               <div className="flex-1 space-y-1.5 overflow-y-auto scrollbar-none pr-1" id="sidebar-nav-tabs">
-                <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mb-2">
-                  {lang === 'ru' ? 'Аккаунт' : 'Account'}
-                </span>
+                {!isMobileLayout && (
+                  <>
+                    <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mb-2">
+                      {lang === 'ru' ? 'Аккаунт' : 'Account'}
+                    </span>
 
-                <button
-                  onClick={() => selectTab('account')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'account' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-account-btn"
-                >
-                  <User size={16} />
-                  <span>{lang === 'ru' ? 'Профиль & Пароль' : 'Profile & Password'}</span>
-                </button>
+                    <button
+                      onClick={() => selectTab('account')}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        activeTab === 'account' && !searchQuery
+                          ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                          : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                      }`}
+                      id="tab-account-btn"
+                    >
+                      <User size={16} />
+                      <span>{lang === 'ru' ? 'Профиль & Пароль' : 'Profile & Password'}</span>
+                    </button>
+                  </>
+                )}
 
                 <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
-                  {lang === 'ru' ? 'Общие' : 'General'}
+                  {lang === 'ru' ? (isMobileLayout ? 'Система' : 'Общие') : (isMobileLayout ? 'System' : 'General')}
                 </span>
 
                 <button
@@ -676,6 +680,19 @@ export default function FullSettingsModal({
                 </button>
 
                 <button
+                  onClick={() => selectTab('sound')}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                    activeTab === 'sound' && !searchQuery
+                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                  }`}
+                  id="tab-sound-btn"
+                >
+                  <Volume2 size={16} />
+                  <span>{lang === 'ru' ? 'Звук и Уведомления' : 'Sound & Notifications'}</span>
+                </button>
+
+                <button
                   onClick={() => selectTab('language')}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
                     activeTab === 'language' && !searchQuery
@@ -688,64 +705,56 @@ export default function FullSettingsModal({
                   <span>{t.page_language}</span>
                 </button>
 
-                <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
-                  {t.ph_news}
-                </span>
+                {!isMobileLayout && (
+                  <>
+                    <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
+                      {t.ph_news}
+                    </span>
 
-                <button
-                  onClick={() => selectTab('notifications')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'notifications' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-notifications-btn"
-                >
-                  <Bell size={16} />
-                  <span>{t.page_notifications}</span>
-                </button>
-                <button
-                  onClick={() => selectTab('sound')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'sound' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-sound-btn"
-                >
-                  <Volume2 size={16} />
-                  <span>{lang === 'ru' ? 'Звук' : 'Sound'}</span>
-                </button>
+                    <button
+                      onClick={() => selectTab('notifications')}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        activeTab === 'notifications' && !searchQuery
+                          ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                          : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                      }`}
+                      id="tab-notifications-btn"
+                    >
+                      <Bell size={16} />
+                      <span>{t.page_notifications}</span>
+                    </button>
 
-                <button
-                  onClick={() => selectTab('security')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'security' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-security-btn"
-                >
-                  <ShieldCheck size={16} />
-                  <span>{lang === 'ru' ? 'Безопасность' : 'Security'}</span>
-                </button>
+                    <button
+                      onClick={() => selectTab('security')}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        activeTab === 'security' && !searchQuery
+                          ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                          : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                      }`}
+                      id="tab-security-btn"
+                    >
+                      <ShieldCheck size={16} />
+                      <span>{lang === 'ru' ? 'Безопасность' : 'Security'}</span>
+                    </button>
 
-                <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
-                  {lang === 'ru' ? 'Дополнительно' : 'Extras'}
-                </span>
+                    <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
+                      {lang === 'ru' ? 'Дополнительно' : 'Extras'}
+                    </span>
 
-                <button
-                  onClick={() => selectTab('toggles')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'toggles' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-toggles-btn"
-                >
-                  <ToggleLeft size={16} />
-                  <span>{lang === 'ru' ? 'Переключатели' : 'Toggles'}</span>
-                </button>
+                    <button
+                      onClick={() => selectTab('toggles')}
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                        activeTab === 'toggles' && !searchQuery
+                          ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                          : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                      }`}
+                      id="tab-toggles-btn"
+                    >
+                      <ToggleLeft size={16} />
+                      <span>{lang === 'ru' ? 'Переключатели' : 'Toggles'}</span>
+                    </button>
+                  </>
+                )}
 
                 <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase pl-3 block mt-5 mb-2">
                   {t.ph_support}
@@ -763,18 +772,21 @@ export default function FullSettingsModal({
                   <Info size={16} />
                   <span>{t.page_about}</span>
                 </button>
-                <button
-                  onClick={() => selectTab('developer')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
-                    activeTab === 'developer' && !searchQuery
-                      ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
-                      : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
-                  }`}
-                  id="tab-dev-btn"
-                >
-                  <AlertTriangle size={16} />
-                  <span>{lang === 'ru' ? 'Dev опции' : 'Dev Options'}</span>
-                </button>
+
+                {!isMobileLayout && (
+                  <button
+                    onClick={() => selectTab('developer')}
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-left ${
+                      activeTab === 'developer' && !searchQuery
+                        ? 'bg-[var(--surface)] text-[var(--on-surface)] shadow-sm'
+                        : 'text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)]'
+                    }`}
+                    id="tab-dev-btn"
+                  >
+                    <AlertTriangle size={16} />
+                    <span>{lang === 'ru' ? 'Dev опции' : 'Dev Options'}</span>
+                  </button>
+                )}
               </div>
 
               {/* Developer branding in sidebar footer */}
@@ -971,6 +983,7 @@ export default function FullSettingsModal({
                           </div>
 
                           {/* Main Wallpaper Row */}
+                          {!isMobileLayout && (
                           <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-3">
                             <div className="flex items-center gap-4">
                               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
@@ -1067,6 +1080,7 @@ export default function FullSettingsModal({
                               </div>
                             </div>
                           </div>
+                          )}
                         </div>
 
                         {/* Theme Color Swatches Section */}
@@ -1195,11 +1209,11 @@ export default function FullSettingsModal({
                                  {lang === 'ru' ? 'Сохранить и применить' : 'Save and Apply Theme'}
                                </button>
                             </div>
-
                           </div>
                         </div>
 
                         {/* Font Typography Section */}
+                        {!isMobileLayout && (
                         <div className="space-y-3 mt-4" id="font-settings">
                           <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
                             Typography
@@ -1250,6 +1264,7 @@ export default function FullSettingsModal({
                             </div>
                           </div>
                         </div>
+                        )}
 
                         {/* Standby Mode Background Section */}
                         {!isMobileLayout && (
@@ -1931,7 +1946,7 @@ export default function FullSettingsModal({
                       </div>
                     )}
                     
-                    {activeTab === 'account' && (
+                    {!isMobileLayout && activeTab === 'account' && (
                       <div className="space-y-6" id="page-account-view">
                         <AccountTabContent
                           lang={lang}

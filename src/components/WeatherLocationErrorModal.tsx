@@ -63,7 +63,7 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">
                 <AlertCircle size={20} />
               </div>
               <div>
@@ -99,7 +99,7 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                   }
                   onClose();
                 }}
-                className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:bg-[var(--surface-bright)] transition-all text-left group"
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:bg-[var(--surface-bright)] transition-all text-left group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
@@ -121,7 +121,7 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
               {/* Option 2: Add location manually */}
               <button
                 onClick={() => setActiveView('manual')}
-                className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:bg-[var(--surface-bright)] transition-all text-left group"
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:bg-[var(--surface-bright)] transition-all text-left group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
@@ -140,20 +140,20 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                 </div>
               </button>
 
-              {/* Option 2: Disable widget completely */}
+              {/* Option 3: Disable widget */}
               <button
                 onClick={() => {
                   onDisableWidget();
                   onClose();
                 }}
-                className="w-full flex items-center justify-between p-4 rounded-2xl bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-all text-left group"
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:border-[var(--outline)] hover:bg-[var(--surface-bright)] transition-all text-left group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container-high)] text-[var(--on-surface-var)]">
                     <EyeOff size={18} />
                   </div>
                   <div>
-                    <div className="text-xs font-extrabold text-red-500">
+                    <div className="text-xs font-extrabold text-[var(--on-surface)]">
                       {lang === 'ru' ? 'Отключить виджет полностью' : 'Disable widget completely'}
                     </div>
                     <div className="text-[11px] text-[var(--on-surface-var)]">
