@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, Moon, Sun, Languages, Volume2, Monitor, User, LogOut, Shield } from 'lucide-react';
+import { X, ChevronRight, Moon, Sun, Volume2 } from 'lucide-react';
 import { Language, ThemeMode } from '../types';
 import { translations } from '../data/translations';
 
@@ -34,6 +34,54 @@ export default function SettingsModal({
   onVolumeChange
 }: SettingsModalProps) {
   const t = translations[lang];
+  const [popoverPos, setPopoverPos] = useState<{ top: number; right: number }>({
+    top: 80,
+    right: 24,
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      const btn = document.getElementById('topbar-settings-pill');
+      const panelWidth = 320;
+      const margin = 16;
+
+      if (btn) {
+        const rect = btn.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const top = rect.bottom + 8;
+          let right = window.innerWidth - rect.right;
+          
+          // Ensure it stays within viewport
+          const calculatedLeft = window.innerWidth - right - panelWidth;
+          if (calculatedLeft < margin) {
+            right = window.innerWidth - panelWidth - margin;
+          }
+          if (right < margin) {
+            right = margin;
+          }
+
+          setPopoverPos({ top, right });
+          return;
+        }
+      }
+
+      // Fallback: align with max-w-7xl content container
+      const maxW = 1280;
+      const containerMargin = Math.max(margin, (window.innerWidth - maxW) / 2 + margin);
+      setPopoverPos({ top: 80, right: containerMargin });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: number) => void) => {
     setter(Number(e.target.value));
@@ -42,24 +90,28 @@ export default function SettingsModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-end p-6 pt-24">
+        <div className="fixed inset-0 z-50 pointer-events-none">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/10 backdrop-blur-[2px] pointer-events-auto"
             id="settings-quick-backdrop"
           />
 
           {/* Quick Settings Panel */}
           <motion.div
-            initial={{ scale: 0.95, y: -10, opacity: 0 }}
+            initial={{ scale: 0.95, y: -8, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.95, y: -10, opacity: 0 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="relative z-10 w-full max-w-xs rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-xl p-5 shadow-2xl"
+            exit={{ scale: 0.95, y: -8, opacity: 0 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+            style={{
+              top: `${popoverPos.top}px`,
+              right: `${popoverPos.right}px`,
+            }}
+            className="fixed z-10 w-[calc(100vw-32px)] max-w-xs rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-xl p-5 shadow-2xl pointer-events-auto select-none"
             id="settings-quick-modal"
           >
             {/* Header */}
