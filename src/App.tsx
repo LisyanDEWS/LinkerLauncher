@@ -2210,10 +2210,33 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               openWeatherWindow();
             }}
-            className="flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="group flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-weather-pill"
           >
-            <CloudSun size={16} className="text-[var(--on-surface-var)]" />
+            <motion.div
+              id="topbar-weather-icon-wrapper"
+              className="flex items-center justify-center origin-center"
+              animate={{
+                rotate: [-2, 3, -1, 2, -2],
+                y: [0, -1, 0, -1, 0],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 7,
+                ease: 'easeInOut',
+              }}
+              whileHover={{
+                rotate: 20,
+                scale: 1.2,
+                transition: { type: 'spring', stiffness: 400, damping: 12 },
+              }}
+              whileTap={{
+                scale: 0.88,
+                rotate: -12,
+              }}
+            >
+              <CloudSun size={16} className="text-[var(--on-surface-var)] group-hover:text-[var(--accent)] transition-colors" />
+            </motion.div>
             <span>
               {topbarTemp !== null
                 ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
@@ -2632,7 +2655,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               }}>
                 {isMinimized('weather') && <div className="running-pill-mini" />}
                 <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
-                  <CloudSun size={18} className="text-[var(--on-surface)]" />
+                  <motion.div
+                    whileHover={{ rotate: 18, scale: 1.15 }}
+                    whileTap={{ scale: 0.9, rotate: -10 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  >
+                    <CloudSun size={18} className="text-[var(--on-surface)]" />
+                  </motion.div>
                   {weatherError && (
                     <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white border border-[var(--surface)]">!</span>
                   )}
