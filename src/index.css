@@ -101,8 +101,8 @@ body, #root {
   background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
               linear-gradient(135deg, color-mix(in srgb, var(--outline) 60%, rgba(255,255,255,0.15)), transparent 75%) border-box;
   border: 1px solid transparent;
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   box-shadow: 0 8px 24px -10px rgba(0,0,0,0.22), inset 0 1px 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.03);
 }
 
@@ -111,16 +111,16 @@ body, #root {
 .glass-blur-disabled .panel-bg-gradient,
 .glass-blur-disabled .card,
 .glass-blur-disabled .panel {
-  backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 .panel-bg-gradient {
   background: linear-gradient(var(--panel-bg), var(--panel-bg)) padding-box,
               linear-gradient(135deg, color-mix(in srgb, var(--outline) 60%, rgba(255,255,255,0.15)), transparent 75%) border-box;
   border: 1px solid transparent;
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   box-shadow: 0 8px 24px -10px rgba(0,0,0,0.22), inset 0 1px 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.03);
 }
 
