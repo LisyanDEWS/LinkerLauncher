@@ -367,6 +367,74 @@ async function startServer() {
   app.get('/api/transcripts', handleListTranscripts);
   app.get('/api/health', (req, res) => res.json({ ok: true, service: 'linkerru-server' }));
 
+  // --- BUILD INFO & CHANGELOG (GitHub commits) ---
+  const GITHUB_REPO = 'LisyanDEWS/LinkerLauncher';
+  let cachedBuildInfo: { buildVersion: string; buildDate: string; sha: string } | null = null;
+  let cachedCommits: any[] | null = null;
+  let cacheTime = 0;
+  const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+  async function fetchGitHubCommits(): Promise<any[]> {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=30`;
+    const res = await fetchWithTimeout(url, {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'LinkerRu-Server',
+      },
+    }, 10000);
+    if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
+    return await res.json() as any[];
+  }
+
+  function formatBuildDate(dateStr: string): string {
+    const d = new Date(dateStr);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  async function getBuildInfo() {
+    if (cachedBuildInfo && Date.now() - cacheTime < CACHE_TTL) return cachedBuildInfo;
+    const commits = await fetchGitHubCommits();
+    const latest = commits[0];
+    const dateStr = latest?.commit?.author?.date || latest?.commit?.committer?.date || new Date().toISOString();
+    cachedBuildInfo = {
+      buildVersion: `v${formatBuildDate(dateStr)}`,
+      buildDate: formatBuildDate(dateStr),
+      sha: latest?.sha?.slice(0, 7) || 'unknown',
+    };
+    cacheTime = Date.now();
+    cachedCommits = commits;
+    return cachedBuildInfo;
+  }
+
+  // Build info endpoint (fast — cached, fetched at first request)
+  app.get('/api/build-info', async (_req, res) => {
+    try {
+      const info = await getBuildInfo();
+      res.json(info);
+    } catch (err) {
+      res.status(200).json({ buildVersion: 'v--', buildDate: '--', sha: 'unknown' });
+    }
+  });
+
+  // Changelog endpoint — returns formatted commits
+  app.get('/api/changelog', async (_req, res) => {
+    try {
+      if (cachedCommits && Date.now() - cacheTime < CACHE_TTL) {
+        res.json(cachedCommits);
+        return;
+      }
+      const commits = await fetchGitHubCommits();
+      cachedCommits = commits;
+      cacheTime = Date.now();
+      res.json(commits);
+    } catch (err) {
+      res.status(200).json([]);
+    }
+  });
+
   // --- LISYAN CONNECT WEB SOCKET SIGNALING ---
   const rooms = new Map<string, Set<WebSocket>>();
   wss.on("connection", (ws) => {

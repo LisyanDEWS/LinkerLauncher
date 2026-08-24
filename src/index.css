@@ -65,6 +65,38 @@ body, #root {
   border-radius: 99px;
 }
 
+/* ── Global themed scrollbars ──
+   Replaces the default browser scrollbar with a themed one that follows
+   light/dark mode via CSS variables. Applied to all scrollable elements
+   in the app. Iframes are excluded — cross-origin iframes can't be styled
+   anyway, and same-origin iframes with their own scrollbar styles are
+   left untouched to avoid conflicts. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--outline);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--on-surface-var);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .panel-gradient {
   background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
               linear-gradient(135deg, color-mix(in srgb, var(--outline) 60%, rgba(255,255,255,0.15)), transparent 75%) border-box;

@@ -302,6 +302,7 @@ export default function App() {
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account'>('appearance');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [buildVersion, setBuildVersion] = useState<string>('v--');
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   // Login screen preview overlay (dev tool — does NOT log out)
@@ -544,6 +545,16 @@ export default function App() {
       console.error("Error saving user settings to Firebase:", err);
     }
   };
+
+  // Fetch build info (build date from latest commit) from server
+  useEffect(() => {
+    fetch('/api/build-info')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.buildVersion) setBuildVersion(data.buildVersion);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(userAuth, async (user) => {
@@ -2504,7 +2515,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             id="version-pill"
           >
             <History size={12} />
-            <span>v1/262608</span>
+            <span>build {buildVersion}</span>
           </button>
         </div>
         <div className="flex items-center gap-4 min-h-[56px]" id="branding-title">
