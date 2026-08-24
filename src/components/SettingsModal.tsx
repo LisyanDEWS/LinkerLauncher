@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, Moon, Sun, Volume2 } from 'lucide-react';
+import { X, ChevronRight, Sun, Volume2 } from 'lucide-react';
 import { Language, ThemeMode } from '../types';
 import { translations } from '../data/translations';
 
@@ -17,6 +17,8 @@ interface SettingsModalProps {
   onBrightnessChange: (val: number) => void;
   volume: number;
   onVolumeChange: (val: number) => void;
+  isSoundEnabled: boolean;
+  onSoundToggle: () => void;
 }
 
 export default function SettingsModal({
@@ -31,46 +33,45 @@ export default function SettingsModal({
   brightness,
   onBrightnessChange,
   volume,
-  onVolumeChange
+  onVolumeChange,
+  isSoundEnabled,
+  onSoundToggle
 }: SettingsModalProps) {
   const t = translations[lang];
-  const [popoverPos, setPopoverPos] = useState<{ top: number; right: number }>({
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({
     top: 80,
-    right: 24,
+    left: 24,
   });
+  const [backdropClickable, setBackdropClickable] = useState(true);
 
   useEffect(() => {
     if (!isOpen) return;
+    setBackdropClickable(true);
 
     const updatePosition = () => {
-      const btn = document.getElementById('topbar-settings-pill');
-      const panelWidth = 320;
-      const margin = 16;
+      // Anchor the popup's right edge to the right edge of the account
+      // manager button. Using `left` (not `right`) so both the measurement
+      // and the positioning share the same left-origin coordinate space —
+      // this stays consistent across Chrome zoom levels.
+      const anchor = document.getElementById('topbar-avatar');
+      const rect = anchor?.getBoundingClientRect();
 
-      if (btn) {
-        const rect = btn.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          const top = rect.bottom + 8;
-          let right = window.innerWidth - rect.right;
-          
-          // Ensure it stays within viewport
-          const calculatedLeft = window.innerWidth - right - panelWidth;
-          if (calculatedLeft < margin) {
-            right = window.innerWidth - panelWidth - margin;
-          }
-          if (right < margin) {
-            right = margin;
-          }
+      if (rect && rect.width > 0 && rect.height > 0) {
+        // Place the panel so its right edge = anchor's right edge.
+        // max-w-xs = 20rem = 320px; use that as the panel width.
+        const pw = 320;
+        let left = rect.right - pw;
+        if (left < 16) left = 16;
 
-          setPopoverPos({ top, right });
-          return;
-        }
+        setPopoverPos({
+          top: rect.bottom + 8,
+          left,
+        });
+        return;
       }
 
-      // Fallback: align with max-w-7xl content container
-      const maxW = 1280;
-      const containerMargin = Math.max(margin, (window.innerWidth - maxW) / 2 + margin);
-      setPopoverPos({ top: 80, right: containerMargin });
+      // Fallback
+      setPopoverPos({ top: 80, left: window.innerWidth - 320 - 24 });
     };
 
     updatePosition();
@@ -96,8 +97,11 @@ export default function SettingsModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.1 }}
+            onAnimationComplete={() => { if (!isOpen) setBackdropClickable(false); }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/10 backdrop-blur-[2px] pointer-events-auto"
+            className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"
+            style={{ pointerEvents: backdropClickable ? 'auto' : 'none' }}
             id="settings-quick-backdrop"
           />
 
@@ -106,12 +110,14 @@ export default function SettingsModal({
             initial={{ scale: 0.95, y: -8, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: -8, opacity: 0 }}
-            transition={{ type: 'spring', damping: 22, stiffness: 320 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 500 }}
+            onAnimationComplete={() => { if (!isOpen) setBackdropClickable(false); }}
+            className="fixed z-10 w-[calc(100vw-32px)] max-w-xs rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-xl p-5 shadow-2xl select-none"
             style={{
               top: `${popoverPos.top}px`,
-              right: `${popoverPos.right}px`,
+              left: `${popoverPos.left}px`,
+              pointerEvents: backdropClickable ? 'auto' : 'none',
             }}
-            className="fixed z-10 w-[calc(100vw-32px)] max-w-xs rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-xl p-5 shadow-2xl pointer-events-auto select-none"
             id="settings-quick-modal"
           >
             {/* Header */}
@@ -144,7 +150,7 @@ export default function SettingsModal({
                   onChange={(e) => handleSliderChange(e, onBrightnessChange)}
                   className="absolute inset-0 w-32 h-12 -rotate-90 origin-center translate-y-10 -translate-x-10 opacity-0 cursor-pointer"
                 />
-                <div className="absolute top-3 w-full flex justify-center text-[var(--surface)] mix-blend-difference pointer-events-none">
+                <div className="absolute top-3 w-full flex justify-center text-white/70 pointer-events-none">
                   <Sun size={18} />
                 </div>
               </div>
@@ -163,7 +169,7 @@ export default function SettingsModal({
                   onChange={(e) => handleSliderChange(e, onVolumeChange)}
                   className="absolute inset-0 w-32 h-12 -rotate-90 origin-center translate-y-10 -translate-x-10 opacity-0 cursor-pointer"
                 />
-                <div className="absolute top-3 w-full flex justify-center text-[var(--surface)] mix-blend-difference pointer-events-none">
+                <div className="absolute top-3 w-full flex justify-center text-white/70 pointer-events-none">
                   <Volume2 size={18} />
                 </div>
               </div>
@@ -175,28 +181,15 @@ export default function SettingsModal({
                 {lang === 'ru' ? 'Тихий режим' : 'Silent Mode'}
               </span>
               <button
-                onClick={() => {
-                  const el = document.getElementById('volume-slider') as HTMLInputElement;
-                  if (el) {
-                     if (volume > 0) {
-                       onVolumeChange(0);
-                       el.value = '0';
-                     } else {
-                       onVolumeChange(100);
-                       el.value = '100';
-                     }
-                  } else {
-                     onVolumeChange(volume > 0 ? 0 : 100);
-                  }
-                }}
+                onClick={onSoundToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  volume === 0 ? 'bg-[var(--accent)]' : 'bg-[var(--surface-dim)]'
+                  isSoundEnabled ? 'bg-[var(--container-high)]' : ''
                 }`}
-                style={{ backgroundColor: volume === 0 ? primaryColor : undefined }}
+                style={{ backgroundColor: isSoundEnabled ? undefined : primaryColor }}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform shadow-sm ${
-                    volume === 0 ? 'translate-x-6' : 'translate-x-1'
+                    isSoundEnabled ? 'translate-x-1' : 'translate-x-6'
                   }`}
                 />
               </button>
@@ -234,38 +227,25 @@ export default function SettingsModal({
               </button>
             </div>
 
-            {/* Theme Toggle Button Row */}
-            <div
-              onClick={onThemeToggle}
-              className="flex items-center justify-between p-2.5 hover:bg-[var(--container-high)] rounded-xl cursor-pointer transition-colors"
-              id="quick-settings-theme-row"
-            >
-              <div className="flex items-center gap-3">
-                {theme === 'dark' ? (
-                  <Moon size={18} className="text-[var(--on-surface-var)]" />
-                ) : (
-                  <Sun size={18} className="text-[var(--accent)]" />
-                )}
-                <span className="text-xs font-semibold text-[var(--on-surface)]">
-                  {t.theme_toggle_label}
-                </span>
-              </div>
-              <div
-                className={`w-11 h-6 rounded-full p-0.5 border transition-colors cursor-pointer relative ${
-                  theme === 'dark' ? 'border-transparent' : 'border-[var(--outline)] bg-[var(--container-high)]'
+            {/* Theme Toggle */}
+            <div className="flex items-center justify-between mb-4 px-4" id="quick-settings-theme-row">
+              <span className="text-sm font-bold text-[var(--on-surface)]">
+                {t.theme_toggle_label}
+              </span>
+              <button
+                onClick={onThemeToggle}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  theme === 'dark' ? '' : 'bg-[var(--container-high)]'
                 }`}
-                style={{
-                  backgroundColor: theme === 'dark' ? primaryColor : undefined,
-                }}
+                style={{ backgroundColor: theme === 'dark' ? primaryColor : undefined }}
                 id="quick-settings-theme-toggle"
               >
-                <motion.div
-                  layout
-                  className="w-4 h-4 rounded-full bg-white shadow"
-                  animate={{ x: theme === 'dark' ? 20 : 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform shadow-sm ${
+                    theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                  }`}
                 />
-              </div>
+              </button>
             </div>
 
             {/* Divider */}

@@ -1352,12 +1352,49 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     localStorage.setItem('linkerru_lang', newLang); window.dispatchEvent(new Event('linkerru_lang_changed'));
   };
 
+  const [isThemeTransitioning, setIsThemeTransitioning] = useState(false);
+
   const handleThemeToggle = () => {
+    if (isThemeTransitioning) return;
     playChime('click');
-    const nextTheme = theme === 'light' ? 'dark' : 'theme';
     const final = theme === 'light' ? 'dark' : 'light';
+    setIsThemeTransitioning(true);
+
+    const root = document.documentElement;
+    const SWEEP_MS = 500;
+    const EL_DURATION = 300;
+    const pageHeight = root.scrollHeight;
+
+    // Enable color-only transitions on all elements
+    root.classList.add('theme-switching');
+
+    // Stagger transition-delay by vertical position (top-to-bottom sweep)
+    const all = document.querySelectorAll<HTMLElement>('*');
+    const targets: HTMLElement[] = [];
+    for (let i = 0; i < all.length; i++) {
+      const el = all[i];
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      const absTop = rect.top + window.scrollY;
+      const delay = Math.min((absTop / pageHeight) * SWEEP_MS, SWEEP_MS);
+      el.style.transitionDelay = `${delay}ms`;
+      targets.push(el);
+    }
+
+    // Force reflow so browser processes transition-delay before theme change
+    void root.offsetHeight;
+
     setTheme(final);
     localStorage.setItem('linkerru_theme', final);
+
+    // Clean up after all transitions complete
+    setTimeout(() => {
+      root.classList.remove('theme-switching');
+      for (let i = 0; i < targets.length; i++) {
+        targets[i].style.transitionDelay = '';
+      }
+      setIsThemeTransitioning(false);
+    }, SWEEP_MS + EL_DURATION + 100);
   };
 
   const handleOpenSettings = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account' = 'appearance') => {
@@ -1760,9 +1797,37 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     const next = !isSoundEnabled;
     setIsSoundEnabled(next);
     localStorage.setItem('linkerru_sound', String(next));
-    // Immediately play chime on enable to verify
     if (next) {
+      // Restore previous volume (or default to 50)
+      const lastVol = Number(localStorage.getItem('linkerru_last_volume')) || 50;
+      setSoundVolume(lastVol);
+      localStorage.setItem('linkerru_sound_volume', String(lastVol));
       setTimeout(() => playChime('click'), 100);
+    } else {
+      // Mute: save current volume for later restore, then set to 0
+      if (soundVolume > 0) {
+        localStorage.setItem('linkerru_last_volume', String(soundVolume));
+      }
+      setSoundVolume(0);
+      localStorage.setItem('linkerru_sound_volume', '0');
+    }
+  };
+
+  // Unified volume change — keeps isSoundEnabled in sync
+  const handleVolumeChange = (v: number) => {
+    setSoundVolume(v);
+    localStorage.setItem('linkerru_sound_volume', String(v));
+    if (v > 0) {
+      localStorage.setItem('linkerru_last_volume', String(v));
+      if (!isSoundEnabled) {
+        setIsSoundEnabled(true);
+        localStorage.setItem('linkerru_sound', 'true');
+      }
+    } else {
+      if (isSoundEnabled) {
+        setIsSoundEnabled(false);
+        localStorage.setItem('linkerru_sound', 'false');
+      }
     }
   };
 
@@ -2466,7 +2531,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0, filter: 'blur(8px)', y: -10 }}
                 transition={{ duration: 0.5 }}
-                className="text-4xl md:text-6xl font-black tracking-tighter transition-colors duration-300"
+                className="text-4xl md:text-6xl font-black tracking-tighter transition-colors duration-300 select-none"
                 style={{
                   color: 'var(--wallpaper-title-color, var(--on-wallpaper-surface, var(--on-surface)))',
                 }}
@@ -2479,7 +2544,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 initial={{ opacity: 0, filter: 'blur(8px)', y: 10 }}
                 animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="text-3xl md:text-5xl font-black tracking-tight leading-tight transition-colors duration-300"
+                className="text-3xl md:text-5xl font-black tracking-tight leading-tight transition-colors duration-300 select-none"
                 style={{
                   color: 'var(--wallpaper-title-color, var(--on-wallpaper-surface, var(--on-surface)))',
                 }}
@@ -2834,6 +2899,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 return (
                   <button
                     key={id}
+                    data-toggle-id={id}
                     onClick={activeCfg.onClick}
                     className={`flex items-center gap-2 p-2 px-3 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                       activeCfg.active
@@ -3119,10 +3185,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           localStorage.setItem('linkerru_brightness', String(v));
         }}
         volume={soundVolume}
-        onVolumeChange={(v) => {
-          setSoundVolume(v);
-          localStorage.setItem('linkerru_sound_volume', String(v));
-        }}
+        onVolumeChange={handleVolumeChange}
+        isSoundEnabled={isSoundEnabled}
+        onSoundToggle={handleSoundToggle}
       />
 
       {/* Settings is now rendered via window manager */}
