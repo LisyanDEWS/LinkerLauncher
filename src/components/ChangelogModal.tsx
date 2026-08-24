@@ -34,7 +34,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
           const formatted: CommitEntry[] = data.map((c: any) => ({
             sha: c.sha?.slice(0, 7) || 'unknown',
             message: c.commit?.message?.split('\n')[0] || 'No message',
-            author: c.commit?.author?.name || c.commit?.committer?.name || 'Unknown',
+            author: (c.commit?.author?.name || c.commit?.committer?.name || 'Unknown') === 'zxc-mrt1n-o4' ? 'nark0zz-dev' : (c.commit?.author?.name || c.commit?.committer?.name || 'Unknown'),
             date: c.commit?.author?.date || c.commit?.committer?.date || '',
           }));
           setCommits(formatted);
