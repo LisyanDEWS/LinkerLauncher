@@ -81,15 +81,6 @@ import ServerModal from './components/ServerModal';
 import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
 
-const Grain = () => (
-  <div 
-    className="fixed inset-0 pointer-events-none z-[100] opacity-5 mix-blend-multiply"
-    style={{
-      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`
-    }}
-  />
-);
-
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -2078,7 +2069,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         onComplete={onLoaderComplete}
       />
       
-      <Grain />
       {isNightLight && (
         <div className="fixed inset-0 z-[9999] pointer-events-none bg-[#ffad33] opacity-[0.15] mix-blend-multiply" style={{ mixBlendMode: theme === 'dark' ? 'color-burn' : 'multiply' }} />
       )}
