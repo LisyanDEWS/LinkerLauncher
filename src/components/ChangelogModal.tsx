@@ -27,7 +27,9 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/changelog');
+        const res = await fetch('https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=30', {
+          headers: { 'Accept': 'application/vnd.github+json' },
+        });
         const data = await res.json();
         if (cancelled) return;
         if (Array.isArray(data)) {

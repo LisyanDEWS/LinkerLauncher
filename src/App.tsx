@@ -546,12 +546,23 @@ export default function App() {
     }
   };
 
-  // Fetch build info (build date from latest commit) from server
+  // Fetch build info (build date from latest commit) directly from GitHub API
   useEffect(() => {
-    fetch('/api/build-info')
+    fetch('https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=1', {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    })
       .then((res) => res.json())
       .then((data) => {
-        if (data?.buildVersion) setBuildVersion(data.buildVersion);
+        if (Array.isArray(data) && data[0]) {
+          const dateStr = data[0].commit?.author?.date || data[0].commit?.committer?.date || '';
+          if (dateStr) {
+            const d = new Date(dateStr);
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            setBuildVersion(`v${dd}-${mm}-${yyyy}`);
+          }
+        }
       })
       .catch(() => {});
   }, []);
