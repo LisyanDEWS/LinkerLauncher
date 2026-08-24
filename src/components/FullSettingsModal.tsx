@@ -118,6 +118,8 @@ interface FullSettingsModalProps {
   onPaletteChange: (paletteId: string) => void;
   isContrast: boolean;
   onContrastToggle: () => void;
+  isGlassBlur: boolean;
+  onGlassBlurToggle: () => void;
   isToastEnabled: boolean;
   onToastToggle: () => void;
   isSoundEnabled: boolean;
@@ -177,6 +179,8 @@ export default function FullSettingsModal({
   onPaletteChange,
   isContrast,
   onContrastToggle,
+  isGlassBlur,
+  onGlassBlurToggle,
   isToastEnabled,
   onToastToggle,
   isSoundEnabled,
@@ -975,10 +979,32 @@ export default function FullSettingsModal({
                                 </div>
                               </div>
                             </div>
-                            <SquashToggle 
-                              checked={isContrast} 
-                              onChange={onContrastToggle} 
-                              color={activePalette.primary} 
+                            <SquashToggle
+                              checked={isContrast}
+                              onChange={onContrastToggle}
+                              color={activePalette.primary}
+                            />
+                          </div>
+
+                          {/* Glass Blur Row */}
+                          <div className="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl">
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                                <Sparkles size={18} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Стеклянное размытие' : 'Glass Blur'}
+                                </div>
+                                <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                  {lang === 'ru' ? 'Эффект матового стекла для карточек' : 'Frosted glass blur effect on cards'}
+                                </div>
+                              </div>
+                            </div>
+                            <SquashToggle
+                              checked={isGlassBlur}
+                              onChange={onGlassBlurToggle}
+                              color={activePalette.primary}
                             />
                           </div>
 

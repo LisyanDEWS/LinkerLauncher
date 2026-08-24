@@ -130,6 +130,10 @@ export default function App() {
     return localStorage.getItem('linkerru_contrast') === 'true';
   });
 
+  const [isGlassBlur, setIsGlassBlur] = useState<boolean>(() => {
+    return localStorage.getItem('linkerru_glass_blur') !== 'false';
+  });
+
   const [isOptimizedEngine, setIsOptimizedEngine] = useState<boolean>(() => {
     return localStorage.getItem('linkerru_optimized_engine') === 'true';
   });
@@ -513,6 +517,7 @@ export default function App() {
           theme,
           accent: activePaletteId,
           contrast: isContrast,
+          glass_blur: isGlassBlur,
           toast: isToastEnabled,
           sound: isSoundEnabled,
           sound_volume: soundVolume,
@@ -596,6 +601,7 @@ export default function App() {
               if (s.theme) { setTheme(s.theme); localStorage.setItem('linkerru_theme', s.theme); }
               if (s.accent) { setActivePaletteId(s.accent); localStorage.setItem('linkerru_accent', s.accent); }
               if (s.contrast !== undefined) { setIsContrast(s.contrast); localStorage.setItem('linkerru_contrast', String(s.contrast)); }
+              if (s.glass_blur !== undefined) { setIsGlassBlur(s.glass_blur); localStorage.setItem('linkerru_glass_blur', String(s.glass_blur)); }
               if (s.toast !== undefined) { setIsToastEnabled(s.toast); localStorage.setItem('linkerru_toast', String(s.toast)); }
               if (s.sound !== undefined) { setIsSoundEnabled(s.sound); localStorage.setItem('linkerru_sound', String(s.sound)); }
               if (s.sound_volume !== undefined) { setSoundVolume(s.sound_volume); localStorage.setItem('linkerru_sound_volume', String(s.sound_volume)); }
@@ -681,6 +687,7 @@ export default function App() {
     theme,
     activePaletteId,
     isContrast,
+    isGlassBlur,
     isToastEnabled,
     isSoundEnabled,
     soundVolume,
@@ -1197,6 +1204,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     }
   }, [isOptimizedEngine]);
 
+  // --- Glass Blur Toggle ---
+  useEffect(() => {
+    if (isGlassBlur) {
+      document.documentElement.classList.remove('glass-blur-disabled');
+    } else {
+      document.documentElement.classList.add('glass-blur-disabled');
+    }
+  }, [isGlassBlur]);
+
   // --- Notifications Setup ---
   useEffect(() => {
     const defaultNotifs = [
@@ -1486,6 +1502,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             onPaletteChange={handlePaletteChange}
             isContrast={isContrast}
             onContrastToggle={handleContrastToggle}
+            isGlassBlur={isGlassBlur}
+            onGlassBlurToggle={handleGlassBlurToggle}
             isToastEnabled={isToastEnabled}
             onToastToggle={() => { const n = !isToastEnabled; setIsToastEnabled(n); localStorage.setItem('linkerru_toast', String(n)); }}
             isSoundEnabled={isSoundEnabled}
@@ -1787,6 +1805,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     const next = !isContrast;
     setIsContrast(next);
     localStorage.setItem('linkerru_contrast', String(next));
+  };
+
+  const handleGlassBlurToggle = () => {
+    playChime('click');
+    const next = !isGlassBlur;
+    setIsGlassBlur(next);
+    localStorage.setItem('linkerru_glass_blur', String(next));
   };
 
   const handleNightLightToggle = () => {
@@ -3369,6 +3394,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     onPaletteChange={handlePaletteChange}
                     isContrast={isContrast}
                     onContrastToggle={handleContrastToggle}
+                    isGlassBlur={isGlassBlur}
+                    onGlassBlurToggle={handleGlassBlurToggle}
                     isToastEnabled={isToastEnabled}
                     onToastToggle={() => {
                       const n = !isToastEnabled;
