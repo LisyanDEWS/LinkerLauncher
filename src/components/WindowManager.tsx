@@ -857,27 +857,26 @@ function WindowFrame({
         pointerEvents: win.isMinimized ? 'none' : 'auto',
       }}
     >
-      {/* Top trigger zone when header is hidden (only available in full-screen/maximized mode) */}
+      {/* Floating island to restore header (only in maximized mode when header is hidden) */}
       {isHeaderHidden && !win.hideTitleBar && win.isMaximized && (
-        <>
-          <div
-            onMouseEnter={showHeader}
-            className="absolute top-0 left-0 right-0 h-4 z-40 cursor-pointer"
-          />
-          <motion.button
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={showHeader}
-            title={isRu ? 'Развернуть панель' : 'Restore panel'}
-            className="absolute top-1.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-[var(--surface)]/90 backdrop-blur-md border border-[var(--outline-var)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] hover:bg-[var(--container-high)] shadow-md transition-all cursor-pointer select-none"
-          >
-            <ChevronDown size={12} />
-            <span>{win.title}</span>
-          </motion.button>
-        </>
+        <motion.button
+          initial={{ opacity: 0, y: -16, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -16, scale: 0.9 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          whileHover={{ scale: 1.05, y: 1 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={showHeader}
+          title={isRu ? 'Развернуть панель' : 'Restore panel'}
+          className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-[var(--surface)]/85 backdrop-blur-xl border border-[var(--outline-var)]/80 shadow-lg shadow-black/10 hover:shadow-xl hover:border-[var(--accent)]/40 transition-all cursor-pointer select-none group"
+        >
+          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--accent)]/12 text-[var(--accent)] group-hover:bg-[var(--accent)]/20 transition-colors">
+            <ChevronDown size={13} strokeWidth={2.5} />
+          </span>
+          <span className="text-[10.5px] font-bold text-[var(--on-surface-var)] group-hover:text-[var(--on-surface)] transition-colors tracking-tight">
+            {win.title}
+          </span>
+        </motion.button>
       )}
 
       {/* Header bar */}
