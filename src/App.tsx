@@ -80,6 +80,7 @@ import { LinkerRouteApp } from './components/LinkerRouteApp';
 import ServerModal from './components/ServerModal';
 import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
+import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -1641,17 +1642,12 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openLisyanWindow = () => {
-    checkAndPromptAppNotifPermission('lisyan', 'Lisyan Connect');
     wm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
       icon: (
-        <div className="w-4 h-4 rounded flex items-center justify-center p-0.5 overflow-hidden">
-          <img 
-            src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
-            alt="Lisyan Connect" 
-            className="w-full h-full object-contain" 
-          />
+        <div className="w-4 h-4 rounded flex items-center justify-center p-0 overflow-hidden">
+          <M3LoadingIndicator size={14} color="var(--on-surface-var)" speed={0.4} />
         </div>
       ),
       singleton: true,
@@ -1676,12 +1672,12 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const [activeSupportContactId, setActiveSupportContactId] = useState<string | null>(null);
 
   const openCalculatorWindow = () => {
-    checkAndPromptAppNotifPermission('calculator', 'Калькулятор');
     wm.open({
       id: 'calculator',
       title: lang === 'ru' ? 'Калькулятор' : 'Calculator',
       icon: <Calculator size={14} className="text-[var(--on-surface)]" />,
       singleton: true,
+      disableLoader: true,
       initialWidth: 380,
       initialHeight: 600,
       minWidth: 320,
@@ -1691,7 +1687,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openKeepsWindow = () => {
-    checkAndPromptAppNotifPermission('keeps', 'Заметки');
     wm.open({
       id: 'keeps',
       title: lang === 'ru' ? 'Заметки' : 'Keeps',
@@ -2326,11 +2321,20 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               className="w-full rounded-3xl bg-[var(--surface-dim)]/80 border border-[var(--outline)]/80 p-6 flex flex-col gap-5 transition-all shadow-sm relative overflow-hidden select-none cursor-default opacity-85"
             >
               <div className="flex items-start justify-between relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] shadow-sm">
-                  <Monitor size={28} strokeWidth={2.2} />
+                <div
+                  className="w-16 h-16 rounded-2xl border border-[var(--outline-var)] flex items-center justify-center shadow-md p-2 overflow-hidden transition-colors"
+                  style={{
+                    backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                  }}
+                >
+                  <M3LoadingIndicator
+                    size={38}
+                    color={theme === 'dark' ? '#ffffff' : '#ffffff'}
+                    speed={0.4}
+                  />
                 </div>
                 <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)] tracking-wider">
-                  P2P CONNECT
+                  {lang === 'ru' ? 'ФАЙЛООБМЕННИК' : 'FILE SHARING'}
                 </span>
               </div>
 
@@ -2340,8 +2344,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 </h2>
                 <p className="text-xs font-medium text-[var(--on-surface-var)] leading-relaxed opacity-85">
                   {lang === 'ru'
-                    ? 'Быстрая P2P передача файлов, синхронизация и беспроводное подключение устройств.'
-                    : 'Fast P2P file transfer, device synchronization, and wireless link.'}
+                    ? 'Файлообменник для быстрой и безопасной передачи данных без ограничений.'
+                    : 'File sharing service for fast and secure data transfer without limits.'}
                 </p>
               </div>
 
@@ -2673,18 +2677,23 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--outline-var)] bg-[var(--container)] overflow-hidden flex items-center justify-center p-2 shadow-inner opacity-75">
-              <img
-                src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3"
-                alt="Lisyan Connect"
-                className="w-full h-full object-contain grayscale opacity-80 dark:brightness-0 dark:invert dark:opacity-60"
+            <div
+              className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-1.5 shadow-inner"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+              }}
+            >
+              <M3LoadingIndicator
+                size={26}
+                color={theme === 'dark' ? '#ffffff' : '#ffffff'}
+                speed={0.4}
               />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan Connect</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1 opacity-80">
-              {lang === 'ru' ? 'Веб-сервис для быстрой, безопасной и анонимной P2P-передачи файлов.' : 'Web service for fast, secure and anonymous P2P file transfer.'}
+              {lang === 'ru' ? 'Файлообменник для быстрой и безопасной передачи данных без ограничений.' : 'File sharing service for fast and secure data transfer without limits.'}
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">

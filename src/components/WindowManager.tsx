@@ -581,7 +581,7 @@ function WindowFrame({
   renderWindowContent,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
-  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions');
+  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator');
   const defaultDuration = win.id === 'telegramroute' ? 3000 : 1500;
   const duration = win.loadingDuration ?? defaultDuration;
 

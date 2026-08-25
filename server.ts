@@ -486,7 +486,7 @@ async function startServer() {
     });
   }
 
-  const PORT = 8080;
+  const PORT = 3000;
   console.log('PORT to use:', PORT);
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
