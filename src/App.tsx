@@ -823,10 +823,21 @@ const getContrastRatio = (hex1: string, hex2: string): number => {
   return (lighter + 0.05) / (darker + 0.05);
 };
 
+const optimizeWallpaperUrl = (url: string): string => {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('images.pexels.com') && !url.includes('auto=compress')) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080`;
+  }
+  return url;
+};
+
 const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> => {
   return new Promise((resolve, reject) => {
+    const optimized = optimizeWallpaperUrl(imageUrl);
     const img = new Image();
     img.crossOrigin = 'Anonymous';
+    img.decoding = 'async';
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
@@ -916,7 +927,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       }
     };
     img.onerror = () => reject('Image load failed');
-    img.src = imageUrl;
+    img.src = optimized;
   });
 };
 
@@ -2113,8 +2124,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             mainWallpaper.startsWith('blob:') ||
             mainWallpaper.startsWith('url(')
           )) {
-            const cleanUrl = mainWallpaper.startsWith('url(') ? mainWallpaper : `url("${mainWallpaper}")`;
-            return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(0, 0, 0, 0.55) 80%), ${cleanUrl} center / cover no-repeat fixed`;
+            const rawUrl = mainWallpaper.startsWith('url(') ? mainWallpaper.replace(/^url\(["']?/, '').replace(/["']?\)$/, '') : mainWallpaper;
+            const optimized = optimizeWallpaperUrl(rawUrl);
+            return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(0, 0, 0, 0.55) 80%), url("${optimized}") center / cover no-repeat`;
           }
           return `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)`;
         }
@@ -2135,8 +2147,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             mainWallpaper.startsWith('blob:') ||
             mainWallpaper.startsWith('url(')
           )) {
-            const cleanUrl = mainWallpaper.startsWith('url(') ? mainWallpaper : `url("${mainWallpaper}")`;
-            return `linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.28)), ${cleanUrl} center / cover no-repeat fixed`;
+            const rawUrl = mainWallpaper.startsWith('url(') ? mainWallpaper.replace(/^url\(["']?/, '').replace(/["']?\)$/, '') : mainWallpaper;
+            const optimized = optimizeWallpaperUrl(rawUrl);
+            return `linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.28)), url("${optimized}") center / cover no-repeat`;
           }
           return 'var(--bg)';
         }
@@ -2308,13 +2321,12 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           {/* Mobile Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-6 scrollbar-hide pb-28 relative z-10">
             
-            {/* Hero Card: Lisyan Connect */}
-            <div 
-              onClick={() => { playChime('click'); openLisyanWindow(); }}
-              className="w-full rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline)] hover:border-[var(--on-surface)] p-6 flex flex-col gap-5 active:scale-[0.98] transition-all shadow-sm relative overflow-hidden group cursor-pointer"
+            {/* Hero Card: Lisyan Connect (In Development - Gray state, non-clickable) */}
+            <div
+              className="w-full rounded-3xl bg-[var(--surface-dim)]/80 border border-[var(--outline)]/80 p-6 flex flex-col gap-5 transition-all shadow-sm relative overflow-hidden select-none cursor-default opacity-85"
             >
               <div className="flex items-start justify-between relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--on-surface)] flex items-center justify-center text-[var(--surface)] shadow-md group-hover:scale-105 transition-transform">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface-var)] shadow-sm">
                   <Monitor size={28} strokeWidth={2.2} />
                 </div>
                 <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)] tracking-wider">
@@ -2326,7 +2338,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
                   Lisyan Connect
                 </h2>
-                <p className="text-xs font-medium text-[var(--on-surface-var)] leading-relaxed">
+                <p className="text-xs font-medium text-[var(--on-surface-var)] leading-relaxed opacity-85">
                   {lang === 'ru'
                     ? 'Быстрая P2P передача файлов, синхронизация и беспроводное подключение устройств.'
                     : 'Fast P2P file transfer, device synchronization, and wireless link.'}
@@ -2334,15 +2346,14 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               </div>
 
               <div className="pt-3 border-t border-[var(--outline-var)] flex items-center justify-between relative z-10">
-                <span className="text-xs font-bold text-[var(--on-surface)] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                  {lang === 'ru' ? 'Открыть Connect' : 'Launch Connect'}
+                <span className="text-xs font-bold text-[var(--on-surface-var)] flex items-center gap-1 opacity-75">
+                  {lang === 'ru' ? 'В разработке' : 'In Development'}
                 </span>
-                <div className="w-8 h-8 rounded-full bg-[var(--container)] flex items-center justify-center text-[var(--on-surface)] group-hover:bg-[var(--on-surface)] group-hover:text-[var(--surface)] transition-colors">
+                <div className="w-8 h-8 rounded-full bg-[var(--container)] flex items-center justify-center text-[var(--on-surface-var)] opacity-60">
                   <ChevronRight size={16} />
                 </div>
               </div>
             </div>
-
             {/* Account Manager Card */}
             <div className="flex flex-col gap-2.5">
               <span className="text-[11px] font-black uppercase tracking-wider text-[var(--on-surface-var)] pl-1">
@@ -2377,14 +2388,14 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
           {/* Bottom Navigation Bar */}
           <div className="absolute bottom-0 left-0 right-0 h-20 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--outline)] flex items-center justify-around px-8 z-50">
-            <button 
-              onClick={() => { playChime('click'); openLisyanWindow(); }}
-              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
+            <button
+              disabled
+              title={lang === 'ru' ? 'В разработке' : 'In Development'}
+              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] opacity-40 cursor-not-allowed select-none"
             >
               <Monitor size={20} strokeWidth={2.2} />
               <span className="text-[10px] font-bold">Lisyan</span>
-            </button>
-            <button 
+            </button>            <button 
               onClick={() => { playChime('click'); handleOpenSettings('appearance'); }}
               className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
             >
@@ -2656,44 +2667,37 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </div>
         </div>
 
-        {/* WIDGET 3: Lisyan Connect */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
+        {/* WIDGET 3: Lisyan Connect (In Development - Gray state, non-interactive) */}
+        <div className="card rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative bg-[var(--surface-dim)]/80 border border-[var(--outline)]/70 shadow-xs select-none cursor-default opacity-85" id="card-lisyan-connect">
           {lisyanMinimized && (
             <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
           )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-              <img 
-                src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3" 
-                alt="Lisyan Connect" 
-                className="w-full h-full object-contain brightness-0 invert" 
+            <div className="w-11 h-11 rounded-2xl border border-[var(--outline-var)] bg-[var(--container)] overflow-hidden flex items-center justify-center p-2 shadow-inner opacity-75">
+              <img
+                src="https://github.com/user-attachments/assets/71a65dc6-fb8f-45fb-88a4-240d44cecee3"
+                alt="Lisyan Connect"
+                className="w-full h-full object-contain grayscale opacity-80 dark:brightness-0 dark:invert dark:opacity-60"
               />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan Connect</h3>
-            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1 opacity-80">
               {lang === 'ru' ? 'Веб-сервис для быстрой, безопасной и анонимной P2P-передачи файлов.' : 'Web service for fast, secure and anonymous P2P file transfer.'}
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
             <div className="flex gap-2 flex-1">
               <button
-                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-                style={{
-                  backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                  borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                  color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                  boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
-                }}
-                onClick={() => { playChime('click'); openLisyanWindow(); }}
+                disabled
+                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all text-center shadow-xs bg-[var(--container)]/80 border-[var(--outline)] text-[var(--on-surface-var)] opacity-60 cursor-not-allowed select-none"
               >
-                {lang === 'ru' ? 'Открыть' : 'Open'}
+                {lang === 'ru' ? 'В разработке' : 'In Development'}
               </button>
             </div>
           </div>
         </div>
-
         {/* WIDGET 4: Nexus Game Box NGB */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
           <div className="flex justify-between items-start h-[44px]">

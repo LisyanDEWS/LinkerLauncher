@@ -680,8 +680,8 @@ const wallpapers = catalog.flatMap(category =>
       name: category.names[index],
       resolution: category.resolution,
       pixel,
-      preview: imageUrl(source, [1280, 720]),
-      full: source
+      preview: imageUrl(source, [640, 360]),
+      full: source.startsWith('data:') ? source : `${source}?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080`
     };
   })
 );
