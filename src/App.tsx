@@ -1727,6 +1727,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       title: 'Telegram Route',
       icon: <Send size={14} className="text-[var(--on-surface)]" />,
       singleton: true,
+      loadingDuration: 9000,
       initialWidth: 960,
       initialHeight: 680,
       minWidth: 420,

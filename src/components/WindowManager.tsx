@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import { Language } from '../types';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 
@@ -582,7 +582,7 @@ function WindowFrame({
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
   const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator');
-  const defaultDuration = win.id === 'telegramroute' ? 3000 : 1500;
+  const defaultDuration = win.id === 'telegramroute' ? 9000 : 1500;
   const duration = win.loadingDuration ?? defaultDuration;
 
   const [loaderPhase, setLoaderPhase] = useState<'visible' | 'fading' | 'hidden'>(() => (isSystemApp ? 'hidden' : 'visible'));
@@ -613,6 +613,41 @@ function WindowFrame({
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
+
+  // Auto-hide panel / titlebar after 5 seconds ONLY when maximized / full-screen
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHoveringHeaderRef = useRef<boolean>(false);
+
+  const resetAutoHideTimer = useCallback(() => {
+    if (autoHideTimerRef.current) {
+      clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
+    }
+    // Only allow auto-hide if the window is maximized on desktop
+    if (!isMobileLayout && win.isMaximized) {
+      autoHideTimerRef.current = setTimeout(() => {
+        if (!isHoveringHeaderRef.current && !isInteracting) {
+          setIsHeaderHidden(true);
+        }
+      }, 5000);
+    }
+  }, [isMobileLayout, win.isMaximized, isInteracting]);
+
+  const showHeader = useCallback(() => {
+    setIsHeaderHidden(false);
+    resetAutoHideTimer();
+  }, [resetAutoHideTimer]);
+
+  useEffect(() => {
+    if (!win.isMaximized) {
+      setIsHeaderHidden(false);
+    }
+    resetAutoHideTimer();
+    return () => {
+      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
+    };
+  }, [win.isMaximized, resetAutoHideTimer]);
 
   const onTitleMouseDown = (e: React.MouseEvent) => {
     if (win.isMaximized || isMobileLayout) return;
@@ -822,63 +857,114 @@ function WindowFrame({
         pointerEvents: win.isMinimized ? 'none' : 'auto',
       }}
     >
+      {/* Top trigger zone when header is hidden (only available in full-screen/maximized mode) */}
+      {isHeaderHidden && !win.hideTitleBar && win.isMaximized && (
+        <>
+          <div
+            onMouseEnter={showHeader}
+            className="absolute top-0 left-0 right-0 h-4 z-40 cursor-pointer"
+          />
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={showHeader}
+            title={isRu ? 'Развернуть панель' : 'Restore panel'}
+            className="absolute top-1.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-[var(--surface)]/90 backdrop-blur-md border border-[var(--outline-var)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] hover:bg-[var(--container-high)] shadow-md transition-all cursor-pointer select-none"
+          >
+            <ChevronDown size={12} />
+            <span>{win.title}</span>
+          </motion.button>
+        </>
+      )}
+
       {/* Header bar */}
-      {!win.hideTitleBar && (
-        <div
-          onMouseDown={onTitleMouseDown}
-          onDoubleClick={onTitleDoubleClick}
-          onTouchStart={onTitleTouchStart}
-          className={`flex ${isMobileLayout ? 'h-12 px-3' : 'h-8.5 px-3 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)] select-none`}
-          style={{
-            background: isActive
-              ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
-              : 'var(--surface)',
-          }}
-        >
-          <div className="flex items-center gap-2">
-            {win.icon}
-            <span className={`${isMobileLayout ? 'text-xs font-black' : 'text-[11px] font-bold'} text-[var(--on-surface)] tracking-tight`}>
-              {win.title}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            {win.headerActions}
-            {!isMobileLayout && (
-              <>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => { e.stopPropagation(); onMinimize(); }}
-                  title={isRu ? 'Свернуть' : 'Minimize'}
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
-                >
-                  <Minus size={13} />
-                </motion.button>
-                {win.allowMaximize !== false && (
+      <AnimatePresence>
+        {!win.hideTitleBar && (!isHeaderHidden || !win.isMaximized) && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: isMobileLayout ? 48 : 34, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            onMouseEnter={() => {
+              isHoveringHeaderRef.current = true;
+              if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
+            }}
+            onMouseLeave={() => {
+              isHoveringHeaderRef.current = false;
+              resetAutoHideTimer();
+            }}
+            onMouseDown={onTitleMouseDown}
+            onDoubleClick={onTitleDoubleClick}
+            onTouchStart={onTitleTouchStart}
+            className={`flex ${isMobileLayout ? 'h-12 px-3' : 'h-8.5 px-3 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)] select-none overflow-hidden`}
+            style={{
+              background: isActive
+                ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
+                : 'var(--surface)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              {win.icon}
+              <span className={`${isMobileLayout ? 'text-xs font-black' : 'text-[11px] font-bold'} text-[var(--on-surface)] tracking-tight`}>
+                {win.title}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              {win.headerActions}
+              {!isMobileLayout && (
+                <>
+                  {win.isMaximized && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsHeaderHidden(true);
+                      }}
+                      title={isRu ? 'Скрыть панель' : 'Hide panel'}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+                    >
+                      <ChevronUp size={13} />
+                    </motion.button>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-                    title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
+                    onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+                    title={isRu ? 'Свернуть' : 'Minimize'}
                     className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
                   >
-                    {win.isMaximized ? <Copy size={12} /> : <Square size={12} />}
+                    <Minus size={13} />
                   </motion.button>
-                )}
-              </>
-            )}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => { e.stopPropagation(); onClose(); }}
-              title={isRu ? 'Закрыть' : 'Close'}
-              className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-7 w-7 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-6 w-6'}`}
-            >
-              <X size={isMobileLayout ? 16 : 14} />
-            </motion.button>
-          </div>
-        </div>
-      )}
+                  {win.allowMaximize !== false && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
+                      title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
+                    >
+                      {win.isMaximized ? <Copy size={12} /> : <Square size={12} />}
+                    </motion.button>
+                  )}
+                </>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                title={isRu ? 'Закрыть' : 'Close'}
+                className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-7 w-7 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-6 w-6'}`}
+              >
+                <X size={isMobileLayout ? 16 : 14} />
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
