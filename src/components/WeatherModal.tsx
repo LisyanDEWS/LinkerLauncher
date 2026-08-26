@@ -215,14 +215,14 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
 
   const getWeatherIcon = (type: string, size = 24) => {
     switch (type) {
-      case 'sun': return <Sun size={size} className="text-amber-400" />;
-      case 'cloudy_sun': return <CloudSun size={size} className="text-amber-400" />;
+      case 'sun': return <Sun size={size} className="text-[var(--on-surface)]" />;
+      case 'cloudy_sun': return <CloudSun size={size} className="text-[var(--on-surface)]" />;
       case 'cloudy': return <Cloud size={size} className="text-[var(--on-surface-var)]" />;
-      case 'rain': return <CloudRain size={size} className="text-sky-400" />;
-      case 'snow': return <Snowflake size={size} className="text-blue-300" />;
-      case 'fog': return <CloudFog size={size} className="text-slate-400" />;
-      case 'thunder': return <CloudLightning size={size} className="text-amber-500" />;
-      default: return <Sun size={size} className="text-amber-400" />;
+      case 'rain': return <CloudRain size={size} className="text-[var(--on-surface)]" />;
+      case 'snow': return <Snowflake size={size} className="text-[var(--on-surface)]" />;
+      case 'fog': return <CloudFog size={size} className="text-[var(--on-surface-var)]" />;
+      case 'thunder': return <CloudLightning size={size} className="text-[var(--on-surface)]" />;
+      default: return <Sun size={size} className="text-[var(--on-surface)]" />;
     }
   };
 
@@ -230,34 +230,31 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
 
   const modalContent = (
     <div
-      className={`relative z-10 w-full h-full overflow-hidden flex flex-col p-4 md:p-5 gap-4 select-none font-sans ${
+      className={`relative z-10 w-full h-full overflow-hidden flex flex-col p-3.5 md:p-4 gap-3 select-none font-sans ${
         embeddedInWindow
           ? 'bg-transparent text-[var(--on-surface)]'
-          : 'rounded-[2.25rem] border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_90%,transparent)] backdrop-blur-2xl'
+          : 'rounded-[2rem] border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] backdrop-blur-2xl'
       }`}
       style={
         embeddedInWindow
           ? {}
           : {
-              borderColor: 'color-mix(in srgb, var(--accent) 15%, var(--outline-var))',
-              boxShadow: '0 30px 60px -15px rgba(0,0,0,0.35), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)',
+              borderColor: 'var(--outline-var)',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
             }
       }
     >
-      {/* 1. TOP HEADER BAR: Smooth rounded pill card */}
-      <div className="flex items-center justify-between gap-3 p-3 px-4 rounded-2xl bg-[var(--surface-dim)]/80 border border-[var(--outline-var)] shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-xs"
-            style={{ background: primaryColor }}
-          >
-            <CloudSun size={20} className="text-white" />
+      {/* 1. TOP HEADER BAR: Monochromatic rounded pill card */}
+      <div className="flex items-center justify-between gap-3 p-2.5 px-3.5 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--container-high)] border border-[var(--outline-var)] text-[var(--on-surface)]">
+            <CloudSun size={18} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-base font-extrabold tracking-tight text-[var(--on-surface)] truncate">
+            <h3 className="text-sm font-extrabold tracking-tight text-[var(--on-surface)] truncate leading-tight">
               {t.weather_title}
             </h3>
-            <p className="text-[11px] text-[var(--on-surface-var)] font-semibold truncate">
+            <p className="text-[10.5px] text-[var(--on-surface-var)] font-semibold truncate leading-tight">
               {cityName || (lang === 'ru' ? 'Автоопределение' : 'Auto-detected')}
             </p>
           </div>
@@ -269,13 +266,13 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             onClick={() => setShowSettings(!showSettings)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
               showSettings
-                ? 'bg-[var(--accent)] text-white border-transparent shadow-xs'
+                ? 'bg-[var(--on-surface)] text-[var(--surface)] border-transparent shadow-xs'
                 : 'bg-[var(--surface)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container-high)]'
             }`}
             title={lang === 'ru' ? 'Настройки локации' : 'Location settings'}
           >
-            <MapPin size={13} />
-            <span className="hidden sm:inline">{lang === 'ru' ? 'Локация' : 'Location'}</span>
+            <MapPin size={12} />
+            <span className="hidden sm:inline text-[11px]">{lang === 'ru' ? 'Локация' : 'Location'}</span>
           </button>
 
           {/* Unit Switcher */}
@@ -286,9 +283,9 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 localStorage.setItem('linkerru_temp_unit', 'C');
                 window.dispatchEvent(new Event('linkerru_temp_unit_changed'));
               }}
-              className={`h-7 px-2.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+              className={`h-6.5 px-2.5 rounded-full text-xs font-black transition-all cursor-pointer ${
                 unit === 'C'
-                  ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs scale-102'
+                  ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs'
                   : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
@@ -300,9 +297,9 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 localStorage.setItem('linkerru_temp_unit', 'F');
                 window.dispatchEvent(new Event('linkerru_temp_unit_changed'));
               }}
-              className={`h-7 px-2.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+              className={`h-6.5 px-2.5 rounded-full text-xs font-black transition-all cursor-pointer ${
                 unit === 'F'
-                  ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs scale-102'
+                  ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs'
                   : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
@@ -313,9 +310,9 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
           {!embeddedInWindow && (
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-red-500 hover:text-white hover:scale-105 active:scale-95 cursor-pointer shadow-xs ml-1"
+              className="flex h-7.5 w-7.5 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] active:scale-95 cursor-pointer shadow-xs ml-0.5"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           )}
         </div>
@@ -325,20 +322,20 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
       <AnimatePresence>
         {showSettings && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="bg-[var(--container)] p-4 rounded-2xl border border-[var(--outline-var)] flex flex-col gap-3 shadow-sm shrink-0"
+            className="bg-[var(--container)] p-3.5 rounded-2xl border border-[var(--outline-var)] flex flex-col gap-2.5 shadow-sm shrink-0"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wider text-[var(--on-surface)] flex items-center gap-1.5">
-                <Compass size={14} className="text-[var(--accent)]" />
+              <span className="text-[11px] font-black uppercase tracking-wider text-[var(--on-surface)] flex items-center gap-1.5">
+                <Compass size={13} className="text-[var(--on-surface)]" />
                 {lang === 'ru' ? 'Координаты погоды' : 'Weather Coordinates'}
               </span>
               <button
                 onClick={() => setShowSettings(false)}
-                className="text-xs font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
+                className="text-[11px] font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
               >
                 {lang === 'ru' ? 'Закрыть' : 'Close'}
               </button>
@@ -352,7 +349,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   type="text"
                   value={latStr}
                   onChange={(e) => setLatStr(e.target.value)}
-                  className="bg-[var(--surface)] text-sm font-semibold rounded-xl px-3.5 py-2 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--accent)]"
+                  className="bg-[var(--surface)] text-xs font-semibold rounded-xl px-3 py-1.5 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--on-surface)]"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -363,7 +360,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   type="text"
                   value={lonStr}
                   onChange={(e) => setLonStr(e.target.value)}
-                  className="bg-[var(--surface)] text-sm font-semibold rounded-xl px-3.5 py-2 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--accent)]"
+                  className="bg-[var(--surface)] text-xs font-semibold rounded-xl px-3 py-1.5 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--on-surface)]"
                 />
               </div>
             </div>
@@ -372,8 +369,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 setShowSettings(false);
                 loadWeather(Number(latStr), Number(lonStr));
               }}
-              className="w-full text-white py-2.5 rounded-xl text-xs font-extrabold shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
-              style={{ background: primaryColor }}
+              className="w-full bg-[var(--on-surface)] text-[var(--surface)] py-2 rounded-xl text-xs font-extrabold shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
             >
               {lang === 'ru' ? 'Обновить координаты' : 'Update Coordinates'}
             </button>
@@ -381,28 +377,22 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
         )}
       </AnimatePresence>
 
-      {/* 2. MAIN BODY: Rounded cards grid without sharp dividers */}
-      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
-        {/* LEFT COLUMN: Hero Temp + Quick Stats + Hourly (7 cols on lg) */}
-        <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-0.5">
+      {/* 2. MAIN BODY: Responsive 2-column layout */}
+      <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-3 min-h-0">
+        {/* LEFT COLUMN: Hero Temp + Quick Stats + Hourly */}
+        <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-y-auto pr-0.5">
           {/* Hero Weather Card */}
-          <div className="p-6 rounded-3xl bg-[var(--container)] border border-[var(--outline-var)] flex flex-col justify-between relative overflow-hidden shadow-xs shrink-0">
-            {/* Subtle aesthetic backdrop glow */}
-            <div
-              className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full blur-3xl opacity-20 pointer-events-none"
-              style={{ backgroundColor: primaryColor }}
-            />
-
+          <div className="p-4.5 md:p-5 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] flex flex-col justify-between relative overflow-hidden shadow-xs shrink-0">
             <div className="flex items-start justify-between relative z-10">
               <div>
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--on-surface-var)] block mb-1">
+                <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[var(--on-surface-var)] block mb-1">
                   {lang === 'ru' ? 'Текущая погода' : 'Current weather'}
                 </span>
                 {loading ? (
-                  <div className="h-16 w-32 rounded-2xl bg-[var(--surface-dim)] animate-pulse my-1" />
+                  <div className="h-12 w-28 rounded-xl bg-[var(--surface-dim)] animate-pulse my-1" />
                 ) : (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-6xl font-black tracking-tighter text-[var(--on-surface)]">
+                    <span className="text-5xl font-black tracking-tighter text-[var(--on-surface)]">
                       {convertTemp(currentTempC)}
                     </span>
                   </div>
@@ -410,45 +400,45 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               </div>
 
               <div className="flex flex-col items-end">
-                <div className="p-3 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] shadow-xs">
-                  {dailyData.length > 0 ? getWeatherIcon(dailyData[0].type, 38) : <Sun size={38} className="text-amber-400" />}
+                <div className="p-2.5 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline-var)] shadow-xs">
+                  {dailyData.length > 0 ? getWeatherIcon(dailyData[0].type, 32) : <Sun size={32} className="text-[var(--on-surface)]" />}
                 </div>
-                <span className="text-xs font-extrabold text-[var(--on-surface)] mt-2">
+                <span className="text-xs font-extrabold text-[var(--on-surface)] mt-1.5">
                   {dailyData.length > 0 ? dailyData[0].desc : (lang === 'ru' ? 'Ясно' : 'Clear')}
                 </span>
               </div>
             </div>
 
-            {/* Bottom info pills inside hero */}
-            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[var(--outline-var)]/60 relative z-10">
-              <span className="text-[11px] font-bold text-[var(--on-surface-var)]">
-                {lang === 'ru' ? 'Сегодня:' : 'Today:'}
+            {/* Bottom info row inside hero */}
+            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--outline-var)]/60 relative z-10 text-[11px]">
+              <span className="font-bold text-[var(--on-surface-var)]">
+                {lang === 'ru' ? 'Сегодня' : 'Today'}
               </span>
               {dailyData.length > 0 && (
-                <div className="flex items-center gap-2 text-xs font-black text-[var(--on-surface)]">
+                <div className="flex items-center gap-1.5 font-black text-[var(--on-surface)] tabular-nums">
                   <span className="text-[var(--on-surface-var)]">{convertTemp(dailyData[0].minTemp)}</span>
-                  <span>/</span>
-                  <span style={{ color: primaryColor }}>{convertTemp(dailyData[0].maxTemp)}</span>
+                  <span className="text-[var(--outline-var)]">/</span>
+                  <span>{convertTemp(dailyData[0].maxTemp)}</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Quick Metrics Cards */}
-          <div className="grid grid-cols-2 gap-3 shrink-0">
+          {/* Quick Metrics Cards (Monochromatic) */}
+          <div className="grid grid-cols-2 gap-2.5 shrink-0">
             {/* Wind Card */}
-            <div className="p-4 rounded-2xl bg-[var(--surface-dim)]/80 border border-[var(--outline-var)] flex items-center gap-3.5 shadow-xs">
-              <div className="h-10 w-10 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center shrink-0">
-                <Wind size={18} className="text-sky-500" />
+            <div className="p-3 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex items-center gap-3 shadow-xs">
+              <div className="h-8.5 w-8.5 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center shrink-0 text-[var(--on-surface)]">
+                <Wind size={16} />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block truncate">
+                <span className="text-[9.5px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block truncate">
                   {lang === 'ru' ? 'Ветер' : 'Wind'}
                 </span>
                 {loading ? (
-                  <div className="h-4 w-12 rounded bg-[var(--surface)] animate-pulse mt-1" />
+                  <div className="h-3.5 w-10 rounded bg-[var(--surface)] animate-pulse mt-0.5" />
                 ) : (
-                  <span className="text-sm font-black text-[var(--on-surface)] block truncate">
+                  <span className="text-xs font-black text-[var(--on-surface)] block truncate tabular-nums">
                     {windSpeed ? Math.round(windSpeed) : '--'} {lang === 'ru' ? 'м/с' : 'm/s'}
                   </span>
                 )}
@@ -456,18 +446,18 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             </div>
 
             {/* Humidity Card */}
-            <div className="p-4 rounded-2xl bg-[var(--surface-dim)]/80 border border-[var(--outline-var)] flex items-center gap-3.5 shadow-xs">
-              <div className="h-10 w-10 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center shrink-0">
-                <Droplets size={18} className="text-blue-500" />
+            <div className="p-3 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex items-center gap-3 shadow-xs">
+              <div className="h-8.5 w-8.5 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center shrink-0 text-[var(--on-surface)]">
+                <Droplets size={16} />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block truncate">
+                <span className="text-[9.5px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block truncate">
                   {lang === 'ru' ? 'Влажность' : 'Humidity'}
                 </span>
                 {loading ? (
-                  <div className="h-4 w-12 rounded bg-[var(--surface)] animate-pulse mt-1" />
+                  <div className="h-3.5 w-10 rounded bg-[var(--surface)] animate-pulse mt-0.5" />
                 ) : (
-                  <span className="text-sm font-black text-[var(--on-surface)] block truncate">
+                  <span className="text-xs font-black text-[var(--on-surface)] block truncate tabular-nums">
                     {humidity ? Math.round(humidity) : '--'}%
                   </span>
                 )}
@@ -476,34 +466,34 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
           </div>
 
           {/* 24-Hour Forecast Card */}
-          <div className="p-5 rounded-3xl bg-[var(--container)]/80 border border-[var(--outline-var)] shadow-xs flex flex-col gap-3 shrink-0">
-            <span className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)]">
+          <div className="p-3.5 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] shadow-xs flex flex-col gap-2 shrink-0">
+            <span className="text-[10.5px] font-black uppercase tracking-widest text-[var(--on-surface-var)]">
               {t.hourly_forecast}
             </span>
 
             {loading ? (
-              <div className="flex gap-2.5 overflow-hidden py-1">
+              <div className="flex gap-2 overflow-hidden py-0.5">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
-                    className="min-w-[76px] flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)]/60 animate-pulse"
+                    className="min-w-[68px] flex-shrink-0 flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)]/60 animate-pulse"
                   >
-                    <div className="h-3 w-8 rounded bg-[var(--surface-dim)]" />
-                    <div className="h-6 w-6 rounded-full bg-[var(--surface-dim)]" />
-                    <div className="h-3 w-8 rounded bg-[var(--surface-dim)]" />
+                    <div className="h-2.5 w-7 rounded bg-[var(--surface-dim)]" />
+                    <div className="h-5 w-5 rounded-full bg-[var(--surface-dim)]" />
+                    <div className="h-2.5 w-7 rounded bg-[var(--surface-dim)]" />
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex gap-2.5 overflow-x-auto pb-1 pt-0.5 select-none scrollbar-thin max-w-full touch-pan-x cursor-grab active:cursor-grabbing">
+              <div className="flex gap-2 overflow-x-auto pb-0.5 pt-0.5 select-none scrollbar-thin max-w-full touch-pan-x cursor-grab active:cursor-grabbing">
                 {hourlyData.map((h, idx) => (
                   <div
                     key={idx}
-                    className="min-w-[76px] flex-shrink-0 flex flex-col items-center justify-center gap-2 p-3 bg-[var(--surface)]/90 hover:bg-[var(--surface)] border border-[var(--outline-var)]/60 rounded-2xl hover:border-[var(--accent)]/50 transition-all hover:scale-103 shadow-2xs"
+                    className="min-w-[68px] flex-shrink-0 flex flex-col items-center justify-center gap-1.5 p-2.5 bg-[var(--surface)] border border-[var(--outline-var)]/60 rounded-xl hover:border-[var(--on-surface-var)] transition-all shadow-2xs"
                   >
-                    <span className="text-[10px] font-black text-[var(--on-surface-var)]">{h.time}</span>
-                    <div className="my-0.5">{getWeatherIcon(h.type, 22)}</div>
-                    <span className="text-xs font-black text-[var(--on-surface)]">{convertTemp(h.temp)}</span>
+                    <span className="text-[9.5px] font-black text-[var(--on-surface-var)]">{h.time}</span>
+                    <div className="my-0.5">{getWeatherIcon(h.type, 18)}</div>
+                    <span className="text-[11px] font-black text-[var(--on-surface)] tabular-nums">{convertTemp(h.temp)}</span>
                   </div>
                 ))}
               </div>
@@ -511,50 +501,50 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
           </div>
         </div>
 
-        {/* RIGHT COLUMN: 7-Day Forecast Rounded Container (5 cols on lg) */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-[var(--surface-dim)]/70 border border-[var(--outline-var)] flex flex-col gap-3 shadow-xs overflow-y-auto">
-          <div className="flex items-center gap-2 pb-1">
-            <div className="p-1.5 rounded-lg bg-[var(--container)] border border-[var(--outline-var)]">
-              <CalendarDays size={14} style={{ color: primaryColor }} />
+        {/* RIGHT COLUMN: 7-Day Forecast Bounded Container */}
+        <div className="w-full md:w-[300px] lg:w-[330px] p-3.5 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex flex-col gap-2.5 shadow-xs shrink-0 min-h-0 h-full max-h-full">
+          <div className="flex items-center gap-2 pb-0.5 shrink-0">
+            <div className="p-1 rounded-lg bg-[var(--container)] border border-[var(--outline-var)] text-[var(--on-surface)]">
+              <CalendarDays size={13} />
             </div>
-            <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface)]">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-[var(--on-surface)]">
               {lang === 'ru' ? 'Прогноз на 7 дней' : '7-Day Forecast'}
             </h4>
           </div>
 
-          {loading && dailyData.length === 0 ? (
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--container)] border border-[var(--outline-var)] animate-pulse"
-                >
-                  <div className="h-3 w-10 rounded bg-[var(--surface-dim)]" />
-                  <div className="h-5 w-5 rounded-full bg-[var(--surface-dim)]" />
-                  <div className="flex-1 h-3 rounded bg-[var(--surface-dim)]" />
-                  <div className="h-3 w-8 rounded bg-[var(--surface-dim)]" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {dailyData.map((d, idx) => (
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-0.5 scrollbar-thin">
+            {loading && dailyData.length === 0 ? (
+              <div className="flex flex-col gap-1.5">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2.5 p-2 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] animate-pulse"
+                  >
+                    <div className="h-3 w-8 rounded bg-[var(--surface-dim)]" />
+                    <div className="h-4 w-4 rounded-full bg-[var(--surface-dim)]" />
+                    <div className="flex-1 h-3 rounded bg-[var(--surface-dim)]" />
+                    <div className="h-3 w-7 rounded bg-[var(--surface-dim)]" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              dailyData.map((d, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-3 p-3 px-3.5 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)]/60 rounded-2xl transition-all shadow-2xs hover:scale-[1.01]"
+                  className="flex items-center gap-2.5 p-2 px-3 bg-[var(--container)] hover:bg-[var(--container-high)] border border-[var(--outline-var)]/60 rounded-xl transition-all shadow-2xs"
                 >
-                  <span className="w-14 text-xs font-black text-[var(--on-surface)] shrink-0">{d.day}</span>
-                  <div className="shrink-0">{getWeatherIcon(d.type, 20)}</div>
-                  <span className="flex-1 text-[11px] font-bold text-[var(--on-surface-var)] truncate">{d.desc}</span>
-                  <div className="flex items-center gap-1.5 text-xs font-black tabular-nums shrink-0">
+                  <span className="w-10 text-[11px] font-black text-[var(--on-surface)] shrink-0">{d.day}</span>
+                  <div className="shrink-0">{getWeatherIcon(d.type, 16)}</div>
+                  <span className="flex-1 text-[10.5px] font-bold text-[var(--on-surface-var)] truncate">{d.desc}</span>
+                  <div className="flex items-center gap-1 text-[11px] font-black tabular-nums shrink-0">
                     <span className="text-[var(--on-surface-var)]">{convertTemp(d.minTemp)}</span>
                     <span className="text-[var(--outline-var)] font-normal">/</span>
                     <span className="text-[var(--on-surface)]">{convertTemp(d.maxTemp)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
