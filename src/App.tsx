@@ -1533,47 +1533,60 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const [isThemeTransitioning, setIsThemeTransitioning] = useState(false);
 
-  const handleThemeToggle = () => {
-    if (isThemeTransitioning) return;
-    playChime('click');
-    const final = theme === 'light' ? 'dark' : 'light';
+  // Smooth staggered transition for cards and UI when theme or palette changes
+  const triggerStaggeredThemeTransition = (onApplyChange: () => void) => {
+    if (isThemeTransitioning) {
+      onApplyChange();
+      return;
+    }
     setIsThemeTransitioning(true);
 
     const root = document.documentElement;
-    const SWEEP_MS = 500;
-    const EL_DURATION = 300;
-    const pageHeight = root.scrollHeight;
+    const SWEEP_MS = 380;
+    const EL_DURATION = 450;
+    const pageHeight = Math.max(root.scrollHeight, window.innerHeight || 800);
 
-    // Enable color-only transitions on all elements
+    // Enable color transitions on all elements
     root.classList.add('theme-switching');
 
-    // Stagger transition-delay by vertical position (top-to-bottom sweep)
-    const all = document.querySelectorAll<HTMLElement>('*');
+    // Stagger transition-delay by distance/position (diagonal sweep across cards)
+    const all = document.querySelectorAll<HTMLElement>('.card, .panel, .panel-gradient, .panel-bg-gradient, header, main, nav, aside, button, input, select, textarea');
     const targets: HTMLElement[] = [];
     for (let i = 0; i < all.length; i++) {
       const el = all[i];
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) continue;
       const absTop = rect.top + window.scrollY;
-      const delay = Math.min((absTop / pageHeight) * SWEEP_MS, SWEEP_MS);
-      el.style.transitionDelay = `${delay}ms`;
+      const absLeft = rect.left;
+      // Stagger diagonally for an organic, wave-like recoloring effect
+      const normalizedDist = (absTop / pageHeight) * 0.7 + (absLeft / (window.innerWidth || 1200)) * 0.3;
+      const delay = Math.min(normalizedDist * SWEEP_MS, SWEEP_MS);
+      el.style.transitionDelay = `${Math.round(delay)}ms`;
       targets.push(el);
     }
 
-    // Force reflow so browser processes transition-delay before theme change
+    // Force reflow so browser processes transition-delay before state updates
     void root.offsetHeight;
 
-    setTheme(final);
-    localStorage.setItem('linkerru_theme', final);
+    onApplyChange();
 
-    // Clean up after all transitions complete
+    // Clean up after all transitions finish
     setTimeout(() => {
       root.classList.remove('theme-switching');
       for (let i = 0; i < targets.length; i++) {
         targets[i].style.transitionDelay = '';
       }
       setIsThemeTransitioning(false);
-    }, SWEEP_MS + EL_DURATION + 100);
+    }, SWEEP_MS + EL_DURATION + 60);
+  };
+
+  const handleThemeToggle = () => {
+    playChime('click');
+    const final = theme === 'light' ? 'dark' : 'light';
+    triggerStaggeredThemeTransition(() => {
+      setTheme(final);
+      localStorage.setItem('linkerru_theme', final);
+    });
   };
 
   const handleOpenSettings = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account' = 'appearance') => {
@@ -1922,8 +1935,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const handlePaletteChange = (paletteId: string) => {
     playChime('click');
-    setActivePaletteId(paletteId);
-    localStorage.setItem('linkerru_accent', paletteId);
+    triggerStaggeredThemeTransition(() => {
+      setActivePaletteId(paletteId);
+      localStorage.setItem('linkerru_accent', paletteId);
+    });
   };
 
   const handleContrastToggle = () => {
@@ -2090,12 +2105,25 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     };
   }, [pomodoroRunning]);
 
-  // --- Panic Key Global Listener ---
+  // --- Panic Key Global Listener (with Iframe Focus & PostMessage handling) ---
   useEffect(() => {
     if (!panicKey || !panicUrl || wm.windows.some(w => w.id === 'settings' && !w.isMinimized)) return;
 
+    const triggerPanic = () => {
+      const soundId = localStorage.getItem('linkerru_panic_sound');
+      if (soundId) {
+        const found = NOTIFICATION_SOUNDS.find(s => s.id === soundId);
+        if (found) {
+          const audio = new Audio(found.url);
+          audio.volume = 0.8;
+          audio.play().catch(() => {});
+        }
+      }
+      window.location.replace(panicUrl);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      let key = e.key;
+      const key = e.key;
       if (key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Meta') return;
       
       const modifiers = [];
@@ -2111,21 +2139,61 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                       key.toLowerCase() === panicKey.toLowerCase();
 
       if (isMatch) {
-        const soundId = localStorage.getItem('linkerru_panic_sound');
-        if (soundId) {
-          const found = NOTIFICATION_SOUNDS.find(s => s.id === soundId);
-          if (found) {
-            const audio = new Audio(found.url);
-            audio.volume = 0.8;
-            audio.play().catch(() => {});
-          }
-        }
-        window.location.replace(panicUrl);
+        triggerPanic();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Listen on top window
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    // Cross-frame message listener (if child iframes forward keydown or panic command)
+    const handleFrameMessage = (e: MessageEvent) => {
+      if (e.data && typeof e.data === 'object') {
+        if (e.data.type === 'PANIC_TRIGGER' || e.data.type === 'LINKERRU_PANIC') {
+          triggerPanic();
+        } else if (e.data.type === 'IFRAME_KEYDOWN' && e.data.key) {
+          handleKeyDown(e.data as KeyboardEvent);
+        }
+      }
+    };
+    window.addEventListener('message', handleFrameMessage);
+
+    // Poll and attach listeners to any same-origin iframes across the DOM
+    const attachToIframes = () => {
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach((iframe) => {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc && !(iframe as any).__panicBound) {
+            doc.addEventListener('keydown', handleKeyDown as any, true);
+            (iframe as any).__panicBound = true;
+          }
+        } catch {
+          // Cross-origin iframe security boundary
+        }
+      });
+    };
+
+    attachToIframes();
+    const interval = setInterval(attachToIframes, 1500);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('message', handleFrameMessage);
+      clearInterval(interval);
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach((iframe) => {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc && (iframe as any).__panicBound) {
+            doc.removeEventListener('keydown', handleKeyDown as any, true);
+            (iframe as any).__panicBound = false;
+          }
+        } catch {
+          // Cross-origin iframe ignore
+        }
+      });
+    };
   }, [panicKey, panicUrl, wm.windows]);
 
   // --- Cross-window communication ---
