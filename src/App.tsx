@@ -49,6 +49,7 @@ import {
   HelpCircle, MessageCircle,
   Subtitles,
   LayoutGrid,
+  RotateCw,
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette } from './types';
@@ -77,6 +78,7 @@ import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SupportQRModal, CONTACTS } from './components/SupportApp';
 import { LinkerRouteApp } from './components/LinkerRouteApp';
+import { TelegramRouteApp } from './components/TelegramRouteApp';
 import ServerModal from './components/ServerModal';
 import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
@@ -229,6 +231,60 @@ export default function App() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, [tabletChoice]);
+
+  // Auto-reload Telegram Route on tab switch, window focus, Chromebook/system resume
+  const lastTelegramAutoReloadRef = useRef<number>(Date.now());
+  useEffect(() => {
+    const handleWakeOrFocus = () => {
+      if (document.visibilityState === 'visible' && wm.isOpen('telegramroute')) {
+        const now = Date.now();
+        if (now - lastTelegramAutoReloadRef.current > 2500) {
+          lastTelegramAutoReloadRef.current = now;
+          wm.reload('telegramroute');
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      if (wm.isOpen('telegramroute')) {
+        const now = Date.now();
+        if (now - lastTelegramAutoReloadRef.current > 2500) {
+          lastTelegramAutoReloadRef.current = now;
+          wm.reload('telegramroute');
+        }
+      }
+    };
+
+    const handleOnline = () => {
+      if (wm.isOpen('telegramroute')) {
+        lastTelegramAutoReloadRef.current = Date.now();
+        wm.reload('telegramroute');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleWakeOrFocus);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('pageshow', handleFocus);
+
+    let lastTick = Date.now();
+    const interval = setInterval(() => {
+      const current = Date.now();
+      if (current - lastTick > 3500 && wm.isOpen('telegramroute')) {
+        lastTelegramAutoReloadRef.current = current;
+        wm.reload('telegramroute');
+      }
+      lastTick = current;
+    }, 1000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleWakeOrFocus);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('pageshow', handleFocus);
+      clearInterval(interval);
+    };
+  }, [wm]);
 
   const [isAgnoOpen, setIsAgnoOpen] = useState(false);
   const [isAgnoFullscreen, setIsAgnoFullscreen] = useState(false);
@@ -1732,17 +1788,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 680,
       minWidth: 420,
       minHeight: 380,
-      render: () => (
-        <div className="flex h-full w-full flex-col bg-transparent select-none overflow-hidden">
-          <iframe
-            src="https://linkerroutetraffic.sonytvrepair.com/"
-            className="w-full h-full border-none bg-transparent"
-            title="Telegram Route Frame"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
-            allow="fullscreen; autoplay; clipboard-read; clipboard-write"
-          />
-        </div>
-      ),
+      render: () => <TelegramRouteApp lang={lang} onReloadTrigger={() => playChime('click')} />,
     });
   };
 
@@ -2651,24 +2697,22 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <div className="flex gap-2 flex-1">
-              <button
-                onClick={() => {
-                  playChime('click');
-                  openAgnoWindow();
-                }}
-                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-                style={{
-                  backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                  borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                  color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                  boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
-                }}
-                id="agno-card-open-btn"
-              >
-                {lang === 'ru' ? 'Открыть' : 'Open'}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                playChime('click');
+                openAgnoWindow();
+              }}
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              }}
+              id="agno-card-open-btn"
+            >
+              {lang === 'ru' ? 'Открыть' : 'Open'}
+            </button>
           </div>
         </div>
 
@@ -2708,32 +2752,40 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             </div>
           </div>
         </div>
-        {/* WIDGET 4: Nexus Game Box NGB */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-nexus-game-box">
+        {/* WIDGET 4: Nexus Game Box NGB (In Development - Gray state, non-interactive) */}
+        <div className="card rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative bg-[var(--surface-dim)]/80 border border-[var(--outline)]/70 shadow-xs select-none cursor-default opacity-85" id="card-nexus-game-box">
+          {isMinimized('nexusgamebox') && (
+            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+          )}
           <div className="flex justify-between items-start h-[44px]">
-            <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-              <img src="https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863" alt="NGB" className="w-full h-full object-contain brightness-0 invert" />
+            <div
+              className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-1.5 shadow-inner"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+              }}
+            >
+              <M3LoadingIndicator
+                size={26}
+                color={theme === 'dark' ? '#ffffff' : '#ffffff'}
+                speed={0.4}
+              />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Nexus Game Box</h3>
-            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1 opacity-80">
               {lang === 'ru' ? 'Сотни бесплатных браузерных игр.' : 'Hundreds of free browser games.'}
             </p>
           </div>
-          <div className="mt-4 flex items-end">
-            <button
-              onClick={openNexusGameBox}
-              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-              style={{
-                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
-              }}
-            >
-              {lang === 'ru' ? 'Открыть' : 'Open'}
-            </button>
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex gap-2 flex-1">
+              <button
+                disabled
+                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all text-center shadow-xs bg-[var(--container)]/80 border-[var(--outline)] text-[var(--on-surface-var)] opacity-60 cursor-not-allowed select-none"
+              >
+                {lang === 'ru' ? 'В разработке' : 'In Development'}
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -2742,6 +2794,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       <section className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4" id="row2-bento-grid">
         {/* SUBCONVERT CARD (placed before Extensions) */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-subconvert">
+          {isMinimized('subconvert') && (
+            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+          )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
               <Subtitles size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
@@ -3512,17 +3567,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             case 'proxy':
               return <LinkerRouteApp />;
             case 'telegramroute':
-              return (
-                <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
-                  <iframe
-                    src="https://linkerroutetraffic.sonytvrepair.com/"
-                    className="w-full h-full border-none bg-[var(--surface)]"
-                    title="Telegram Route Frame"
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
-                    allow="fullscreen; autoplay; clipboard-read; clipboard-write"
-                  />
-                </div>
-              );
+              return <TelegramRouteApp lang={lang} onReloadTrigger={() => playChime('click')} />;
             case 'weather':
               return (
                 <WeatherModal

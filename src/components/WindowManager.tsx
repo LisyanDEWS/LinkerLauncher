@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw } from 'lucide-react';
 import { Language } from '../types';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 
@@ -504,6 +504,13 @@ export function WindowManagerLayer({
               onClick={() => { wm.restore(ctxWin.id); setCtxMenu(null); }}
             />
 
+            {/* Reload app */}
+            <CtxItem
+              icon={<RotateCw size={14} />}
+              label={isRu ? 'Перезагрузить' : 'Reload'}
+              onClick={() => { wm.reload(ctxWin.id); setCtxMenu(null); }}
+            />
+
             <div className="mx-2 my-1 h-px" style={{ background: 'var(--outline-var)' }} />
 
             {/* Close — terminates the app */}
@@ -574,6 +581,7 @@ function WindowFrame({
   onClose,
   onMinimize,
   onToggleMaximize,
+  onReload,
   onFocus,
   onGeometryChange,
   isOptimizedEngine = false,
@@ -915,6 +923,18 @@ function WindowFrame({
               {win.headerActions}
               {!isMobileLayout && (
                 <>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReload();
+                    }}
+                    title={isRu ? 'Перезагрузить' : 'Reload'}
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer group"
+                  >
+                    <RotateCw size={11} className="group-hover:rotate-180 transition-transform duration-500" />
+                  </motion.button>
                   {win.isMaximized && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
@@ -950,6 +970,20 @@ function WindowFrame({
                     </motion.button>
                   )}
                 </>
+              )}
+              {isMobileLayout && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReload();
+                  }}
+                  title={isRu ? 'Перезагрузить' : 'Reload'}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer group"
+                >
+                  <RotateCw size={13} className="group-hover:rotate-180 transition-transform duration-500" />
+                </motion.button>
               )}
               <motion.button
                 whileHover={{ scale: 1.1 }}
