@@ -813,7 +813,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     </div>
 
                     <div className="flex items-center gap-2.5 mt-4 bg-[var(--surface-dim)] border border-[var(--outline)] rounded-full px-5 py-2.5 shadow-sm">
-                      <Loader2 size={14} className="animate-spin text-[var(--on-surface)]" />
+                      <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--on-surface-var)]">
                         {t.redirecting}
                       </span>

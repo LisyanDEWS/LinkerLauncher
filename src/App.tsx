@@ -1647,7 +1647,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       title: 'Lisyan Connect',
       icon: (
         <div className="w-4 h-4 rounded flex items-center justify-center p-0 overflow-hidden">
-          <M3LoadingIndicator size={14} color="var(--on-surface-var)" speed={0.4} />
+          <M3LoadingIndicator size={14} color="var(--accent)" speed={0.4} />
         </div>
       ),
       singleton: true,

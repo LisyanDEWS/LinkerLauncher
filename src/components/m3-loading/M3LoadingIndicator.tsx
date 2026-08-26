@@ -11,7 +11,7 @@ export interface M3LoadingIndicatorProps
   extends Omit<HTMLAttributes<HTMLCanvasElement>, "children"> {
   /** CSS pixel size of the indicator (default 48). */
   size?: number;
-  /** Fill color (default: currentColor). */
+  /** Fill color (default: var(--accent)). */
   color?: string;
   /** Ratio of indicator shape to container (default 0.79 = 38/48dp). */
   sizeRatio?: number;
@@ -25,6 +25,40 @@ export interface M3LoadingIndicatorProps
   containerColor?: string;
 }
 
+function resolveCanvasColor(canvas: HTMLCanvasElement | null, rawColor?: string): string {
+  if (!rawColor) return "var(--accent)";
+  if (typeof window === "undefined") return rawColor;
+
+  if (rawColor.includes("var(") || rawColor.startsWith("--") || rawColor === "currentColor") {
+    const target = canvas || document.documentElement;
+    const computedStyle = getComputedStyle(target);
+
+    const match = rawColor.match(/var\(\s*([^,\s)]+)(?:\s*,\s*([^)]+))?\s*\)/);
+    if (match) {
+      const varName = match[1];
+      const fallback = match[2];
+      const val = computedStyle.getPropertyValue(varName).trim();
+      if (val) {
+        if (val.includes("var(") || val.startsWith("--")) {
+          return resolveCanvasColor(canvas, val);
+        }
+        return val;
+      }
+      if (fallback) {
+        return resolveCanvasColor(canvas, fallback.trim());
+      }
+    } else if (rawColor.startsWith("--")) {
+      const val = computedStyle.getPropertyValue(rawColor).trim();
+      if (val) return resolveCanvasColor(canvas, val);
+    } else if (rawColor === "currentColor") {
+      const computed = computedStyle.color;
+      if (computed) return computed;
+    }
+  }
+
+  return rawColor;
+}
+
 /**
  * Material Design 3 Expressive Loading Indicator for React.
  *
@@ -36,7 +70,7 @@ export const M3LoadingIndicator = forwardRef<
 >(function M3LoadingIndicator(
   {
     size = 48,
-    color = "currentColor",
+    color = "var(--accent)",
     sizeRatio = 0.79,
     speed = 1,
     paused = false,
@@ -70,11 +104,16 @@ export const M3LoadingIndicator = forwardRef<
       anim.paused = p.paused;
       anim.update(ts);
       const shape = getMorphedShape(anim.morph);
+      const resolvedColor = resolveCanvasColor(canvas, p.color);
+      const resolvedContainer = p.containerColor
+        ? resolveCanvasColor(canvas, p.containerColor)
+        : undefined;
+
       drawIndicator(ctx, size, shape, anim.rotation, {
-        color: p.color,
+        color: resolvedColor,
         sizeRatio: p.sizeRatio,
         contained: p.contained,
-        containerColor: p.containerColor,
+        containerColor: resolvedContainer,
       });
       rafRef.current = requestAnimationFrame(loop);
     };
