@@ -364,6 +364,10 @@ export default function App() {
   const [settingsInitialTab, setSettingsInitialTab] = useState<'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account'>('appearance');
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [buildVersion, setBuildVersion] = useState<string>('v--');
+  // System updating state (activated when developers push a new commit to GitHub)
+  const [isSystemUpdating, setIsSystemUpdating] = useState<boolean>(() => {
+    return localStorage.getItem('linkerru_is_updating') === 'true';
+  });
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [proxyInitialUrl, setProxyInitialUrl] = useState<string | undefined>(undefined);
   // Login screen preview overlay (dev tool — does NOT log out)
@@ -608,25 +612,94 @@ export default function App() {
     }
   };
 
-  // Fetch build info (build date from latest commit) directly from GitHub API
+  // Fetch build info and automatically detect new GitHub commits to auto-update
   useEffect(() => {
-    fetch('https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=1', {
-      headers: { 'Accept': 'application/vnd.github+json' },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data) && data[0]) {
-          const dateStr = data[0].commit?.author?.date || data[0].commit?.committer?.date || '';
-          if (dateStr) {
-            const d = new Date(dateStr);
+    let isMounted = true;
+
+    const checkGithubCommits = async () => {
+      try {
+        let latestCommit: { sha: string; dateStr: string; formattedVersion?: string } | null = null;
+
+        // Try querying GitHub API directly with cache busting
+        try {
+          const res = await fetch(`https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=1&_t=${Date.now()}`, {
+            headers: { 'Accept': 'application/vnd.github+json' },
+            cache: 'no-store',
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data[0]) {
+              const dStr = data[0].commit?.author?.date || data[0].commit?.committer?.date || '';
+              latestCommit = {
+                sha: data[0].sha,
+                dateStr: dStr,
+              };
+            }
+          }
+        } catch {
+          // Ignore direct GitHub fetch error and try server fallback
+        }
+
+        // If direct fetch didn't return a commit, fallback to server endpoint
+        if (!latestCommit) {
+          try {
+            const fbRes = await fetch(`/api/build-info?_t=${Date.now()}`, { cache: 'no-store' });
+            if (fbRes.ok) {
+              const fbData = await fbRes.json();
+              if (fbData.sha && fbData.sha !== 'unknown') {
+                latestCommit = {
+                  sha: fbData.sha,
+                  dateStr: fbData.buildDate,
+                  formattedVersion: fbData.buildVersion,
+                };
+              }
+            }
+          } catch {
+            // Ignore fallback error
+          }
+        }
+
+        if (!isMounted || !latestCommit) return;
+
+        if (latestCommit.dateStr) {
+          const d = new Date(latestCommit.dateStr);
+          if (!isNaN(d.getTime())) {
             const dd = String(d.getDate()).padStart(2, '0');
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const yyyy = d.getFullYear();
             setBuildVersion(`v${dd}-${mm}-${yyyy}`);
+          } else if (latestCommit.formattedVersion) {
+            setBuildVersion(latestCommit.formattedVersion);
           }
         }
-      })
-      .catch(() => {});
+
+        const newSha = latestCommit.sha;
+        if (newSha && newSha !== 'unknown') {
+          const prevSha = localStorage.getItem('linkerru_last_commit_sha');
+          if (prevSha && prevSha !== newSha) {
+            // Developers pushed a new commit to GitHub!
+            localStorage.setItem('linkerru_last_commit_sha', newSha);
+            localStorage.setItem('linkerru_is_updating', 'true');
+            // Auto reload to enter the updating screen
+            window.location.reload();
+            return;
+          }
+          // Store current SHA baseline
+          localStorage.setItem('linkerru_last_commit_sha', newSha);
+        }
+      } catch {
+        // Silently catch background poll issues
+      }
+    };
+
+    checkGithubCommits();
+    // Poll every 30 seconds for new developer commits on GitHub
+    const interval = setInterval(checkGithubCommits, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -2229,11 +2302,21 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           "https://github.com/user-attachments/assets/6805ef80-9512-4954-9035-1b53133f26c1",
           "https://github.com/user-attachments/assets/98c31a64-a8ba-4c0e-a3de-c73f433e4863",
         ]}
-        minDuration={2500}
+        minDuration={isSystemUpdating ? 4500 : 2500}
         color={activePalette.primary}
         background={getWallpaperStyle()}
         brightness={brightness}
-        onComplete={onLoaderComplete}
+        isUpdating={isSystemUpdating}
+        updatingTitle={lang === 'ru' ? 'Ваша система обновляется...' : 'Your system is updating...'}
+        updatingSubtitle={lang === 'ru' ? 'Установка свежего обновления с GitHub' : 'Installing latest update from GitHub'}
+        onComplete={() => {
+          if (isSystemUpdating) {
+            setIsSystemUpdating(false);
+            localStorage.removeItem('linkerru_is_updating');
+            triggerToast(lang === 'ru' ? 'Система успешно обновлена!' : 'System successfully updated!');
+          }
+          onLoaderComplete();
+        }}
       />
       
       {isNightLight && (
@@ -2474,12 +2557,12 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               playChime('click');
               openWeatherWindow();
             }}
-            className="group hidden md:flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
+            className="group hidden md:flex items-center gap-2 bg-[var(--btn-bg)] h-11 px-4 min-w-[82px] shrink-0 justify-center rounded-full text-xs font-bold text-[var(--on-surface-var)] transition-all hover:bg-[var(--btn-hover)] hover:text-[var(--on-surface)] border border-[var(--btn-border)] shadow-md shadow-black/10 hover:shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer backdrop-blur-xl"
             id="topbar-weather-pill"
           >
             <motion.div
               id="topbar-weather-icon-wrapper"
-              className="flex items-center justify-center origin-center"
+              className="flex items-center justify-center origin-center shrink-0"
               animate={{
                 rotate: [-2, 3, -1, 2, -2],
                 y: [0, -1, 0, -1, 0],
@@ -2499,9 +2582,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 rotate: -12,
               }}
             >
-              <CloudSun size={16} className="text-[var(--on-surface-var)] group-hover:text-[var(--accent)] transition-colors" />
+              <CloudSun size={16} className="text-[var(--on-surface-var)] group-hover:text-[var(--accent)] transition-colors shrink-0" />
             </motion.div>
-            <span>
+            <span className="whitespace-nowrap tabular-nums">
               {topbarTemp !== null
                 ? (tempUnit === 'F' ? `${Math.round((topbarTemp * 9 / 5) + 32)}°F` : `${topbarTemp}°C`)
                 : (tempUnit === 'F' ? '--°F' : '--°C')}

@@ -13,6 +13,12 @@ interface AppLoaderProps {
   /** Brightness level (0-100). Applies a matching dim overlay so the loader
    *  matches the app's brightness setting during fade-out. */
   brightness?: number;
+  /** Whether the system is currently performing an update. */
+  isUpdating?: boolean;
+  /** Custom title for updating mode. */
+  updatingTitle?: string;
+  /** Custom subtitle for updating mode. */
+  updatingSubtitle?: string;
   /** Called once the loader has fully faded out and been removed from the DOM. */
   onComplete?: () => void;
 }
@@ -29,6 +35,9 @@ export function AppLoader({
   color = 'var(--accent)',
   background,
   brightness = 100,
+  isUpdating = false,
+  updatingTitle,
+  updatingSubtitle,
   onComplete,
 }: AppLoaderProps) {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible');
@@ -82,15 +91,15 @@ export function AppLoader({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none"
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center pointer-events-none select-none"
       style={{
-        backdropFilter: 'blur(24px) saturate(140%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+        backdropFilter: 'blur(28px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(150%)',
         // Semi-transparent tint over the wallpaper so the blurred interface
         // is visible behind the loader, not fully covered.
         background: background
-          ? `color-mix(in srgb, ${background} 55%, transparent)`
-          : 'color-mix(in srgb, var(--bg) 55%, transparent)',
+          ? `color-mix(in srgb, ${background} 60%, transparent)`
+          : 'color-mix(in srgb, var(--bg) 60%, transparent)',
         opacity: phase === 'fading' ? 0 : 1,
         transition: 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
@@ -103,8 +112,30 @@ export function AppLoader({
           backgroundColor: `rgba(0, 0, 0, ${1 - brightness / 100})`,
         }}
       />
-      <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-        <M3LoadingIndicator size={56} color={color} speed={1} />
+      <div className="flex flex-col items-center justify-center relative z-10">
+        <div
+          style={{
+            width: isUpdating ? 80 : 56,
+            height: isUpdating ? 80 : 56,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}
+        >
+          <M3LoadingIndicator size={isUpdating ? 78 : 56} color={color} speed={isUpdating ? 1.1 : 1} />
+        </div>
+
+        {isUpdating && (
+          <div className="mt-7 flex flex-col items-center gap-1.5 text-center px-4 max-w-sm">
+            <span className="text-base sm:text-lg font-black tracking-tight text-[var(--on-surface)] leading-snug">
+              {updatingTitle || 'Ваша система обновляется'}
+            </span>
+            <span className="text-xs sm:text-[13px] font-semibold text-[var(--on-surface-var)] opacity-85 leading-relaxed">
+              {updatingSubtitle || 'Применение последних изменений и синхронизация'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

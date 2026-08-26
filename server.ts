@@ -372,7 +372,7 @@ async function startServer() {
   let cachedBuildInfo: { buildVersion: string; buildDate: string; sha: string } | null = null;
   let cachedCommits: any[] | null = null;
   let cacheTime = 0;
-  const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+  const CACHE_TTL = 30 * 1000; // 30 seconds
 
   async function fetchGitHubCommits(): Promise<any[]> {
     const url = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=30`;

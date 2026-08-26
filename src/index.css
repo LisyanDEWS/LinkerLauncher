@@ -450,7 +450,7 @@ input[type="range"]::-moz-range-thumb {
 /* Stagger delays — 40ms steps, first starts at 0.70s (finishes 1.10s),
    last starts at 1.34s (finishes 1.74s).
    Order: topbar pills → branding → row1 cards → row2 cards/panels */
-[data-boot="skeleton"] #topbar-weather-pill     { animation-delay: 0.70s; }
+[data-boot="skeleton"] #topbar-weather-pill     { animation-delay: 0.70s; min-width: 82px; }
 [data-boot="skeleton"] #topbar-calendar-pill    { animation-delay: 0.74s; }
 [data-boot="skeleton"] #topbar-clock-pill       { animation-delay: 0.78s; }
 [data-boot="skeleton"] #topbar-settings-pill    { animation-delay: 0.82s; }
