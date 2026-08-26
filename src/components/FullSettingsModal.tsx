@@ -646,7 +646,7 @@ export default function FullSettingsModal({
     return (
       <div
         ref={containerRef}
-        className={`flex h-full w-full overflow-hidden bg-[var(--bg)] ${isNarrow ? 'flex-col' : 'flex-row'}`}
+        className={`flex h-full w-full overflow-hidden bg-transparent ${isNarrow ? 'flex-col' : 'flex-row'}`}
         id="full-settings-modal-container"
       >
             {/* LEFT SIDEBAR PANEL — master list in narrow mode, sidebar in wide mode */}
@@ -844,7 +844,7 @@ export default function FullSettingsModal({
 
             {/* RIGHT MAIN CONTENT AREA — drill-down detail in narrow mode */}
             <main
-              className={`flex-1 flex flex-col overflow-hidden bg-[var(--bg)] h-full ${
+              className={`flex-1 flex flex-col overflow-hidden bg-transparent h-full ${
                 isNarrow
                   ? (showMobileContent ? 'flex' : 'hidden')
                   : 'flex'

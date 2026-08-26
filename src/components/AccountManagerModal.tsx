@@ -135,7 +135,7 @@ export function AccountManagerModal({
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-[var(--surface)] text-[var(--on-surface)] p-6 space-y-6 select-none font-sans scrollbar-thin">
+    <div className="h-full w-full overflow-y-auto bg-transparent text-[var(--on-surface)] p-6 space-y-6 select-none font-sans scrollbar-thin">
       {/* Top Header Card */}
       <div className="p-6 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-3xl flex flex-col sm:flex-row items-center sm:items-start justify-between gap-5 shadow-sm">
         <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">

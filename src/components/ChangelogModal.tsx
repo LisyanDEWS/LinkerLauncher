@@ -63,7 +63,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
   };
 
   return (
-    <div className="w-full h-full p-6 bg-[var(--surface-dim)] text-[var(--on-surface)] flex flex-col overflow-y-auto">
+    <div className="w-full h-full p-6 bg-transparent text-[var(--on-surface)] flex flex-col overflow-y-auto">
       <div className="flex items-center justify-between mb-4 flex-shrink-0 border-b border-[var(--outline-var)] pb-3">
         <div className="flex items-center gap-2">
           <History size={18} className="text-[var(--accent)]" />

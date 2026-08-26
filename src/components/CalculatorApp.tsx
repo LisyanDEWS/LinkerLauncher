@@ -308,7 +308,7 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
   const showSidePanel = isWide || showHistory;
 
   return (
-    <div ref={containerRef} className="flex h-full w-full bg-[var(--bg)] font-sans select-none overflow-hidden">
+    <div ref={containerRef} className="flex h-full w-full bg-transparent font-sans select-none overflow-hidden">
       {/* Calculator column */}
       <div className={`flex flex-col h-full min-h-0 overflow-hidden ${showSidePanel ? 'flex-1' : 'w-full'}`}>
         {/* Top bar — history toggle button */}

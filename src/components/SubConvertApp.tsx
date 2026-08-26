@@ -444,7 +444,7 @@ export function SubConvertApp({
   }, [data, filterQuery]);
 
   return (
-    <div className="h-full flex flex-col bg-[var(--surface)] text-[var(--on-surface)] overflow-y-auto select-text font-sans">
+    <div className="h-full flex flex-col bg-transparent text-[var(--on-surface)] overflow-y-auto select-text font-sans">
       {/* HEADER BAR */}
       <div className="p-4 md:p-6 border-b border-[var(--outline-var)] bg-[var(--surface-dim)]/40 shrink-0">
         <div className="flex items-center justify-between gap-3 mb-3">

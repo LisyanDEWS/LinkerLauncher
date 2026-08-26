@@ -169,7 +169,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-[var(--bg)]" style={{ ['--accent' as string]: accent }}>
+    <div className="flex h-full w-full flex-col bg-transparent" style={{ ['--accent' as string]: accent }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--outline-var)] shrink-0">
         <div className="flex items-center gap-2">

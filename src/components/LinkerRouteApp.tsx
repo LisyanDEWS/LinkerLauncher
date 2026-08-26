@@ -9,10 +9,10 @@ export function LinkerRouteApp({ initialUrl }: LinkerRouteAppProps) {
   const currentUrl = initialUrl || defaultUrl;
 
   return (
-    <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
+    <div className="flex h-full w-full flex-col bg-transparent select-none overflow-hidden">
       <iframe
         src={currentUrl}
-        className="w-full h-full border-none bg-[var(--surface)]"
+        className="w-full h-full border-none bg-transparent"
         title="Space Proxy Hub Frame"
         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
         allow="fullscreen; autoplay; clipboard-read; clipboard-write"

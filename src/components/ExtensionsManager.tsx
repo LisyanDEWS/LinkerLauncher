@@ -74,7 +74,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
           <iframe
             src="/wallpaper-ext.html"
             title="Wallpaper+"
-            className="w-full h-full border-none bg-[var(--bg)]"
+            className="w-full h-full border-none bg-transparent"
           />
         ),
       });
@@ -149,7 +149,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
   });
 
   return (
-    <div className="w-full h-full bg-[var(--surface)] text-[var(--on-surface)] flex flex-col p-5 md:p-6 overflow-y-auto select-none font-sans">
+    <div className="w-full h-full bg-transparent text-[var(--on-surface)] flex flex-col p-5 md:p-6 overflow-y-auto select-none font-sans">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-[var(--outline-var)]">
         <div>

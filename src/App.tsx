@@ -1733,10 +1733,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       minWidth: 420,
       minHeight: 380,
       render: () => (
-        <div className="flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden">
+        <div className="flex h-full w-full flex-col bg-transparent select-none overflow-hidden">
           <iframe
             src="https://linkerroutetraffic.sonytvrepair.com/"
-            className="w-full h-full border-none bg-[var(--surface)]"
+            className="w-full h-full border-none bg-transparent"
             title="Telegram Route Frame"
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals"
             allow="fullscreen; autoplay; clipboard-read; clipboard-write"

@@ -368,7 +368,7 @@ export function WindowManagerLayer({
               resetHideTimer();
             }}
           >
-            <div className="flex items-center gap-1 rounded-[1.25rem] border bg-[var(--surface)] p-1.5"
+            <div className="flex items-center gap-1 rounded-[1.25rem] border bg-[var(--surface)]/80 p-1.5"
               style={{
                 borderColor: 'var(--outline)',
                 borderRadius: '1.25rem',
@@ -837,7 +837,7 @@ function WindowFrame({
       }
       onMouseDown={onFocus}
       onTouchStart={onFocus}
-      className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)] ${isFullScreen ? 'border-none' : 'border'}`}
+      className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)]/85 backdrop-blur-2xl ${isFullScreen ? 'border-none' : 'border border-[var(--outline-var)]/60 shadow-2xl'}`}
       style={{
         ...frameStyle,
         zIndex: win.zIndex,

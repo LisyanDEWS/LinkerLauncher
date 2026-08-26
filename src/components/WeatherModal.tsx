@@ -222,7 +222,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
   if (!isOpen) return null;
 
   const modalContent = (
-    <div className={`relative z-10 w-full h-full overflow-hidden flex flex-col ${embeddedInWindow ? 'bg-[var(--surface)] text-[var(--on-surface)]' : 'rounded-[2rem] border bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-2xl'}`}
+    <div className={`relative z-10 w-full h-full overflow-hidden flex flex-col ${embeddedInWindow ? 'bg-transparent text-[var(--on-surface)]' : 'rounded-[2rem] border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-2xl'}`}
       style={embeddedInWindow ? {} : {
         borderColor: 'color-mix(in srgb, var(--accent) 15%, var(--outline-var))',
         boxShadow: '0 30px 60px -15px rgba(0,0,0,0.35), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent)',

@@ -255,7 +255,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isM
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col h-full w-full bg-[var(--surface)] p-5 overflow-y-auto pb-8">
+              <div className="flex flex-col h-full w-full bg-transparent p-5 overflow-y-auto pb-8">
                 <div className="flex items-center gap-4 mb-8 mt-2 px-2">
                   <div className="w-12 h-12 bg-[var(--accent)] border border-[var(--accent)] rounded-[1rem] flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 overflow-hidden p-2.5 shrink-0 text-white">
                     <img 
@@ -325,7 +325,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isM
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="flex flex-col h-full w-full bg-[var(--surface)] relative overflow-y-auto"
+            className="flex flex-col h-full w-full bg-transparent relative overflow-y-auto"
           >
             <div className="p-6 md:p-10 max-w-4xl mx-auto w-full flex flex-col items-center justify-center min-h-full py-12">
                <div className="text-center mb-10">
@@ -368,7 +368,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isM
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="flex flex-col h-full w-full bg-[var(--surface)] relative overflow-y-auto"
+            className="flex flex-col h-full w-full bg-transparent relative overflow-y-auto"
           >
             <div className="p-6 md:p-10 max-w-2xl mx-auto w-full flex flex-col items-center justify-center min-h-full py-12">
                <div className="flex items-center justify-between w-full mb-8">
@@ -435,7 +435,7 @@ export function LisyanConnectModal({ isOpen, onClose, lang, theme = 'light', isM
             key="connected"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col h-full w-full bg-[var(--surface)] overflow-hidden"
+            className="flex flex-col h-full w-full bg-transparent overflow-hidden"
           >
             {/* Header banner */}
             <div className={`px-6 py-4 bg-[var(--surface-dim)] border-b border-[var(--outline)] flex items-center justify-between shrink-0 ${isMobile ? 'flex-col gap-4' : ''}`}>
