@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --ink: var(--on-surface, #1d1b20);
@@ -20,7 +20,7 @@
   --primary-ink: #ffffff;
   --focus: color-mix(in srgb, var(--primary) 20%, transparent);
   --shadow: 0 12px 32px rgba(0,0,0,0.12);
-  --glass: color-mix(in srgb, var(--paper) 70%, transparent);
+  --glass: color-mix(in srgb, var(--paper) 75%, transparent);
 }
 
 [data-theme="dark"] {
@@ -34,7 +34,7 @@
   --primary-ink: #120e14;
   --focus: color-mix(in srgb, var(--primary) 25%, transparent);
   --shadow: 0 16px 40px rgba(0,0,0,0.4);
-  --glass: color-mix(in srgb, var(--paper) 60%, transparent);
+  --glass: color-mix(in srgb, var(--paper) 65%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -48,7 +48,7 @@ body {
   transition: background-color .3s ease, color .3s ease;
 }
 
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { color: inherit; }
 
 .topbar {
@@ -67,7 +67,7 @@ button { color: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 20px;
 }
 
 .brand {
@@ -114,17 +114,18 @@ button { color: inherit; }
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .search {
   position: relative;
-  width: min(340px, 32vw);
+  width: min(280px, 30vw);
 }
 
 .search input {
   width: 100%;
-  height: 42px;
-  padding: 0 16px 0 40px;
+  height: 40px;
+  padding: 0 16px 0 38px;
   border: 1px solid var(--line);
   border-radius: 14px;
   outline: none;
@@ -141,11 +142,44 @@ button { color: inherit; }
 
 .search svg {
   position: absolute;
-  left: 14px;
-  top: 12px;
-  width: 17px;
-  height: 17px;
+  left: 12px;
+  top: 11px;
+  width: 16px;
+  height: 16px;
   stroke: var(--muted);
+}
+
+.sort-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sort-select {
+  height: 40px;
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  outline: none;
+  color: var(--ink);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  transition: all .2s ease;
+}
+
+.sort-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.sort-icon {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: var(--muted);
 }
 
 .round-button, .filter, .text-button {
@@ -157,8 +191,8 @@ button { color: inherit; }
 .round-button {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   color: var(--ink);
   background: var(--surface);
@@ -180,7 +214,7 @@ button { color: inherit; }
 main {
   width: min(1440px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 36px 0 60px;
+  padding: 32px 0 60px;
 }
 
 .intro {
@@ -188,7 +222,7 @@ main {
   grid-template-columns: minmax(0,1fr) 280px;
   gap: 32px;
   align-items: end;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .eyebrow {
@@ -202,9 +236,9 @@ main {
 h1 {
   max-width: 800px;
   margin: 0;
-  font-size: clamp(32px, 4.5vw, 56px);
+  font-size: clamp(28px, 4vw, 50px);
   line-height: 1.05;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.04em;
   font-weight: 800;
 }
 
@@ -221,7 +255,7 @@ h1 span {
 }
 
 .library-total {
-  padding: 22px;
+  padding: 20px;
   border-radius: 20px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -229,7 +263,7 @@ h1 span {
 
 .library-total strong {
   display: block;
-  font-size: 42px;
+  font-size: 38px;
   line-height: .95;
   letter-spacing: -.05em;
   color: var(--primary);
@@ -246,12 +280,13 @@ h1 span {
 .filter-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  padding: 8px 0 28px;
+  padding: 4px 0 24px;
 }
 
 .filter {
-  padding: 9px 14px;
+  padding: 8px 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -272,7 +307,7 @@ h1 span {
 }
 
 .wallpaper-section {
-  margin: 0 0 42px;
+  margin: 0 0 40px;
   scroll-margin-top: 90px;
 }
 
@@ -286,13 +321,13 @@ h1 span {
 
 .section-heading h2 {
   margin: 0;
-  font-size: clamp(20px, 2vw, 26px);
-  line-height: 1;
-  letter-spacing: -.04em;
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.1;
+  letter-spacing: -.03em;
 }
 
 .section-meta {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
   font: 500 10px/1.4 "DM Mono", monospace;
   text-transform: uppercase;
@@ -316,7 +351,7 @@ h1 span {
   aspect-ratio: 16/9;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
-  border-radius: 20px;
+  border-radius: 18px;
   cursor: pointer;
   background: var(--surface);
   transition: all .3s cubic-bezier(.2, .8, .2, 1);
@@ -329,10 +364,6 @@ h1 span {
   height: 100%;
   object-fit: cover;
   transition: transform .5s cubic-bezier(.2, .8, .2, 1), filter .4s ease;
-}
-
-.wallpaper.pixel img {
-  image-rendering: pixelated;
 }
 
 .wallpaper::after {
@@ -465,10 +496,6 @@ h1 span {
   background: var(--surface);
 }
 
-.dialog-image.pixel-art {
-  image-rendering: pixelated;
-}
-
 .dialog-footer {
   display: flex;
   justify-content: space-between;
@@ -548,7 +575,6 @@ h1 span {
   <div class="topbar-inner">
     <a class="brand" href="#library" aria-label="Wallpaper+ Library">
       <span class="brand-mark">
-        <!-- Lucide-style Paintbrush Icon -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m18.37 2.63 3 3a1 1 0 0 1 0 1.41l-9 9a1 1 0 0 1-.39.23l-5 1.67a1 1 0 0 1-1.25-1.25l1.67-5a1 1 0 0 1 .23-.39l9-9a1 1 0 0 1 1.41 0z"></path>
           <path d="M9 11l3 3"></path>
@@ -557,11 +583,21 @@ h1 span {
       </span>
       <span class="brand-name">
         WALLPAPER+
-        <small>Desktop Engine</small>
+        <small>4K Desktop Engine</small>
       </span>
     </a>
 
     <div class="topbar-actions">
+      <div class="sort-select-wrapper">
+        <select id="sort-select" class="sort-select" title="Сортировка обоев">
+          <option value="alpha-asc">По названию (А → Я)</option>
+          <option value="alpha-desc">По названию (Я → А)</option>
+          <option value="default">Рекомендованные</option>
+          <option value="category">По категориям</option>
+        </select>
+        <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+
       <label class="search" aria-label="Поиск обоев">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
@@ -590,12 +626,12 @@ h1 span {
 <main id="library">
   <section class="intro" aria-labelledby="page-title">
     <div>
-      <p class="eyebrow">4K / Pixel Art Engine</p>
+      <p class="eyebrow">4K Desktop Engine</p>
       <h1 id="page-title">Выбери свой <span>фон.</span></h1>
-      <p class="intro-copy">Коллекция из 150 обоев высокого разрешения. Нажмите на любой кадр, чтобы мгновенно установить его на рабочий стол LinkerRu.</p>
+      <p class="intro-copy">Коллекция 4K обоев высокого разрешения. Нажмите на любой кадр, чтобы мгновенно установить его на рабочий стол LinkerRu.</p>
     </div>
     <div class="library-total">
-      <strong id="total-count">150</strong>
+      <strong id="total-count">0</strong>
       <span>обоев в каталоге</span>
     </div>
   </section>
@@ -633,68 +669,131 @@ h1 span {
 </div>
 
 <script>
-const pexels = (id, ext = 'jpeg') => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.${ext}`;
-const imageUrl = (source, size) => source.startsWith('data:') ? source : `${source}?auto=compress&cs=tinysrgb&fit=crop&w=${size[0]}&h=${size[1]}`;
+const picsumUrl = (id, width, height) => `https://picsum.photos/id/${id}/${width}/${height}`;
 
-const sourcePools = {
-  '4k':[pexels(12260629,'png'),pexels(1632044),pexels(1525041),pexels(10394827),pexels(20572628),pexels(29607138),pexels(18099105),pexels(29106399),pexels(29106402),pexels(29698817)],
-  nature:[pexels(18296931),pexels(1525041),pexels(11917567),pexels(18062747),pexels(6016480),pexels(38880622),pexels(12721814),pexels(8558892),pexels(35060933),pexels(19161533)],
-  space:[pexels(9160637),pexels(37269546),pexels(2312040),pexels(37269529),pexels(36489751,'png'),pexels(37269532),pexels(2538107),pexels(37269550),pexels(4644812),pexels(11737041)],
-  city:[pexels(3075993),pexels(4261607),pexels(3980364),pexels(33878663),pexels(13259678),pexels(4034345),pexels(747101),pexels(1036657),pexels(18302561),pexels(11269298)],
-  abstract:[pexels(7135028),pexels(7135053),pexels(7130536),pexels(7135037),pexels(6985193),pexels(6985121),pexels(7135034),pexels(7135075),pexels(7135058),pexels(6985118)],
-  minimal:[pexels(7130496),pexels(7130490),pexels(7130491),pexels(7130469),pexels(4253271),pexels(4252899),pexels(28494633),pexels(4252525),pexels(29652324),pexels(4253062)],
-  dark:[pexels(167699),pexels(13258046),pexels(11735178),pexels(13258049),pexels(13258054),pexels(5459512),pexels(30773319),pexels(37911514),pexels(1909572),pexels(5431724)],
-  colorful:[pexels(13382071),pexels(15035617),pexels(15011846),pexels(15049825),pexels(15072693),pexels(15103625),pexels(15131893),pexels(15147961),pexels(11150766),pexels(15011845)]
-};
-
-const catalog = [
-  {id:'4k',label:'4K Ultra',title:'4K пейзажи',note:'Высокая детальность 3840x2160',count:20,resolution:'3840 x 2160',names:['Австрийские Альпы','Горный хребет с высоты','Озеро Брайес','Зелёная долина','Снежные вершины','Арктический берег','Закат в Оберстдорфе','Татры и озеро','Зеркальная вода Татр','Швейцарский поток','Свет над Альпами','Каменные пики','Озеро в Доломитах','Облака над долиной','Северные горы','Ледяное побережье','Вечерний хребет','Высокогорное озеро','Снежное отражение','Альпийское утро']},
-  {id:'pixel',label:'Pixel Art',title:'Pixel Art Engine',note:'Ретро пиксельная стилистика',count:15,resolution:'Pixel Art 16:9',names:['Неоновый мегаполис','Лунный форпост','Пиксельный закат','Горная долина','Ретро-аркада','Космический рейс','Лес после дождя','Океанский маяк','Красная пустыня','Северное сияние','Ночная ферма','Кибер-улица','Остров облаков','Порт после заката','Геймерская ночь']},
-  {id:'nature',label:'Природа',title:'Природа и озёра',note:'Горы, леса и реки',count:20,resolution:'2560 x 1440',names:['Лесное отражение','Озеро Брайес','Маттерхорн','Озеро Гайсальп','Тирольское утро','Домик у Оберзее','Туманное озеро','Альберта','Зимний Халльштатт','Озеро в Тироле','Береговой лес','Доломиты','Швейцарские вершины','Зелёное озеро','Снег и сосны','Баварский берег','Горный туман','Ледяная гладь','Зима в Альпах','Спокойная вода']},
-  {id:'space',label:'Космос',title:'Космос и туманности',note:'Астрономические кадры',count:15,resolution:'3840 x 2160',names:['Туманность Северная Америка','Глубокая туманность','Млечный Путь','Звёздное облако','Красная туманность','Бирюзовый космос','Галактика ночью','Зелёная туманность','Ночное звёздное небо','Фиолетовый Млечный Путь','Свет в туманности','Космический горизонт','Тысячи звёзд','Северное небо','Звёздная глубина']},
-  {id:'city',label:'Города',title:'Города ночью',note:'Огни скайлайнов',count:15,resolution:'2560 x 1440',names:['Нью-Йорк: ночь','Город сверху','Чёрно-белый скайлайн','Свет над Манхэттеном','Бруклинский мост','Сингапурская бухта','Огни Гудзона','Чикаго на закате','Ночной проспект','Вена после заката','Манхэттенские огни','Городская сетка','Нью-Йорк и вода','Световой мост','Стеклянный горизонт']},
-  {id:'abstract',label:'Абстракция',title:'Цветовая абстракция',note:'Градиенты и световые поля',count:20,resolution:'2560 x 1440',names:['Лиловый спектр','Пастельный переход','Мягкий рассвет','Синий и красный','Цветной свет','Три цвета','Зелёная волна','Голубая глубина','Светлый спектр','Фиолетовый поток','Сиреневый переход','Воздушная пастель','Синий импульс','Красно-синяя волна','Тёплый свет','RGB-поле','Мятная глубина','Синий спектр','Светлая тишина','Ультрафиолет']},
-  {id:'minimal',label:'Минимализм',title:'Минимализм',note:'Чистые лаконичные формы',count:15,resolution:'2560 x 1440',names:['Мягкий синий свет','Белая вспышка','Сиреневый градиент','Пастельный воздух','Два цвета','Чёрно-белые слои','Розовая геометрия','Серые листы','Монохромная дуга','Теал и жёлтый','Чистая композиция','Световое поле','Тонкая структура','Спокойные линии','Минимум цвета']},
-  {id:'dark',label:'Тёмные',title:'Тёмные темы',note:'Глубокие оттенки и туман',count:15,resolution:'2560 x 1440',names:['Туманный склон','Гроза над хребтом','Озеро в Уэльсе','Лес в облаках','Сквозь туман','Тёмные горы','Шотландское плато','Холмы Слайго','Лесная мгла','Дорога в тумане','Тёмные сосны','Облачный перевал','Вечернее озеро','Густой лес','Горная тень']},
-  {id:'colorful',label:'Яркие',title:'Яркие акценты',note:'Насыщенные цвета',count:15,resolution:'2560 x 1440',names:['Радужный жест','Акриловый взрыв','Цветовые мазки','Оранжевый ритм','Красный и синий','Экспрессивное поле','Синий акцент','Краска в движении','Радужные капли','Яркий холст','Насыщенный поток','Жёлтый импульс','Цветная материя','Смелые мазки','Живой пигмент']}
+const catalogData = [
+  {
+    id: 'nature',
+    label: 'Природа и горы',
+    title: 'Пейзажи и заповедники',
+    note: 'Горы, озера и леса в Ultra HD',
+    resolution: '3840 x 2160',
+    items: [
+      { id: 'p-10', name: 'Горное озеро', picId: 10 },
+      { id: 'p-11', name: 'Долина на рассвете', picId: 11 },
+      { id: 'p-15', name: 'Водопад в ущелье', picId: 15 },
+      { id: 'p-16', name: 'Тропический берег', picId: 16 },
+      { id: 'p-28', name: 'Лесная тропа', picId: 28 },
+      { id: 'p-29', name: 'Горы на закате', picId: 29 },
+      { id: 'p-54', name: 'Зимний хребет', picId: 54 },
+      { id: 'p-58', name: 'Маяк на скалах', picId: 58 },
+      { id: 'p-65', name: 'Заснеженные вершины', picId: 65 },
+      { id: 'p-76', name: 'Каменное ущелье', picId: 76 }
+    ]
+  },
+  {
+    id: 'city',
+    label: 'Города и архитектура',
+    title: 'Мегаполисы и урбанистика',
+    note: 'Огни ночных городов и геометрические фасады',
+    resolution: '3840 x 2160',
+    items: [
+      { id: 'p-122', name: 'Мегаполис: ночь', picId: 122 },
+      { id: 'p-133', name: 'Автомагистраль ночью', picId: 133 },
+      { id: 'p-142', name: 'Стеклянный небоскрёб', picId: 142 },
+      { id: 'p-164', name: 'Мост на рассвете', picId: 164 },
+      { id: 'p-169', name: 'Историческая улица', picId: 169 },
+      { id: 'p-175', name: 'Часовая башня', picId: 175 },
+      { id: 'p-180', name: 'Городской горизонт', picId: 180 },
+      { id: 'p-184', name: 'Архитектурные арки', picId: 184 },
+      { id: 'p-200', name: 'Старый квартал', picId: 200 },
+      { id: 'p-214', name: 'Современный фасад', picId: 214 }
+    ]
+  },
+  {
+    id: 'dark',
+    label: 'Тёмные темы',
+    title: 'Глубокие тона и ночь',
+    note: 'Идеально для тёмного интерфейса и OLED экранов',
+    resolution: '3840 x 2160',
+    items: [
+      { id: 'p-48', name: 'Ночные силуэты', picId: 48 },
+      { id: 'p-49', name: 'Ночные горы', picId: 49 },
+      { id: 'p-57', name: 'Туманный лес', picId: 57 },
+      { id: 'p-85', name: 'Тёмный океан', picId: 85 },
+      { id: 'p-96', name: 'Дорога в ночи', picId: 96 },
+      { id: 'p-106', name: 'Сумерки над холмами', picId: 106 },
+      { id: 'p-116', name: 'Тёмные сосны', picId: 116 },
+      { id: 'p-146', name: 'Мост в тумане', picId: 146 },
+      { id: 'p-155', name: 'Ночной берег', picId: 155 },
+      { id: 'p-193', name: 'Глубокая тень', picId: 193 }
+    ]
+  },
+  {
+    id: 'water',
+    label: 'Вода и океан',
+    title: 'Океаны, реки и волны',
+    note: 'Спокойствие лагун и прибрежных вод',
+    resolution: '3840 x 2160',
+    items: [
+      { id: 'p-17', name: 'Бирюзовая лагуна', picId: 17 },
+      { id: 'p-18', name: 'Океанский прибой', picId: 18 },
+      { id: 'p-19', name: 'Тихая заводь', picId: 19 },
+      { id: 'p-25', name: 'Отражение на воде', picId: 25 },
+      { id: 'p-74', name: 'Горный ручей', picId: 74 },
+      { id: 'p-84', name: 'Песчаный берег', picId: 84 },
+      { id: 'p-111', name: 'Золотой пляж', picId: 111 },
+      { id: 'p-112', name: 'Озеро на рассвете', picId: 112 },
+      { id: 'p-128', name: 'Туманная река', picId: 128 },
+      { id: 'p-152', name: 'Закатный прилив', picId: 152 }
+    ]
+  },
+  {
+    id: 'abstract',
+    label: 'Минимализм и текстуры',
+    title: 'Лаконичные композиции',
+    note: 'Чистые линии и световые акценты',
+    resolution: '3840 x 2160',
+    items: [
+      { id: 'p-24', name: 'Книжная геометрия', picId: 24 },
+      { id: 'p-26', name: 'Текстура стали', picId: 26 },
+      { id: 'p-36', name: 'Архитектурный минимализм', picId: 36 },
+      { id: 'p-37', name: 'Спокойствие океана', picId: 37 },
+      { id: 'p-42', name: 'Кофейная композиция', picId: 42 },
+      { id: 'p-64', name: 'Монохромная волна', picId: 64 },
+      { id: 'p-82', name: 'Каменная кладка', picId: 82 },
+      { id: 'p-102', name: 'Малиновый закат', picId: 102 },
+      { id: 'p-110', name: 'Световые линии', picId: 110 },
+      { id: 'p-160', name: 'Чистый горизонт', picId: 160 }
+    ]
+  }
 ];
 
-function pixelArt(index) {
-  const palettes=[['#161b4b','#303b7a','#ed6a5a','#ffd166','#f7f4e9'],['#0e2237','#155e75','#16c79a','#ffe66d','#edf6f9'],['#2d133c','#563b8b','#e45c96','#ffcb69','#ffe9e3'],['#052e2b','#0b5d5a','#52b788','#d8f3dc','#f4e285'],['#200b2b','#4b1f5e','#8e44ad','#00d4ff','#f9f7f7']][index%5];
-  const rand=seed=>((Math.sin(seed*942.37)+1)/2);
-  const stars=Array.from({length:45},(_,i)=>{const x=Math.floor(rand(index*60+i)*320/3)*3;const y=Math.floor(rand(index*89+i)*72/3)*3;const s=i%7===0?4:2;return `<rect x="${x}" y="${y}" width="${s}" height="${s}" fill="${palettes[4]}" opacity="${.3+(i%5)/8}"/>`;}).join('');
-  const skyline=Array.from({length:16},(_,i)=>{const h=20+Math.floor(rand(index*37+i)*48);const x=i*21-6;const lit=i%3===0?palettes[3]:palettes[1];return `<rect x="${x}" y="${180-h}" width="18" height="${h}" fill="${palettes[0]}"/><rect x="${x+5}" y="${180-h+9}" width="4" height="4" fill="${lit}"/><rect x="${x+5}" y="${180-h+22}" width="4" height="4" fill="${lit}"/>`;}).join('');
-  const y=108+(index%4)*6;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" shape-rendering="crispEdges"><rect width="320" height="180" fill="${palettes[0]}"/><rect y="74" width="320" height="106" fill="${palettes[1]}"/>${stars}<rect x="${39+index%6*25}" y="${23+index%4*7}" width="28" height="28" fill="${palettes[3]}"/><rect x="${35+index%6*25}" y="${27+index%4*7}" width="36" height="20" fill="${palettes[3]}"/><polygon points="0,${y+49} 82,${y-18} 145,${y+49}" fill="${palettes[2]}"/><polygon points="65,${y+49} 184,${y-38} 295,${y+49}" fill="${palettes[0]}"/><polygon points="148,${y-18} 184,${y-38} 214,${y-12} 190,${y-19}" fill="${palettes[4]}"/><rect y="${y+48}" width="320" height="58" fill="${palettes[1]}"/><rect y="${y+66}" width="320" height="6" fill="${palettes[2]}" opacity=".7"/>${skyline}</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
-const wallpapers = catalog.flatMap(category =>
-  Array.from({length: category.count}, (_, index) => {
-    const pixel = category.id === 'pixel';
-    const source = pixel ? pixelArt(index) : sourcePools[category.id][index % sourcePools[category.id].length];
-    return {
-      id: `${category.id}-${index}`,
-      category: category.id,
-      categoryTitle: category.title,
-      name: category.names[index],
-      resolution: category.resolution,
-      pixel,
-      preview: imageUrl(source, [640, 360]),
-      full: source.startsWith('data:') ? source : `${source}?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080`
-    };
-  })
+// Build flat list of all wallpapers
+const allWallpapers = catalogData.flatMap(cat =>
+  cat.items.map(item => ({
+    id: item.id,
+    categoryId: cat.id,
+    categoryLabel: cat.label,
+    categoryTitle: cat.title,
+    name: item.name,
+    resolution: cat.resolution,
+    preview: picsumUrl(item.picId, 640, 360),
+    full: picsumUrl(item.picId, 1920, 1080)
+  }))
 );
 
 const gallery = document.getElementById('gallery');
 const filters = document.getElementById('filters');
 const search = document.getElementById('search');
+const sortSelect = document.getElementById('sort-select');
 let activeCategory = 'all';
 let searchTerm = '';
+let currentSort = 'alpha-asc';
 
 function makeFilters() {
   filters.innerHTML = '';
-  [{id:'all', label:'Все 150'}, ...catalog.map(({id, label}) => ({id, label}))].forEach(filter => {
+  [{ id: 'all', label: `Все (${allWallpapers.length})` }, ...catalogData.map(c => ({ id: c.id, label: `${c.label} (${c.items.length})` }))].forEach(filter => {
     const button = document.createElement('button');
     button.className = `filter${filter.id === activeCategory ? ' active' : ''}`;
     button.type = 'button';
@@ -710,36 +809,97 @@ function makeFilters() {
 
 function wallpaperButton(wallpaper) {
   const button = document.createElement('button');
-  button.className = `wallpaper${wallpaper.pixel ? ' pixel' : ''}`;
+  button.className = 'wallpaper';
   button.type = 'button';
-  button.innerHTML = `<img src="${wallpaper.preview}" alt="${wallpaper.name}" loading="lazy"><span class="resolution">${wallpaper.pixel ? 'PIXEL ART' : wallpaper.resolution}</span><span class="image-label"><strong>${wallpaper.name}</strong><small>${wallpaper.categoryTitle}</small></span>`;
+  button.innerHTML = `
+    <img src="${wallpaper.preview}" alt="${wallpaper.name}" loading="lazy">
+    <span class="resolution">${wallpaper.resolution}</span>
+    <span class="image-label">
+      <strong>${wallpaper.name}</strong>
+      <small>${wallpaper.categoryLabel}</small>
+    </span>
+  `;
   button.addEventListener('click', () => openDialog(wallpaper));
   return button;
 }
 
+function sortList(list) {
+  const cloned = [...list];
+  switch (currentSort) {
+    case 'alpha-asc':
+      return cloned.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    case 'alpha-desc':
+      return cloned.sort((a, b) => b.name.localeCompare(a.name, 'ru'));
+    case 'category':
+      return cloned.sort((a, b) => a.categoryLabel.localeCompare(b.categoryLabel, 'ru') || a.name.localeCompare(b.name, 'ru'));
+    case 'default':
+    default:
+      return cloned;
+  }
+}
+
 function renderGallery() {
   gallery.innerHTML = '';
-  const visible = catalog.filter(category => activeCategory === 'all' || activeCategory === category.id);
-  let results = false;
+  const visibleCategories = catalogData.filter(cat => activeCategory === 'all' || activeCategory === cat.id);
+  let resultsCount = 0;
 
-  visible.forEach(category => {
-    const items = wallpapers.filter(w => w.category === category.id && w.name.toLowerCase().includes(searchTerm));
-    if (!items.length) return;
-    results = true;
+  if (currentSort === 'alpha-asc' || currentSort === 'alpha-desc') {
+    // Render flat sorted list with clean sections or single unified grid
+    const filtered = allWallpapers.filter(w =>
+      (activeCategory === 'all' || w.categoryId === activeCategory) &&
+      w.name.toLowerCase().includes(searchTerm)
+    );
+    const sorted = sortList(filtered);
+    resultsCount = sorted.length;
 
-    const section = document.createElement('section');
-    section.className = 'wallpaper-section';
-    section.id = `section-${category.id}`;
-    section.innerHTML = `<div class="section-heading"><div><h2>${category.title}</h2><p class="section-meta">${category.note}</p></div><span class="section-count">${items.length} / ${category.count}</span></div>`;
-    const grid = document.createElement('div');
-    grid.className = 'wallpaper-grid';
-    items.forEach(wallpaper => grid.appendChild(wallpaperButton(wallpaper)));
-    section.appendChild(grid);
-    gallery.appendChild(section);
-  });
+    if (resultsCount > 0) {
+      const section = document.createElement('section');
+      section.className = 'wallpaper-section';
+      section.innerHTML = `
+        <div class="section-heading">
+          <div>
+            <h2>${activeCategory === 'all' ? 'Все обои в галерее' : catalogData.find(c => c.id === activeCategory)?.title}</h2>
+            <p class="section-meta">${currentSort === 'alpha-asc' ? 'Отсортировано от А до Я' : 'Отсортировано от Я до А'}</p>
+          </div>
+          <span class="section-count">${resultsCount} обоев</span>
+        </div>
+      `;
+      const grid = document.createElement('div');
+      grid.className = 'wallpaper-grid';
+      sorted.forEach(wp => grid.appendChild(wallpaperButton(wp)));
+      section.appendChild(grid);
+      gallery.appendChild(section);
+    }
+  } else {
+    // Render category-grouped view
+    visibleCategories.forEach(cat => {
+      const items = allWallpapers.filter(w => w.categoryId === cat.id && w.name.toLowerCase().includes(searchTerm));
+      const sorted = sortList(items);
+      if (!sorted.length) return;
+      resultsCount += sorted.length;
 
-  if (!results) {
-    gallery.innerHTML = '<div class="empty">Обои по запросу не найдены</div>';
+      const section = document.createElement('section');
+      section.className = 'wallpaper-section';
+      section.id = `section-${cat.id}`;
+      section.innerHTML = `
+        <div class="section-heading">
+          <div>
+            <h2>${cat.title}</h2>
+            <p class="section-meta">${cat.note}</p>
+          </div>
+          <span class="section-count">${sorted.length} / ${cat.items.length}</span>
+        </div>
+      `;
+      const grid = document.createElement('div');
+      grid.className = 'wallpaper-grid';
+      sorted.forEach(wallpaper => grid.appendChild(wallpaperButton(wallpaper)));
+      section.appendChild(grid);
+      gallery.appendChild(section);
+    });
+  }
+
+  if (resultsCount === 0) {
+    gallery.innerHTML = '<div class="empty">Обои по вашему запросу не найдены.</div>';
   }
 }
 
@@ -753,9 +913,8 @@ const applyLink = document.getElementById('apply-link');
 function openDialog(wallpaper) {
   dialogImage.src = wallpaper.full;
   dialogImage.alt = wallpaper.name;
-  dialogImage.classList.toggle('pixel-art', wallpaper.pixel);
   dialogTitle.textContent = wallpaper.name;
-  dialogDetail.textContent = `${wallpaper.categoryTitle} / ${wallpaper.resolution}`;
+  dialogDetail.textContent = `${wallpaper.categoryLabel} / ${wallpaper.resolution}`;
   sourceLink.href = wallpaper.full;
   dialog.classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -773,6 +932,11 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape') clos
 
 search.addEventListener('input', event => {
   searchTerm = event.target.value.trim().toLowerCase();
+  renderGallery();
+});
+
+sortSelect.addEventListener('change', event => {
+  currentSort = event.target.value;
   renderGallery();
 });
 
@@ -814,9 +978,10 @@ window.addEventListener('message', (e) => {
   }
 });
 
-document.getElementById('total-count').textContent = wallpapers.length;
+document.getElementById('total-count').textContent = allWallpapers.length;
 makeFilters();
 renderGallery();
 </script>
 </body>
 </html>
+

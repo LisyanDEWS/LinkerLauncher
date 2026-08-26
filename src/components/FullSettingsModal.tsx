@@ -46,39 +46,88 @@ const RECOMMENDED_EXT_WALLPAPERS = [
   {
     id: 'ext-braies',
     name: 'Горное озеро',
-    category: 'Landscape',
+    category: 'Пейзаж',
     preview: 'https://picsum.photos/id/10/600/350',
     full: 'https://picsum.photos/id/10/1920/1080',
   },
   {
     id: 'ext-misty-slope',
     name: 'Лесная тропа',
-    category: 'Nature',
+    category: 'Природа',
     preview: 'https://picsum.photos/id/28/600/350',
     full: 'https://picsum.photos/id/28/1920/1080',
   },
   {
     id: 'ext-ny-night',
     name: 'Мегаполис: ночь',
-    category: 'City 4K',
+    category: 'Город 4K',
     preview: 'https://picsum.photos/id/122/600/350',
     full: 'https://picsum.photos/id/122/1920/1080',
   },
   {
     id: 'ext-dark-mountains',
     name: 'Ночные горы',
-    category: 'Dark',
+    category: 'Тёмные',
     preview: 'https://picsum.photos/id/49/600/350',
     full: 'https://picsum.photos/id/49/1920/1080',
   },
   {
-    id: 'ext-lilac-spectrum',
+    id: 'ext-ocean-calm',
     name: 'Спокойствие океана',
-    category: 'Abstract',
+    category: 'Минимализм',
     preview: 'https://picsum.photos/id/37/600/350',
     full: 'https://picsum.photos/id/37/1920/1080',
+  },
+  {
+    id: 'ext-sunrise-valley',
+    name: 'Долина на рассвете',
+    category: 'Природа',
+    preview: 'https://picsum.photos/id/11/600/350',
+    full: 'https://picsum.photos/id/11/1920/1080',
+  },
+  {
+    id: 'ext-canyon-waterfall',
+    name: 'Водопад в ущелье',
+    category: 'Пейзаж',
+    preview: 'https://picsum.photos/id/15/600/350',
+    full: 'https://picsum.photos/id/15/1920/1080',
+  },
+  {
+    id: 'ext-tropical-beach',
+    name: 'Тропический берег',
+    category: 'Вода',
+    preview: 'https://picsum.photos/id/16/600/350',
+    full: 'https://picsum.photos/id/16/1920/1080',
+  },
+  {
+    id: 'ext-sunset-peaks',
+    name: 'Горы на закате',
+    category: 'Пейзаж',
+    preview: 'https://picsum.photos/id/29/600/350',
+    full: 'https://picsum.photos/id/29/1920/1080',
+  },
+  {
+    id: 'ext-highway-night',
+    name: 'Автомагистраль ночью',
+    category: 'Город 4K',
+    preview: 'https://picsum.photos/id/133/600/350',
+    full: 'https://picsum.photos/id/133/1920/1080',
+  },
+  {
+    id: 'ext-dark-silhouettes',
+    name: 'Ночные силуэты',
+    category: 'Тёмные',
+    preview: 'https://picsum.photos/id/48/600/350',
+    full: 'https://picsum.photos/id/48/1920/1080',
+  },
+  {
+    id: 'ext-dark-ocean',
+    name: 'Тёмный океан',
+    category: 'Тёмные',
+    preview: 'https://picsum.photos/id/85/600/350',
+    full: 'https://picsum.photos/id/85/1920/1080',
   }
-].sort((a, b) => a.name.localeCompare(b.name));
+].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
 import { translations } from '../data/translations';
