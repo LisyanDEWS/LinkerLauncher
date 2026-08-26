@@ -48,8 +48,8 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
       name: 'Wallpaper+',
       category: lang === 'ru' ? 'Персонализация' : 'Personalization',
       description: {
-        ru: 'Расширенная 4K и Pixel-Art галерея обоев с движком мгновенного применения на рабочий стол LinkerRu.',
-        en: 'Advanced 4K & Pixel-Art wallpaper gallery with direct desktop engine for LinkerRu.',
+        ru: 'Расширенная 4K галерея обоев с движком мгновенного применения на рабочий стол LinkerRu.',
+        en: 'Advanced 4K wallpaper gallery with direct desktop engine for LinkerRu.',
       },
       version: 'v2.4.0',
       size: '1.2 MB',

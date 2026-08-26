@@ -45,47 +45,40 @@ import { useWindows } from './WindowManager';
 const RECOMMENDED_EXT_WALLPAPERS = [
   {
     id: 'ext-braies',
-    name: 'Озеро Брайес',
-    category: '4K Ultra',
-    preview: 'https://images.pexels.com/photos/1525041/pexels-photo-1525041.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
-    full: 'https://images.pexels.com/photos/1525041/pexels-photo-1525041.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
-  },
-  {
-    id: 'ext-pixel-city',
-    name: 'Неоновый мегаполис',
-    category: 'Pixel Art',
-    preview: 'https://images.pexels.com/photos/1632044/pexels-photo-1632044.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
-    full: 'https://images.pexels.com/photos/1632044/pexels-photo-1632044.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
-  },
-  {
-    id: 'ext-space-nebula',
-    name: 'Туманность Северная Америка',
-    category: 'Space 4K',
-    preview: 'https://images.pexels.com/photos/9160637/pexels-photo-9160637.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
-    full: 'https://images.pexels.com/photos/9160637/pexels-photo-9160637.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
-  },
-  {
-    id: 'ext-ny-night',
-    name: 'Нью-Йорк: ночь',
-    category: 'City 4K',
-    preview: 'https://images.pexels.com/photos/3075993/pexels-photo-3075993.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
-    full: 'https://images.pexels.com/photos/3075993/pexels-photo-3075993.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
-  },
-  {
-    id: 'ext-lilac-spectrum',
-    name: 'Лиловый спектр',
-    category: 'Abstract',
-    preview: 'https://images.pexels.com/photos/7135028/pexels-photo-7135028.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
-    full: 'https://images.pexels.com/photos/7135028/pexels-photo-7135028.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+    name: 'Горное озеро',
+    category: 'Landscape',
+    preview: 'https://picsum.photos/id/10/600/350',
+    full: 'https://picsum.photos/id/10/1920/1080',
   },
   {
     id: 'ext-misty-slope',
-    name: 'Туманный склон',
-    category: 'Dark',
-    preview: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=600&h=350',
-    full: 'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=1920&h=1080',
+    name: 'Лесная тропа',
+    category: 'Nature',
+    preview: 'https://picsum.photos/id/28/600/350',
+    full: 'https://picsum.photos/id/28/1920/1080',
   },
-];
+  {
+    id: 'ext-ny-night',
+    name: 'Мегаполис: ночь',
+    category: 'City 4K',
+    preview: 'https://picsum.photos/id/122/600/350',
+    full: 'https://picsum.photos/id/122/1920/1080',
+  },
+  {
+    id: 'ext-dark-mountains',
+    name: 'Ночные горы',
+    category: 'Dark',
+    preview: 'https://picsum.photos/id/49/600/350',
+    full: 'https://picsum.photos/id/49/1920/1080',
+  },
+  {
+    id: 'ext-lilac-spectrum',
+    name: 'Спокойствие океана',
+    category: 'Abstract',
+    preview: 'https://picsum.photos/id/37/600/350',
+    full: 'https://picsum.photos/id/37/1920/1080',
+  }
+].sort((a, b) => a.name.localeCompare(b.name));
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
 import { translations } from '../data/translations';
