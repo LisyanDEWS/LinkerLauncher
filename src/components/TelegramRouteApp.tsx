@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { RotateCw, Send, ShieldCheck, Sparkles, Wifi } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 import { Language } from '../types';
 
@@ -90,19 +90,6 @@ export function TelegramRouteApp({ lang = 'ru', onReloadTrigger }: TelegramRoute
 
   return (
     <div className="relative flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden font-sans">
-      {/* Top subtle status bar */}
-      <div className="h-8.5 px-3 bg-[var(--surface-dim)]/90 backdrop-blur-md border-b border-[var(--outline-var)] flex items-center justify-between shrink-0 select-none z-10">
-        <div className="flex items-center gap-2 text-xs font-bold text-[var(--on-surface)] truncate">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 shadow-xs shadow-emerald-500/50" />
-          <span className="truncate text-[11px] md:text-xs">Telegram Route Tunnel</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-[var(--on-surface-var)] font-semibold px-2 py-0.5 rounded-full bg-[var(--container)] border border-[var(--outline-var)]">
-            Active · TLS 1.3
-          </span>
-        </div>
-      </div>
-
       {/* Main Iframe container */}
       <div className="relative flex-1 w-full h-full overflow-hidden bg-transparent">
         <iframe
