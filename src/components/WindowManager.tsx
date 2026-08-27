@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw, Trash2 } from 'lucide-react';
 import { Language } from '../types';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 
@@ -71,6 +71,7 @@ export interface WindowManager {
   windows: WindowInstance[];
   open: (opts: OpenWindowOptions) => void;
   close: (id: string) => void;
+  closeAll: () => void;
   minimize: (id: string) => void;
   restore: (id: string) => void;
   toggleMaximize: (id: string) => void;
@@ -184,6 +185,10 @@ export function useWindows(): WindowManager {
     setWindows((prev) => prev.filter((w) => w.id !== id));
   }, []);
 
+  const closeAll = useCallback(() => {
+    setWindows([]);
+  }, []);
+
   const minimize = useCallback((id: string) => {
     setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, isMinimized: true } : w)));
   }, []);
@@ -223,6 +228,7 @@ export function useWindows(): WindowManager {
     windows,
     open,
     close,
+    closeAll,
     minimize,
     restore,
     toggleMaximize,
@@ -464,6 +470,29 @@ export function WindowManagerLayer({
                   </React.Fragment>
                 );
               })}
+
+              {/* Close All Windows Button */}
+              {taskbarItems.length > 0 && (
+                <>
+                  <div className="h-6 w-px shrink-0" style={{ background: 'var(--outline-var)' }} />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    onClick={() => {
+                      wm.closeAll();
+                    }}
+                    className="flex items-center gap-1.5 rounded-[1rem] px-2.5 py-2 text-xs font-bold transition-all cursor-pointer overflow-hidden select-none hover:bg-red-500/12 text-[var(--on-surface-var)] hover:text-red-500"
+                    title={isRu ? 'Закрыть все окна' : 'Close all windows'}
+                    id="wm-close-all-btn"
+                  >
+                    <Trash2 size={13} className="shrink-0" />
+                    <span className="text-[11px] font-semibold hidden sm:inline whitespace-nowrap">
+                      {isRu ? 'Закрыть все' : 'Close all'}
+                    </span>
+                  </motion.button>
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -519,6 +548,14 @@ export function WindowManagerLayer({
               label={isRu ? 'Закрыть' : 'Close'}
               danger
               onClick={() => { wm.close(ctxWin.id); setCtxMenu(null); }}
+            />
+
+            {/* Close all — terminates all apps */}
+            <CtxItem
+              icon={<Trash2 size={14} />}
+              label={isRu ? 'Закрыть все окна' : 'Close all windows'}
+              danger
+              onClick={() => { wm.closeAll(); setCtxMenu(null); }}
             />
           </motion.div>
         )}
@@ -589,8 +626,8 @@ function WindowFrame({
   renderWindowContent,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
-  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator');
-  const defaultDuration = win.id === 'telegramroute' ? 9000 : 1500;
+  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator' || win.id === 'keeps');
+  const defaultDuration = win.id === 'telegramroute' ? 9000 : win.id === 'weather' ? 350 : 600;
   const duration = win.loadingDuration ?? defaultDuration;
 
   const [loaderPhase, setLoaderPhase] = useState<'visible' | 'fading' | 'hidden'>(() => (isSystemApp ? 'hidden' : 'visible'));
@@ -909,7 +946,7 @@ function WindowFrame({
             className={`flex ${isMobileLayout ? 'h-12 px-3' : 'h-8.5 px-3 cursor-grab active:cursor-grabbing'} shrink-0 items-center justify-between relative border-b border-[var(--outline-var)] select-none overflow-hidden`}
             style={{
               background: isActive
-                ? 'linear-gradient(180deg, var(--surface-dim) 0%, var(--surface) 100%)'
+                ? 'linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--surface-dim)) 0%, var(--surface) 100%)'
                 : 'var(--surface)',
             }}
           >

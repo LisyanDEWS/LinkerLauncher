@@ -100,7 +100,7 @@ export default function SettingsModal({
             transition={{ duration: 0.1 }}
             onAnimationComplete={() => { if (!isOpen) setBackdropClickable(false); }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/10 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/10"
             style={{ pointerEvents: backdropClickable ? 'auto' : 'none' }}
             id="settings-quick-backdrop"
           />

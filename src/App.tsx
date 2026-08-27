@@ -1838,6 +1838,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 620,
       minWidth: 340,
       minHeight: 420,
+      disableLoader: true,
       render: () => <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />,
     });
   };
@@ -1892,6 +1893,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 600,
       minWidth: 420,
       minHeight: 400,
+      loadingDuration: 250,
       render: () => (
         <WeatherModal
           isOpen={true}
@@ -2834,7 +2836,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* WIDGET 2: Agno GPT */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
           {agnoMinimized && (
-            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playChime('click');
+                openAgnoWindow();
+              }}
+              className="running-pill"
+              title={lang === 'ru' ? 'Развернуть Agno GPT' : 'Restore Agno GPT'}
+            >
+              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}
+            </button>
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
@@ -2870,7 +2882,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* WIDGET 3: Lisyan Connect (In Development - Gray state, non-interactive) */}
         <div className="card rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative bg-[var(--surface-dim)]/80 border border-[var(--outline)]/70 shadow-xs select-none cursor-default opacity-85" id="card-lisyan-connect">
           {lisyanMinimized && (
-            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playChime('click');
+                openLisyanWindow();
+              }}
+              className="running-pill"
+              title={lang === 'ru' ? 'Развернуть Lisyan Connect' : 'Restore Lisyan Connect'}
+            >
+              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}
+            </button>
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div
@@ -2906,7 +2928,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* WIDGET 4: Nexus Game Box NGB (In Development - Gray state, non-interactive) */}
         <div className="card rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative bg-[var(--surface-dim)]/80 border border-[var(--outline)]/70 shadow-xs select-none cursor-default opacity-85" id="card-nexus-game-box">
           {isMinimized('nexusgamebox') && (
-            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playChime('click');
+                openNexusGameBox();
+              }}
+              className="running-pill"
+              title={lang === 'ru' ? 'Развернуть Nexus Game Box' : 'Restore Nexus Game Box'}
+            >
+              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}
+            </button>
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div
@@ -2946,7 +2978,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* SUBCONVERT CARD (placed before Extensions) */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-subconvert">
           {isMinimized('subconvert') && (
-            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playChime('click');
+                handleOpenSubConvert();
+              }}
+              className="running-pill"
+              title={lang === 'ru' ? 'Развернуть SubConvert' : 'Restore SubConvert'}
+            >
+              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}
+            </button>
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
@@ -2982,7 +3024,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {/* TELEGRAM ROUTE CARD */}
         <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-telegram-route">
           {isMinimized('telegramroute') && (
-            <div className="running-pill"><span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playChime('click');
+                openTelegramRouteWindow();
+              }}
+              className="running-pill"
+              title={lang === 'ru' ? 'Развернуть Telegram Route' : 'Restore Telegram Route'}
+            >
+              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}
+            </button>
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
@@ -3035,7 +3087,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 playChime('click');
                 openWeatherWindow();
               }}>
-                {isMinimized('weather') && <div className="running-pill-mini" />}
+                {isMinimized('weather') && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playChime('click');
+                      openWeatherWindow();
+                    }}
+                    className="running-pill-mini"
+                    title={lang === 'ru' ? 'Развернуть Погоду' : 'Restore Weather'}
+                  />
+                )}
                 <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <motion.div
                     whileHover={{ rotate: 18, scale: 1.15 }}
@@ -3056,7 +3118,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 playChime('click');
                 handleOpenExtensions();
               }}>
-                {extensionsMinimized && <div className="running-pill-mini" />}
+                {extensionsMinimized && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playChime('click');
+                      handleOpenExtensions();
+                    }}
+                    className="running-pill-mini"
+                    title={lang === 'ru' ? 'Развернуть Расширения' : 'Restore Extensions'}
+                  />
+                )}
                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <Blocks size={18} className="text-[var(--on-surface)]" />
                 </div>
@@ -3068,7 +3140,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 playChime('click');
                 openCalculatorWindow();
               }}>
-                {calculatorMinimized && <div className="running-pill-mini" />}
+                {calculatorMinimized && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playChime('click');
+                      openCalculatorWindow();
+                    }}
+                    className="running-pill-mini"
+                    title={lang === 'ru' ? 'Развернуть Калькулятор' : 'Restore Calculator'}
+                  />
+                )}
                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <Calculator size={18} className="text-[var(--on-surface)]" />
                 </div>
@@ -3080,7 +3162,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 playChime('click');
                 openKeepsWindow();
               }}>
-                {keepsMinimized && <div className="running-pill-mini" />}
+                {keepsMinimized && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playChime('click');
+                      openKeepsWindow();
+                    }}
+                    className="running-pill-mini"
+                    title={lang === 'ru' ? 'Развернуть Заметки' : 'Restore Keeps'}
+                  />
+                )}
                 <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <StickyNote size={18} className="text-[var(--on-surface)]" />
                 </div>

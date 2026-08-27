@@ -52,7 +52,6 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
   const colors = theme === 'dark' ? DARK_NOTE_COLORS : NOTE_COLORS;
 
   const [notes, setNotes] = useState<KeepNote[]>([]);
-  const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerText, setComposerText] = useState('');
   const [composerColor, setComposerColor] = useState(0);
@@ -64,7 +63,6 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
   const refresh = useCallback(async () => {
     const all = await getAllNotes();
     setNotes(all);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -185,11 +183,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
 
       {/* Scrollable notes area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-        {loading ? (
-          <div className="flex h-full items-center justify-center text-xs text-[var(--on-surface-var)]">
-            {isRu ? 'Загрузка…' : 'Loading…'}
-          </div>
-        ) : notes.length === 0 && !composerOpen ? (
+        {notes.length === 0 && !composerOpen ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <StickyNote size={48} className="text-[var(--outline)]" />
             <p className="text-xs text-[var(--on-surface-var)] max-w-[220px]">

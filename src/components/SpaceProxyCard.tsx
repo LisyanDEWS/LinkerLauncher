@@ -162,10 +162,18 @@ export function SpaceProxyCard({
       id="card-linker-route"
     >
       {proxyMinimized && (
-        <div className="running-pill">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            playChime('click');
+            onOpenHub(lastSelectedUrl, '');
+          }}
+          className="running-pill"
+          title={isRu ? 'Развернуть Space Proxy Hub' : 'Restore Space Proxy Hub'}
+        >
           <span className="running-pill-dot" />
           {isRu ? 'В фоне' : 'Running'}
-        </div>
+        </button>
       )}
 
       <AnimatePresence mode="wait">

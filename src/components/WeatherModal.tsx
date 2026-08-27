@@ -42,15 +42,55 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
   const [showSettings, setShowSettings] = useState(false);
   const [latStr, setLatStr] = useState('52.52');
   const [lonStr, setLonStr] = useState('13.41');
-  const [cityName, setCityName] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [cityName, setCityName] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem('linkerru_cached_weather_city');
+      return cached || '';
+    } catch {
+      return '';
+    }
+  });
 
-  // Real data state
-  const [currentTempC, setCurrentTempC] = useState<number | null>(null);
-  const [windSpeed, setWindSpeed] = useState<number | null>(null);
-  const [humidity, setHumidity] = useState<number | null>(null);
-  const [hourlyData, setHourlyData] = useState<{ time: string; temp: number; type: string }[]>([]);
-  const [dailyData, setDailyData] = useState<DailyForecast[]>([]);
+  // Real data state with instant cache hydration
+  const [currentTempC, setCurrentTempC] = useState<number | null>(() => {
+    try {
+      const cached = localStorage.getItem('linkerru_cached_weather');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return parsed.currentTempC ?? null;
+      }
+    } catch {}
+    return null;
+  });
+  const [windSpeed, setWindSpeed] = useState<number | null>(() => {
+    try {
+      const cached = localStorage.getItem('linkerru_cached_weather');
+      if (cached) return JSON.parse(cached).windSpeed ?? null;
+    } catch {}
+    return null;
+  });
+  const [humidity, setHumidity] = useState<number | null>(() => {
+    try {
+      const cached = localStorage.getItem('linkerru_cached_weather');
+      if (cached) return JSON.parse(cached).humidity ?? null;
+    } catch {}
+    return null;
+  });
+  const [hourlyData, setHourlyData] = useState<{ time: string; temp: number; type: string }[]>(() => {
+    try {
+      const cached = localStorage.getItem('linkerru_cached_weather');
+      if (cached) return JSON.parse(cached).hourlyData ?? [];
+    } catch {}
+    return [];
+  });
+  const [dailyData, setDailyData] = useState<DailyForecast[]>(() => {
+    try {
+      const cached = localStorage.getItem('linkerru_cached_weather');
+      if (cached) return JSON.parse(cached).dailyData ?? [];
+    } catch {}
+    return [];
+  });
+  const [loading, setLoading] = useState(false);
 
   // Track last coordinates so the hourly auto-refresh uses the same location
   const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
@@ -70,7 +110,9 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             const { latitude, longitude, name } = geoData.results[0];
             setLatStr(latitude.toString());
             setLonStr(longitude.toString());
-            setCityName(name || customCity);
+            const resolvedName = name || customCity;
+            setCityName(resolvedName);
+            localStorage.setItem('linkerru_cached_weather_city', resolvedName);
             lastCoordsRef.current = { lat: latitude, lon: longitude };
             loadWeather(latitude, longitude);
             return;
@@ -87,23 +129,30 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             const newLon = pos.coords.longitude.toString();
             setLatStr(newLat);
             setLonStr(newLon);
-            setCityName(lang === 'ru' ? 'Моё местоположение' : 'My location');
+            const myLocName = lang === 'ru' ? 'Моё местоположение' : 'My location';
+            setCityName(myLocName);
+            localStorage.setItem('linkerru_cached_weather_city', myLocName);
             lastCoordsRef.current = { lat: pos.coords.latitude, lon: pos.coords.longitude };
             loadWeather(pos.coords.latitude, pos.coords.longitude);
           },
           (err) => {
-            console.warn('Geolocation failed', err);
+            console.warn('Geolocation failed or timed out', err);
             const lat = Number(latStr) || 52.52;
             const lon = Number(lonStr) || 13.41;
-            setCityName(lang === 'ru' ? 'Берлин' : 'Berlin');
+            const fallbackCity = lang === 'ru' ? 'Берлин' : 'Berlin';
+            setCityName(fallbackCity);
+            localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
             lastCoordsRef.current = { lat, lon };
             loadWeather(lat, lon);
-          }
+          },
+          { timeout: 1500, maximumAge: 600000 }
         );
       } else {
         const lat = Number(latStr) || 52.52;
         const lon = Number(lonStr) || 13.41;
-        setCityName(lang === 'ru' ? 'Берлин' : 'Berlin');
+        const fallbackCity = lang === 'ru' ? 'Берлин' : 'Berlin';
+        setCityName(fallbackCity);
+        localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
         lastCoordsRef.current = { lat, lon };
         loadWeather(lat, lon);
       }
@@ -126,7 +175,9 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
   }, [isOpen]);
 
   const loadWeather = async (lat: number, lon: number) => {
-    setLoading(true);
+    if (currentTempC === null) {
+      setLoading(true);
+    }
     try {
       const params = {
         latitude: lat,
@@ -142,8 +193,10 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
       const response = responses[0];
 
       const current = response.current()!;
-      setCurrentTempC(current.variables(0)!.value());
-      setWindSpeed(current.variables(1)!.value());
+      const curTemp = current.variables(0)!.value();
+      const curWind = current.variables(1)!.value();
+      setCurrentTempC(curTemp);
+      setWindSpeed(curWind);
 
       const hourly = response.hourly()!;
       const utcOffsetSeconds = response.utcOffsetSeconds();
@@ -158,8 +211,10 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
       const tempsArray = hourly.variables(0)!.valuesArray();
       const humidArray = hourly.variables(1)!.valuesArray();
 
+      let humVal: number | null = null;
       if (humidArray && humidArray.length > 0) {
-        setHumidity(humidArray[0]);
+        humVal = humidArray[0];
+        setHumidity(humVal);
       }
 
       for (let i = 0; i < totalHours; i++) {
@@ -201,6 +256,21 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
         });
       }
       setDailyData(dData);
+
+      // Cache weather for fast instant display next time
+      try {
+        localStorage.setItem(
+          'linkerru_cached_weather',
+          JSON.stringify({
+            currentTempC: curTemp,
+            windSpeed: curWind,
+            humidity: humVal,
+            hourlyData: hData,
+            dailyData: dData,
+            cachedAt: Date.now(),
+          })
+        );
+      } catch {}
     } catch (e) {
       console.error(e);
     }
