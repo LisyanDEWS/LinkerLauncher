@@ -236,11 +236,21 @@ export default function OnboardingModal({
                           : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">🇷🇺</span>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black border ${
+                            lang === 'ru'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-xs'
+                              : 'bg-[var(--container)] text-[var(--on-surface-var)] border-[var(--outline-var)]'
+                          }`}
+                        >
+                          RU
+                        </span>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">Русский</div>
-                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Russian</div>
+                          <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
+                            {isUk ? 'Російська мова' : isRu ? 'Русский язык' : 'Russian'}
+                          </div>
                         </div>
                       </div>
                       {lang === 'ru' && <Check size={18} className="text-[var(--accent)] shrink-0" />}
@@ -257,11 +267,21 @@ export default function OnboardingModal({
                           : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">🇬🇧</span>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black border ${
+                            lang === 'en'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-xs'
+                              : 'bg-[var(--container)] text-[var(--on-surface-var)] border-[var(--outline-var)]'
+                          }`}
+                        >
+                          EN
+                        </span>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">English</div>
-                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">English</div>
+                          <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
+                            {isUk ? 'Англійська мова' : isRu ? 'Английский язык' : 'English'}
+                          </div>
                         </div>
                       </div>
                       {lang === 'en' && <Check size={18} className="text-[var(--accent)] shrink-0" />}
@@ -278,11 +298,21 @@ export default function OnboardingModal({
                           : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">🇺🇦</span>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black border ${
+                            lang === 'uk'
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-xs'
+                              : 'bg-[var(--container)] text-[var(--on-surface-var)] border-[var(--outline-var)]'
+                          }`}
+                        >
+                          UK
+                        </span>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">Українська</div>
-                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Ukrainian</div>
+                          <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
+                            {isUk ? 'Українська мова' : isRu ? 'Украинский язык' : 'Ukrainian'}
+                          </div>
                         </div>
                       </div>
                       {lang === 'uk' && <Check size={18} className="text-[var(--accent)] shrink-0" />}

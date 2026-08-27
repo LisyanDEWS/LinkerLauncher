@@ -74,10 +74,25 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
-  const langOptions: { id: Language; label: string; flag: string }[] = [
-    { id: 'ru', label: 'Русский (RU)', flag: '🇷🇺' },
-    { id: 'en', label: 'English (EN)', flag: '🇬🇧' },
-    { id: 'uk', label: 'Українська (UK)', flag: '🇺🇦' },
+  const langOptions: { id: Language; name: string; desc: string; code: string }[] = [
+    {
+      id: 'ru',
+      name: 'Русский',
+      desc: lang === 'ru' ? 'Русский язык' : lang === 'uk' ? 'Російська мова' : 'Russian language',
+      code: 'RU',
+    },
+    {
+      id: 'en',
+      name: 'English',
+      desc: lang === 'ru' ? 'Английский язык' : lang === 'uk' ? 'Англійська мова' : 'English language',
+      code: 'EN',
+    },
+    {
+      id: 'uk',
+      name: 'Українська',
+      desc: lang === 'ru' ? 'Украинский язык' : lang === 'uk' ? 'Українська мова' : 'Ukrainian language',
+      code: 'UK',
+    },
   ];
 
   useEffect(() => {
@@ -440,8 +455,11 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.96 }}
                   transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                  className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-[var(--surface)]/95 backdrop-blur-xl border border-[var(--outline)] rounded-2xl p-1.5 shadow-xl space-y-1"
+                  className="absolute right-0 top-full mt-1.5 z-50 min-w-[210px] bg-[var(--surface)]/95 backdrop-blur-xl border border-[var(--outline)] rounded-2xl p-1.5 shadow-xl space-y-1"
                 >
+                  <div className="px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] border-b border-[var(--outline)] pb-1 mb-0.5">
+                    {lang === 'ru' ? 'Выбор языка' : lang === 'uk' ? 'Вибір мови' : 'Select language'}
+                  </div>
                   {langOptions.map((opt) => {
                     const isSelected = lang === opt.id;
                     return (
@@ -458,11 +476,28 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                             : 'text-[var(--on-surface)] hover:bg-[var(--container)]'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{opt.flag}</span>
-                          <span>{opt.label}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${
+                              isSelected
+                                ? 'bg-white/20 text-white border-white/30'
+                                : 'bg-[var(--container)] text-[var(--on-surface-var)] border-[var(--outline)]'
+                            }`}
+                          >
+                            {opt.code}
+                          </span>
+                          <div className="flex flex-col text-left">
+                            <span className="text-xs font-bold leading-tight">{opt.name}</span>
+                            <span
+                              className={`text-[10px] font-medium leading-tight ${
+                                isSelected ? 'text-white/80' : 'text-[var(--on-surface-var)]'
+                              }`}
+                            >
+                              {opt.desc}
+                            </span>
+                          </div>
                         </div>
-                        {isSelected && <Check size={14} className="stroke-[2.5]" />}
+                        {isSelected && <Check size={14} className="stroke-[2.5] ml-2" />}
                       </button>
                     );
                   })}

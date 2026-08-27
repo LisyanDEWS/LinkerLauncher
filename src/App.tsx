@@ -3213,43 +3213,43 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="grid grid-cols-2 gap-2 flex-1 content-start mt-2">
             {activeToggles.length === 0 ? (
               <div className="col-span-2 flex items-center justify-center text-[11px] text-[var(--outline)] italic">
-                {lang === 'ru' ? 'Нет переключателей' : 'No toggles'}
+                {lang === 'ru' ? 'Нет переключателей' : lang === 'uk' ? 'Немає перемикачів' : 'No toggles'}
               </div>
             ) : (
               activeToggles.map((id) => {
                 const cfg = {
                   theme: {
                     icon: theme === 'dark' ? <Moon size={14} /> : <Sun size={14} />,
-                    label: theme === 'dark' ? (lang === 'ru' ? 'Тёмная' : 'Dark') : (lang === 'ru' ? 'Светлая' : 'Light'),
-                    sub: lang === 'ru' ? 'Тема' : 'Theme',
+                    label: theme === 'dark' ? (lang === 'ru' ? 'Тёмная' : lang === 'uk' ? 'Темна' : 'Dark') : (lang === 'ru' ? 'Светлая' : lang === 'uk' ? 'Світла' : 'Light'),
+                    sub: lang === 'ru' ? 'Тема' : lang === 'uk' ? 'Тема' : 'Theme',
                     active: theme === 'dark',
                     onClick: handleThemeToggle,
                   },
                   language: {
                     icon: <Languages size={14} />,
-                    label: lang === 'ru' ? 'Русский' : 'English',
-                    sub: lang === 'ru' ? 'Язык' : 'Language',
-                    active: lang === 'ru',
-                    onClick: () => setLang(lang === 'ru' ? 'en' : 'ru'),
+                    label: lang === 'ru' ? 'Русский' : lang === 'uk' ? 'Українська' : 'English',
+                    sub: lang === 'ru' ? 'Язык' : lang === 'uk' ? 'Мова' : 'Language',
+                    active: true,
+                    onClick: () => setLang(lang === 'ru' ? 'en' : lang === 'en' ? 'uk' : 'ru'),
                   },
                   sound: {
                     icon: isSoundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />,
-                    label: lang === 'ru' ? 'Звук' : 'Sound',
-                    sub: isSoundEnabled ? (lang === 'ru' ? 'Вкл' : 'On') : (lang === 'ru' ? 'Выкл' : 'Off'),
+                    label: lang === 'ru' ? 'Звук' : lang === 'uk' ? 'Звук' : 'Sound',
+                    sub: isSoundEnabled ? (lang === 'ru' ? 'Вкл' : lang === 'uk' ? 'Увімк' : 'On') : (lang === 'ru' ? 'Выкл' : lang === 'uk' ? 'Вимк' : 'Off'),
                     active: isSoundEnabled,
                     onClick: handleSoundToggle,
                   },
                   contrast: {
                     icon: <Monitor size={14} />,
-                    label: lang === 'ru' ? 'Контраст' : 'Contrast',
-                    sub: isContrast ? (lang === 'ru' ? 'Высокий' : 'High') : (lang === 'ru' ? 'Обычный' : 'Normal'),
+                    label: lang === 'ru' ? 'Контраст' : lang === 'uk' ? 'Контраст' : 'Contrast',
+                    sub: isContrast ? (lang === 'ru' ? 'Высокий' : lang === 'uk' ? 'Високий' : 'High') : (lang === 'ru' ? 'Обычный' : lang === 'uk' ? 'Звичайний' : 'Normal'),
                     active: isContrast,
                     onClick: handleContrastToggle,
                   },
                   night_light: {
                     icon: <SunMoon size={14} />,
-                    label: lang === 'ru' ? 'Ночной' : 'Night Light',
-                    sub: isNightLight ? (lang === 'ru' ? 'Вкл' : 'On') : (lang === 'ru' ? 'Выкл' : 'Off'),
+                    label: lang === 'ru' ? 'Ночной' : lang === 'uk' ? 'Нічний' : 'Night Light',
+                    sub: isNightLight ? (lang === 'ru' ? 'Вкл' : lang === 'uk' ? 'Увімк' : 'On') : (lang === 'ru' ? 'Выкл' : lang === 'uk' ? 'Вимк' : 'Off'),
                     active: isNightLight,
                     onClick: handleNightLightToggle,
                   },

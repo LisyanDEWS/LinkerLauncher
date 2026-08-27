@@ -140,12 +140,12 @@ import { updatePassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { LanguageSelector } from './LanguageSelector';
 
-const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
-  theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)' },
-  language: { ru: 'Язык', en: 'Language' },
-  sound: { ru: 'Звук', en: 'Sound' },
-  contrast: { ru: 'Контраст', en: 'Contrast' },
-  night_light: { ru: 'Ночной режим', en: 'Night Light' },
+const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string; uk: string }> = {
+  theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)', uk: 'Тема (Світла/Темна)' },
+  language: { ru: 'Язык', en: 'Language', uk: 'Мова' },
+  sound: { ru: 'Звук', en: 'Sound', uk: 'Звук' },
+  contrast: { ru: 'Контраст', en: 'Contrast', uk: 'Контраст' },
+  night_light: { ru: 'Ночной режим', en: 'Night Light', uk: 'Нічний режим' },
 };
 
 interface FullSettingsModalProps {
@@ -1827,7 +1827,7 @@ export default function FullSettingsModal({
                               return (
                                 <div key={id} className="flex items-center justify-between p-3 bg-[var(--surface-dim)] rounded-xl border border-[var(--outline-var)]">
                                   <span className="text-xs font-semibold text-[var(--on-surface)]">
-                                    {lang === 'ru' ? TOGGLE_LABELS[id].ru : TOGGLE_LABELS[id].en}
+                                    {TOGGLE_LABELS[id]?.[lang] || TOGGLE_LABELS[id]?.en || id}
                                   </span>
                                   <SquashToggle
                                     checked={isActive}
