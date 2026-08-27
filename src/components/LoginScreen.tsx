@@ -5,12 +5,14 @@ import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
+import { Language } from '../types';
+
 type LoginThemeMode = 'light' | 'dark' | 'system';
 
 interface LoginScreenProps {
   onLogin: (nickname: string, isSignup: boolean) => void;
-  lang: 'ru' | 'en';
-  onLangChange: (lang: 'ru' | 'en') => void;
+  lang: Language;
+  onLangChange: (lang: Language) => void;
 }
 
 export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
@@ -139,8 +141,61 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       errUser: 'Username must be at least 6 alphanumeric characters',
       errCheck: 'Please accept the privacy policy to proceed',
       redirecting: 'Welcome back! Loading platform...'
+    },
+    uk: {
+      infoText: 'Оберіть дію',
+      backBtn: 'Повернутися',
+      loginTitle: 'Вхід в акаунт',
+      loginSubtitle: 'Ласкаво просимо до LinkerRu',
+      lblEmail: 'Електронна пошта',
+      plEmail: 'name@domain.com',
+      lblPass: 'Пароль',
+      plPass: 'Введіть ваш пароль',
+      txtLogin: 'Увійти',
+      signupTitle: 'Реєстрація',
+      signupSubtitle: 'Створити новий акаунт',
+      hintStep2: "Ім'я профілю та угода",
+      lblUser: "Ім'я користувача",
+      plUser: 'латиниця та цифри, від 6 симв.',
+      txtNext: 'Далі',
+      txtBack: 'Назад',
+      txtSignup: 'Зареєструватися',
+      acceptTerms: 'Я погоджуюся з умовами та',
+      privacyPolicy: 'Політикою конфіденційності',
+      errReq: 'Будь ласка, заповніть усі поля',
+      errEmail: 'Некоректний формат електронної пошти',
+      errPass: 'Пароль має містити щонайменше 7 символів',
+      errUser: "Ім'я користувача: мін. 6 символів (тільки літери та цифри)",
+      errCheck: 'Необхідно погодитися з політикою конфіденційності',
+      redirecting: 'Успішний вхід! Завантаження платформи...'
     }
-  }[lang];
+  }[lang] || {
+    infoText: 'Select action',
+    backBtn: 'Go back',
+    loginTitle: 'Sign In',
+    loginSubtitle: 'Welcome to LinkerRu',
+    lblEmail: 'Email Address',
+    plEmail: 'name@domain.com',
+    lblPass: 'Password',
+    plPass: 'Enter your password',
+    txtLogin: 'Sign In',
+    signupTitle: 'Create Account',
+    signupSubtitle: 'Get started with LinkerRu',
+    hintStep2: 'Choose profile name & terms',
+    lblUser: 'Username',
+    plUser: 'alphanumeric, min 6 chars',
+    txtNext: 'Continue',
+    txtBack: 'Back',
+    txtSignup: 'Create Account',
+    acceptTerms: 'I accept the terms and',
+    privacyPolicy: 'Privacy Policy',
+    errReq: 'Please fill out all required fields',
+    errEmail: 'Invalid email address format',
+    errPass: 'Password must be at least 7 characters long',
+    errUser: 'Username must be at least 6 alphanumeric characters',
+    errCheck: 'Please accept the privacy policy to proceed',
+    redirecting: 'Welcome back! Loading platform...'
+  };
 
   // Actions
   const handleLogin = async (e: React.FormEvent) => {
@@ -334,38 +389,32 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
           </motion.button>
 
           <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm relative overflow-hidden h-9 items-center">
-            {/* The sliding pill */}
-            <motion.div
-              className="absolute bg-white rounded-xl shadow-sm"
-              initial={false}
-              animate={{
-                x: lang === 'en' ? 0 : 40,
-                width: 38,
-              }}
-              style={{
-                height: 'calc(100% - 8px)',
-                left: 4,
-              }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            />
-
+            <button
+              type="button"
+              onClick={() => onLangChange('ru')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold tracking-wider cursor-pointer transition-all ${
+                lang === 'ru' ? 'bg-white text-black shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              }`}
+            >
+              RU
+            </button>
             <button
               type="button"
               onClick={() => onLangChange('en')}
-              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-extrabold tracking-wider cursor-pointer transition-colors ${
-                lang === 'en' ? 'text-black' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold tracking-wider cursor-pointer transition-all ${
+                lang === 'en' ? 'bg-white text-black shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
               EN
             </button>
             <button
               type="button"
-              onClick={() => onLangChange('ru')}
-              className={`relative z-10 w-10 h-full flex items-center justify-center text-[11px] font-extrabold tracking-wider cursor-pointer transition-colors ${
-                lang === 'ru' ? 'text-black' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+              onClick={() => onLangChange('uk')}
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold tracking-wider cursor-pointer transition-all ${
+                lang === 'uk' ? 'bg-white text-black shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
-              RU
+              UK
             </button>
           </div>
         </motion.div>
@@ -570,19 +619,6 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                         <p className="text-xs text-[var(--on-surface-var)] mt-1 font-medium">
                           {selection === 'login' ? t.loginSubtitle : t.signupSubtitle}
                         </p>
-                      </div>
-
-                      {/* Email verification warning notice styled with active theme colors */}
-                      <div className="mb-5 p-3.5 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--on-surface)] text-xs flex items-start gap-2.5 leading-relaxed shadow-sm">
-                        <AlertTriangle size={18} className="shrink-0 mt-0.5 text-[var(--accent)]" />
-                        <div>
-                          <span className="font-extrabold block uppercase tracking-wider text-[10px] text-[var(--accent)] mb-0.5">
-                            {lang === 'ru' ? 'Предупреждение по почте' : 'Email Verification Warning'}
-                          </span>
-                          {lang === 'ru'
-                            ? 'Вы можете войти с недействительной или временной почтой, но учтите: при планируемой ежемесячной проверке адресов (раз в месяц) аккаунты с недействительными e-mail будут заблокированы навсегда.'
-                            : 'You can log in using a temporary or fake email, but note: when monthly email verification runs (once a month), accounts with invalid emails will be permanently banned.'}
-                        </div>
                       </div>
 
                       {/* LOGIN FORM */}

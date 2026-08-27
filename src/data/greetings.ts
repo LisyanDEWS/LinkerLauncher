@@ -5,12 +5,16 @@
  * All greetings are warm, clear, friendly, and easy to understand.
  */
 
+import { Language } from '../types';
+
 export interface GreetingCategory {
   id: string;
   /** Russian greeting template — {name} is replaced with the nickname */
   ru: string[];
   /** English greeting template — {name} is replaced with the nickname */
   en: string[];
+  /** Ukrainian greeting template — {name} is replaced with the nickname */
+  uk: string[];
 }
 
 /* ── Morning (hours 5–10) ── */
@@ -39,6 +43,18 @@ const morning: GreetingCategory = {
     'Have a fantastic day ahead, {name}!',
     'Ready for a great day, {name}?',
     'Beautiful morning, {name}!',
+  ],
+  uk: [
+    'Доброго ранку, {name}!',
+    'З добрим ранком, {name}!',
+    'Як настрій цього ранку, {name}?',
+    'Чудового початку дня, {name}!',
+    'Бажаємо прекрасного ранку, {name}!',
+    'Нехай ранок буде добрим, {name}!',
+    'Час для кави чи чаю, {name}?',
+    'Вдалого дня, {name}!',
+    'Нехай усе вдасться сьогодні, {name}!',
+    'Прекрасний ранок, {name}!',
   ],
 };
 
@@ -69,6 +85,18 @@ const afternoon: GreetingCategory = {
     'Hey {name}, how are things?',
     'Keep up the great work, {name}!',
   ],
+  uk: [
+    'Доброго дня, {name}!',
+    'Гарного дня, {name}!',
+    'Як настрій цього дня, {name}?',
+    'Смачного обіду, {name}!',
+    'Як минає твій день, {name}?',
+    'Вдалого продовження дня, {name}!',
+    'Чудового дня та гарного настрою, {name}!',
+    'Нехай день принесе радість, {name}!',
+    'Привіт, {name}! Як справи?',
+    'Бажаємо продуктивного дня, {name}!',
+  ],
 };
 
 /* ── Evening (hours 17–22) ── */
@@ -97,6 +125,18 @@ const evening: GreetingCategory = {
     'Rest up and enjoy your evening, {name}!',
     'Wishing you a peaceful evening, {name}!',
     'Hope you accomplished everything today, {name}!',
+  ],
+  uk: [
+    'Доброго вечора, {name}!',
+    'Як минув твій день, {name}?',
+    'Приємного та затишного вечора, {name}!',
+    'Чудового вечора, {name}!',
+    'Час відпочити та розслабитися, {name}!',
+    'Сподіваємося, день був вдалим, {name}!',
+    'Затишного вечора, {name}!',
+    'Як настрій цього вечора, {name}?',
+    'Гарного відпочинку після робочого дня, {name}!',
+    'Прекрасного вечора, {name}!',
   ],
 };
 
@@ -127,6 +167,18 @@ const night: GreetingCategory = {
     'Sleep well, {name}!',
     'Nighty night, {name}!',
   ],
+  uk: [
+    'Доброї ночі, {name}!',
+    'Приємних снів, {name}!',
+    'Як настрій цієї ночі, {name}?',
+    'Солодких снів, {name}!',
+    'Спокійної ночі, {name}!',
+    'Тихої та спокійної ночі, {name}!',
+    'Набирайся сил перед новим днем, {name}!',
+    'Добрих снів, {name}!',
+    'Не забудь добре виспатися, {name}!',
+    'Затишної ночі, {name}!',
+  ],
 };
 
 /* ── Days & General Time (random selection) ── */
@@ -156,6 +208,18 @@ const daysGeneral: GreetingCategory = {
     'How are your goals coming along, {name}?',
     'Wishing you a wonderful time, {name}!',
   ],
+  uk: [
+    'Чудового понеділка, {name}!',
+    'Вдалого вівторка, {name}!',
+    'Гарної середи, {name}!',
+    'Чудового четверга, {name}!',
+    'Прекрасної п\'ятниці, {name}!',
+    'З поверненням, {name}!',
+    'Раді тебе бачити, {name}!',
+    'Знову разом, {name}!',
+    'Як успіхи сьогодні, {name}?',
+    'Бажаємо відмінних результатів, {name}!',
+  ],
 };
 
 /* ── Holidays & Occasions (checked by date) ── */
@@ -164,17 +228,19 @@ interface Holiday {
   day: number;   // 1-31
   ru: string;
   en: string;
+  uk: string;
 }
 
 const holidays: Holiday[] = [
-  { month: 1, day: 1, ru: 'С Новым годом, {name}!', en: 'Happy New Year, {name}!' },
-  { month: 12, day: 25, ru: 'С Рождеством, {name}!', en: 'Merry Christmas, {name}!' },
-  { month: 12, day: 31, ru: 'С наступающим Новым годом, {name}!', en: 'Happy New Year\'s Eve, {name}!' },
-  { month: 10, day: 31, ru: 'Счастливого Хэллоуина, {name}!', en: 'Happy Halloween, {name}!' },
-  { month: 11, day: 27, ru: 'С Днём благодарения, {name}!', en: 'Happy Thanksgiving, {name}!' },
-  { month: 4, day: 20, ru: 'Счастливой Пасхи, {name}!', en: 'Happy Easter, {name}!' },
-  { month: 7, day: 4, ru: 'С Днём независимости, {name}!', en: 'Happy 4th of July, {name}!' },
-  { month: 12, day: 24, ru: 'Сочельник, {name}!', en: 'Christmas Eve, {name}!' },
+  { month: 1, day: 1, ru: 'С Новым годом, {name}!', en: 'Happy New Year, {name}!', uk: 'З Новим роком, {name}!' },
+  { month: 12, day: 25, ru: 'С Рождеством, {name}!', en: 'Merry Christmas, {name}!', uk: 'З Різдвом, {name}!' },
+  { month: 12, day: 31, ru: 'С наступающим Новым годом, {name}!', en: 'Happy New Year\'s Eve, {name}!', uk: 'З прийдешнім Новим роком, {name}!' },
+  { month: 10, day: 31, ru: 'Счастливого Хэллоуина, {name}!', en: 'Happy Halloween, {name}!', uk: 'Щасливого Гелловіну, {name}!' },
+  { month: 11, day: 27, ru: 'С Днём благодарения, {name}!', en: 'Happy Thanksgiving, {name}!', uk: 'З Днем подяки, {name}!' },
+  { month: 4, day: 20, ru: 'Счастливой Пасхи, {name}!', en: 'Happy Easter, {name}!', uk: 'Щасливого Великодня, {name}!' },
+  { month: 7, day: 4, ru: 'С Днём независимости, {name}!', en: 'Happy 4th of July, {name}!', uk: 'З Днем незалежності, {name}!' },
+  { month: 8, day: 24, ru: 'С Днём независимости Украины, {name}!', en: 'Happy Ukraine Independence Day, {name}!', uk: 'З Днем незалежності України, {name}!' },
+  { month: 12, day: 24, ru: 'Сочельник, {name}!', en: 'Christmas Eve, {name}!', uk: 'Святвечір, {name}!' },
 ];
 
 /**
@@ -186,15 +252,16 @@ const holidays: Holiday[] = [
  * 3. Time-of-day greeting (deterministic by hour)
  *
  * @param nickname - the user's nickname (or fallback)
- * @param lang - 'ru' or 'en'
+ * @param lang - 'ru' | 'en' | 'uk'
  * @param date - optional Date override for testing
  */
 export function getGreeting(
   nickname: string,
-  lang: 'ru' | 'en',
+  lang: Language = 'ru',
   date: Date = new Date(),
 ): string {
-  const name = nickname || (lang === 'ru' ? 'друг' : 'friend');
+  const currentLang = (lang in morning) ? lang : 'en';
+  const name = nickname || (currentLang === 'ru' ? 'друг' : currentLang === 'uk' ? 'друже' : 'friend');
   const month = date.getMonth() + 1;
   const day = date.getDate();
   const hour = date.getHours();
@@ -203,13 +270,13 @@ export function getGreeting(
   // 1. Check holidays first
   const holiday = holidays.find((h) => h.month === month && h.day === day);
   if (holiday) {
-    return holiday[lang].replace('{name}', name);
+    return holiday[currentLang].replace('{name}', name);
   }
 
   // 2. Deterministic check for day-of-week greeting based on date seed (no Math.random)
   const dateSeed = date.getFullYear() * 10000 + month * 100 + day;
   if (dayOfWeek >= 1 && dayOfWeek <= 5 && (dateSeed % 4 === 0)) {
-    const pool = daysGeneral[lang];
+    const pool = daysGeneral[currentLang];
     const dayIndex = (dayOfWeek - 1) % pool.length;
     return pool[dayIndex].replace('{name}', name);
   }
@@ -233,7 +300,7 @@ export function getGreeting(
   }
 
   const subHour = date.getMinutes() < 30 ? 0 : 1;
-  const poolIndex = (indexInCategory * 2 + subHour) % category[lang].length;
+  const poolIndex = (indexInCategory * 2 + subHour) % category[currentLang].length;
 
-  return category[lang][poolIndex].replace('{name}', name);
+  return category[currentLang][poolIndex].replace('{name}', name);
 }

@@ -1,4 +1,4 @@
-export type Language = 'ru' | 'en';
+export type Language = 'ru' | 'en' | 'uk';
 export type ThemeMode = 'light' | 'dark';
 export type ClockType = 'digital' | 'analog';
 

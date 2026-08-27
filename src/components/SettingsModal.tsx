@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, Sun, Volume2 } from 'lucide-react';
+import { X, ChevronRight, Sun, Volume2, Languages, Check, ChevronDown } from 'lucide-react';
 import { Language, ThemeMode } from '../types';
 import { translations } from '../data/translations';
 
@@ -37,15 +37,26 @@ export default function SettingsModal({
   isSoundEnabled,
   onSoundToggle
 }: SettingsModalProps) {
-  const t = translations[lang];
+  const t = translations[lang] || translations.ru;
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({
     top: 80,
     left: 24,
   });
   const [backdropClickable, setBackdropClickable] = useState(true);
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+
+  const langOptions: { id: Language; label: string; flag: string }[] = [
+    { id: 'ru', label: 'Русский (RU)', flag: '🇷🇺' },
+    { id: 'en', label: 'English (EN)', flag: '🇬🇧' },
+    { id: 'uk', label: 'Українська (UK)', flag: '🇺🇦' },
+  ];
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsLangMenuOpen(false);
+      return;
+    }
     setBackdropClickable(true);
 
     const updatePosition = () => {
@@ -83,6 +94,18 @@ export default function SettingsModal({
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setIsLangMenuOpen(false);
+      }
+    };
+    if (isLangMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isLangMenuOpen]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: number) => void) => {
     setter(Number(e.target.value));
@@ -195,36 +218,78 @@ export default function SettingsModal({
               </button>
             </div>
 
-            {/* Language Selection Segment */}
-            <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-2xl p-1 gap-1 mb-4" id="quick-settings-lang-tabs">
+            {/* Language Selection Dropdown Ladder (without increasing popover size) */}
+            <div className="relative mb-4" ref={langMenuRef} id="quick-settings-lang-ladder-container">
               <button
-                onClick={() => onLangChange('en')}
-                className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all ${
-                  lang === 'en'
-                    ? 'text-[var(--surface)] shadow-md'
-                    : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
-                }`}
-                style={{
-                  backgroundColor: lang === 'en' ? primaryColor : undefined,
-                }}
-                id="quick-settings-lang-en"
+                type="button"
+                onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[var(--container)] border border-[var(--outline-var)] hover:border-[var(--outline)] rounded-2xl transition-all cursor-pointer shadow-sm group"
+                id="quick-settings-lang-trigger"
               >
-                EN
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-[var(--surface)] flex items-center justify-center text-[var(--accent)] border border-[var(--outline-var)] shadow-2xs">
+                    <Languages size={13} />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] leading-none">
+                      {lang === 'ru' ? 'Язык' : lang === 'uk' ? 'Мова' : 'Language'}
+                    </span>
+                    <span className="text-xs font-bold text-[var(--on-surface)] mt-0.5 leading-none">
+                      {langOptions.find((l) => l.id === lang)?.label || lang.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-[var(--accent)] text-white shadow-2xs">
+                    {lang.toUpperCase()}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`text-[var(--on-surface-var)] transition-transform duration-200 ${
+                      isLangMenuOpen ? 'rotate-180 text-[var(--accent)]' : ''
+                    }`}
+                  />
+                </div>
               </button>
-              <button
-                onClick={() => onLangChange('ru')}
-                className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all ${
-                  lang === 'ru'
-                    ? 'text-[var(--surface)] shadow-md'
-                    : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
-                }`}
-                style={{
-                  backgroundColor: lang === 'ru' ? primaryColor : undefined,
-                }}
-                id="quick-settings-lang-ru"
-              >
-                RU
-              </button>
+
+              {/* Floating Ladder Menu */}
+              <AnimatePresence>
+                {isLangMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                    className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[var(--surface)]/95 backdrop-blur-xl border border-[var(--outline-var)] rounded-2xl p-1.5 shadow-xl space-y-1"
+                    id="quick-settings-lang-ladder-menu"
+                  >
+                    {langOptions.map((opt) => {
+                      const isSelected = lang === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            onLangChange(opt.id);
+                            setIsLangMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[var(--accent)] text-white shadow-sm'
+                              : 'text-[var(--on-surface)] hover:bg-[var(--container)]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-sm">{opt.flag}</span>
+                            <span>{opt.label}</span>
+                          </div>
+                          {isSelected && <Check size={14} className="stroke-[2.5]" />}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Theme Toggle */}

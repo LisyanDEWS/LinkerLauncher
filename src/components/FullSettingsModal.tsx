@@ -1401,8 +1401,23 @@ export default function FullSettingsModal({
 
                           <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative" id="language-tab-switcher">
                             <button
+                              onClick={() => onLangChange('ru')}
+                              className={`relative z-10 px-3.5 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                lang === 'ru' ? 'text-white' : 'text-[var(--on-surface-var)]'
+                              }`}
+                            >
+                              {lang === 'ru' && (
+                                <motion.div
+                                  layoutId="lang-pill-settings"
+                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
+                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                              )}
+                              Русский
+                            </button>
+                            <button
                               onClick={() => onLangChange('en')}
-                              className={`relative z-10 px-4 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                              className={`relative z-10 px-3.5 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
                                 lang === 'en' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
                             >
@@ -1416,19 +1431,19 @@ export default function FullSettingsModal({
                               English
                             </button>
                             <button
-                              onClick={() => onLangChange('ru')}
-                              className={`relative z-10 px-4 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                lang === 'ru' ? 'text-white' : 'text-[var(--on-surface-var)]'
+                              onClick={() => onLangChange('uk')}
+                              className={`relative z-10 px-3.5 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
+                                lang === 'uk' ? 'text-white' : 'text-[var(--on-surface-var)]'
                               }`}
                             >
-                              {lang === 'ru' && (
+                              {lang === 'uk' && (
                                 <motion.div
                                   layoutId="lang-pill-settings"
                                   className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
                                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                                 />
                               )}
-                              Русский
+                              Українська
                             </button>
                           </div>
                         </div>

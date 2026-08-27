@@ -1,19 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Languages, 
-  Sun, 
-  Moon, 
-  Clock, 
   ShieldAlert, 
   Check, 
   ArrowLeft, 
   ArrowRight, 
   Type,
-  Thermometer,
   SkipForward
 } from 'lucide-react';
-import { materialPalettes } from '../data/themes';
 import { NOTIFICATION_SOUNDS } from '../data/sounds';
 import { Language, ThemeMode } from '../types';
 
@@ -22,16 +17,16 @@ interface OnboardingModalProps {
   onClose: () => void;
   lang: Language;
   onLangChange: (l: Language) => void;
-  theme: ThemeMode;
-  onThemeChange: (t: ThemeMode) => void;
-  activePaletteId: string;
-  onPaletteChange: (id: string) => void;
-  mainWallpaper: string;
-  onWallpaperChange: (wp: string) => void;
-  clockType: 'digital' | 'analog';
-  onClockTypeChange: (type: 'digital' | 'analog') => void;
-  clockVariation: 1 | 2 | 3;
-  onClockVariationChange: (v: 1 | 2 | 3) => void;
+  theme?: ThemeMode;
+  onThemeChange?: (t: ThemeMode) => void;
+  activePaletteId?: string;
+  onPaletteChange?: (id: string) => void;
+  mainWallpaper?: string;
+  onWallpaperChange?: (wp: string) => void;
+  clockType?: 'digital' | 'analog';
+  onClockTypeChange?: (type: 'digital' | 'analog') => void;
+  clockVariation?: 1 | 2 | 3;
+  onClockVariationChange?: (v: 1 | 2 | 3) => void;
   panicKey: string;
   onPanicKeyChange: (key: string) => void;
   panicUrl: string;
@@ -39,10 +34,10 @@ interface OnboardingModalProps {
   // Font, Time Format & Temp Unit settings
   fontFamily: string;
   onFontFamilyChange: (font: string) => void;
-  timeFormat: '12h' | '24h';
-  onTimeFormatChange: (tf: '12h' | '24h') => void;
-  tempUnit: 'C' | 'F';
-  onTempUnitChange: (tu: 'C' | 'F') => void;
+  timeFormat?: '12h' | '24h';
+  onTimeFormatChange?: (tf: '12h' | '24h') => void;
+  tempUnit?: 'C' | 'F';
+  onTempUnitChange?: (tu: 'C' | 'F') => void;
 }
 
 export default function OnboardingModal({
@@ -50,39 +45,22 @@ export default function OnboardingModal({
   onClose,
   lang,
   onLangChange,
-  theme,
-  onThemeChange,
-  activePaletteId,
-  onPaletteChange,
-  mainWallpaper,
-  onWallpaperChange,
-  clockType,
-  onClockTypeChange,
-  clockVariation,
-  onClockVariationChange,
+  theme = 'dark',
   panicKey,
   onPanicKeyChange,
   panicUrl,
   onPanicUrlChange,
   fontFamily,
   onFontFamilyChange,
-  timeFormat,
-  onTimeFormatChange,
-  tempUnit,
-  onTempUnitChange,
 }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   // Local state for Panic Button
   const [isPanicEnabled, setIsPanicEnabled] = useState(panicKey !== '');
   const [localPanicKey, setLocalPanicKey] = useState(panicKey || 'Ctrl+0');
   const [localPanicUrl, setLocalPanicUrl] = useState(panicUrl || 'https://google.com');
-  const [panicSound, setPanicSound] = useState<string>(() => localStorage.getItem('linkerru_panic_sound') || 'opal_bell');
-
-  const selectedPalette = useMemo(() => {
-    return materialPalettes.find(p => p.id === activePaletteId) || materialPalettes.find(p => p.id === 'monochrome') || materialPalettes[0];
-  }, [activePaletteId]);
+  const [panicSound] = useState<string>(() => localStorage.getItem('linkerru_panic_sound') || 'opal_bell');
 
   const linkerLogo = 'https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206';
 
@@ -108,15 +86,6 @@ export default function OnboardingModal({
 
     const combo = [...modifiers, key === ' ' ? 'Space' : key.length === 1 ? key.toUpperCase() : key].join('+');
     setLocalPanicKey(combo);
-  };
-
-  const playPanicSoundPreview = () => {
-    const found = NOTIFICATION_SOUNDS.find(s => s.id === panicSound);
-    if (found) {
-      const audio = new Audio(found.url);
-      audio.volume = 0.8;
-      audio.play().catch(console.error);
-    }
   };
 
   const handleNext = () => {
@@ -155,6 +124,7 @@ export default function OnboardingModal({
   if (!isOpen) return null;
 
   const isRu = lang === 'ru';
+  const isUk = lang === 'uk';
 
   return (
     <AnimatePresence>
@@ -188,15 +158,13 @@ export default function OnboardingModal({
                 <img 
                   src={linkerLogo} 
                   alt="LinkerRu Logo" 
-                  className={`w-full h-full object-contain ${
-                    theme === 'light' ? 'brightness-0 invert' : 'brightness-0 invert'
-                  }`} 
+                  className="w-full h-full object-contain brightness-0 invert" 
                 />
               </div>
               <div>
                 <h2 className="text-base font-black tracking-tight text-[var(--on-surface)]">LinkerRu :Re</h2>
                 <p className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">
-                  {isRu ? 'Первичная настройка M3' : 'Material 3 Initial Setup'}
+                  {isRu ? 'Первичная настройка' : isUk ? 'Початкове налаштування' : 'Initial Setup'}
                 </p>
               </div>
             </div>
@@ -218,7 +186,7 @@ export default function OnboardingModal({
                           ? 'w-2.5 bg-[var(--accent)]/50'
                           : 'w-2.5 bg-[var(--outline-var)]'
                     }`}
-                    title={`${isRu ? 'Шаг' : 'Step'} ${stepNum}`}
+                    title={`${isRu ? 'Шаг' : isUk ? 'Крок' : 'Step'} ${stepNum}`}
                   />
                 );
               })}
@@ -245,32 +213,37 @@ export default function OnboardingModal({
                       <Languages size={28} />
                     </div>
                     <h3 className="text-xl font-black text-[var(--on-surface)]">
-                      {isRu ? 'Выберите язык интерфейса' : 'Select interface language'}
+                      {isRu ? 'Выберите язык интерфейса' : isUk ? 'Оберіть мову інтерфейсу' : 'Select interface language'}
                     </h3>
                     <p className="text-xs text-[var(--on-surface-var)] font-semibold">
-                      {isRu ? 'Вы сможете переключить язык в любой момент в настройках.' : 'You can switch the language anytime in settings.'}
+                      {isRu 
+                        ? 'Вы сможете переключить язык в любой момент в настройках.' 
+                        : isUk 
+                          ? 'Ви зможете змінити мову в будь-який момент у налаштуваннях.' 
+                          : 'You can switch the language anytime in settings.'}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto">
                     <motion.button
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.95 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       onClick={() => onLangChange('ru')}
-                      className={`p-5 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
                         lang === 'ru'
                           ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md scale-[1.02]'
                           : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">🇷🇺</span>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">Русский</div>
                           <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Russian</div>
                         </div>
                       </div>
-                      {lang === 'ru' && <Check size={18} className="text-[var(--accent)]" />}
+                      {lang === 'ru' && <Check size={18} className="text-[var(--accent)] shrink-0" />}
                     </motion.button>
 
                     <motion.button
@@ -278,19 +251,41 @@ export default function OnboardingModal({
                       whileTap={{ scale: 0.95 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                       onClick={() => onLangChange('en')}
-                      className={`p-5 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
                         lang === 'en'
                           ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md scale-[1.02]'
                           : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">🇬🇧</span>
                         <div>
                           <div className="text-sm font-black text-[var(--on-surface)]">English</div>
-                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Английский</div>
+                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">English</div>
                         </div>
                       </div>
-                      {lang === 'en' && <Check size={18} className="text-[var(--accent)]" />}
+                      {lang === 'en' && <Check size={18} className="text-[var(--accent)] shrink-0" />}
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      onClick={() => onLangChange('uk')}
+                      className={`p-4 rounded-2xl border-2 text-left flex items-center justify-between transition-all cursor-pointer ${
+                        lang === 'uk'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-md scale-[1.02]'
+                          : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:border-[var(--outline)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">🇺🇦</span>
+                        <div>
+                          <div className="text-sm font-black text-[var(--on-surface)]">Українська</div>
+                          <div className="text-[10px] font-extrabold text-[var(--on-surface-var)]">Ukrainian</div>
+                        </div>
+                      </div>
+                      {lang === 'uk' && <Check size={18} className="text-[var(--accent)] shrink-0" />}
                     </motion.button>
                   </div>
                 </motion.div>
@@ -310,10 +305,14 @@ export default function OnboardingModal({
                       <Type size={28} />
                     </div>
                     <h3 className="text-xl font-black text-[var(--on-surface)]">
-                      {isRu ? 'Системный шрифт' : 'System Typography'}
+                      {isRu ? 'Системный шрифт' : isUk ? 'Системний шрифт' : 'System Typography'}
                     </h3>
                     <p className="text-xs text-[var(--on-surface-var)] font-semibold">
-                      {isRu ? 'Выберите основной гарнитурный шрифт для рабочего стола и приложений.' : 'Select the primary typeface family for desktop UI and apps.'}
+                      {isRu 
+                        ? 'Выберите основной гарнитурный шрифт для рабочего стола и приложений.' 
+                        : isUk 
+                          ? 'Оберіть основний шрифт для робочого столу та додатків.' 
+                          : 'Select the primary typeface family for desktop UI and apps.'}
                     </p>
                   </div>
 
@@ -343,95 +342,10 @@ export default function OnboardingModal({
                 </motion.div>
               )}
 
-              {/* STEP 3: Theme Mode & Palette */}
+              {/* STEP 3: Panic Button */}
               {step === 3 && (
                 <motion.div
                   key="step3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-5"
-                >
-                  <div className="text-center max-w-md mx-auto space-y-2">
-                    <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-3 shadow-inner">
-                      <Sun size={28} />
-                    </div>
-                    <h3 className="text-xl font-black text-[var(--on-surface)]">
-                      {isRu ? 'Тема и Цветовая палитра' : 'Theme & Accent Palette'}
-                    </h3>
-                    <p className="text-xs text-[var(--on-surface-var)] font-semibold">
-                      {isRu ? 'Выберите режим оформления и Material 3 палитру акцентов.' : 'Choose visual mode and dynamic Material 3 accent color palette.'}
-                    </p>
-                  </div>
-
-                  {/* Mode switcher */}
-                  <div className="flex items-center justify-center bg-[var(--container)] border border-[var(--outline-var)] rounded-2xl p-1 gap-1 max-w-md mx-auto relative">
-                    <button
-                      onClick={() => onThemeChange('light')}
-                      className={`relative z-10 flex-1 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                        theme === 'light' ? 'text-white' : 'text-[var(--on-surface-var)]'
-                      }`}
-                    >
-                      {theme === 'light' && (
-                        <motion.div
-                          layoutId="onboarding-theme-pill"
-                          className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                        />
-                      )}
-                      <Sun size={16} />
-                      <span>{isRu ? 'Светлая' : 'Light'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => onThemeChange('dark')}
-                      className={`relative z-10 flex-1 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                        theme === 'dark' ? 'text-white' : 'text-[var(--on-surface-var)]'
-                      }`}
-                    >
-                      {theme === 'dark' && (
-                        <motion.div
-                          layoutId="onboarding-theme-pill"
-                          className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                        />
-                      )}
-                      <Moon size={16} />
-                      <span>{isRu ? 'Тёмная' : 'Dark'}</span>
-                    </button>
-                  </div>
-
-                  {/* Palette selector */}
-                  <div className="space-y-2 max-w-md mx-auto pt-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block text-center">
-                      {isRu ? 'Материальные акценты' : 'Material Accent Tokens'}
-                    </span>
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                      {materialPalettes.map((p) => {
-                        const isSelected = p.id === activePaletteId;
-                        return (
-                          <button
-                            key={p.id}
-                            onClick={() => onPaletteChange(p.id)}
-                            className={`h-11 rounded-2xl border-2 transition-all hover:scale-110 cursor-pointer flex items-center justify-center ${
-                              isSelected ? 'border-[var(--on-surface)] shadow-lg scale-105' : 'border-transparent'
-                            }`}
-                            style={{ backgroundColor: p.primary }}
-                            title={isRu ? p.nameRu : p.nameEn}
-                          >
-                            {isSelected && <Check size={14} className="text-white drop-shadow-md" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* STEP 4: Panic Button */}
-              {step === 4 && (
-                <motion.div
-                  key="step4"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -442,10 +356,14 @@ export default function OnboardingModal({
                       <ShieldAlert size={28} />
                     </div>
                     <h3 className="text-xl font-black text-[var(--on-surface)]">
-                      {isRu ? 'Тревожная кнопка (Panic Button)' : 'Panic Button Safety'}
+                      {isRu ? 'Тревожная кнопка (Panic Button)' : isUk ? 'Тривожна кнопка (Panic Button)' : 'Panic Button Safety'}
                     </h3>
                     <p className="text-xs text-[var(--on-surface-var)] font-semibold">
-                      {isRu ? 'Мгновенно скрывает экран и перенаправляет вкладку при нажатии сочетания клавиш.' : 'Instantly hides screen content and redirects tab upon emergency key combination.'}
+                      {isRu 
+                        ? 'Мгновенно скрывает экран и перенаправляет вкладку при нажатии сочетания клавиш.' 
+                        : isUk 
+                          ? 'Миттєво приховує екран та перенаправляє вкладку за гарячою клавішею.' 
+                          : 'Instantly hides screen content and redirects tab upon emergency key combination.'}
                     </p>
                   </div>
 
@@ -453,7 +371,7 @@ export default function OnboardingModal({
                     {/* Toggle Panic */}
                     <div className="flex items-center justify-between p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
                       <span className="text-xs font-black text-[var(--on-surface)]">
-                        {isRu ? 'Активировать функцию Panic Button' : 'Enable Panic Button Protection'}
+                        {isRu ? 'Активировать функцию Panic Button' : isUk ? 'Активувати функцію Panic Button' : 'Enable Panic Button Protection'}
                       </span>
                       <button
                         onClick={() => setIsPanicEnabled(!isPanicEnabled)}
@@ -473,7 +391,7 @@ export default function OnboardingModal({
                       <div className="space-y-3 p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl">
                         <div>
                           <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-1">
-                            {isRu ? 'Сочетание клавиш' : 'Hotkey Combination'}
+                            {isRu ? 'Сочетание клавиш' : isUk ? 'Комбінація клавіш' : 'Hotkey Combination'}
                           </label>
                           <input
                             type="text"
@@ -487,7 +405,7 @@ export default function OnboardingModal({
 
                         <div>
                           <label className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-1">
-                            {isRu ? 'Безопасный адрес для перехода' : 'Redirect Destination URL'}
+                            {isRu ? 'Безопасный адрес для перехода' : isUk ? 'Безпечна адреса переходу' : 'Redirect Destination URL'}
                           </label>
                           <input
                             type="text"
@@ -513,7 +431,7 @@ export default function OnboardingModal({
               className="px-4 py-3 rounded-2xl text-xs font-black text-[var(--on-surface-var)] hover:text-[var(--on-surface)] disabled:opacity-30 disabled:hover:text-[var(--on-surface-var)] transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft size={16} />
-              <span>{isRu ? 'Назад' : 'Back'}</span>
+              <span>{isRu ? 'Назад' : isUk ? 'Назад' : 'Back'}</span>
             </button>
 
             <div className="flex items-center gap-2">
@@ -523,7 +441,7 @@ export default function OnboardingModal({
                   className="px-4 py-3 rounded-2xl text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <SkipForward size={14} />
-                  <span>{isRu ? 'Пропустить' : 'Skip'}</span>
+                  <span>{isRu ? 'Пропустить' : isUk ? 'Пропустити' : 'Skip'}</span>
                 </button>
               )}
 
@@ -531,7 +449,11 @@ export default function OnboardingModal({
                 onClick={handleNext}
                 className="px-6 py-3.5 rounded-2xl text-xs font-black bg-[var(--accent)] text-white hover:opacity-95 active:scale-95 transition-all flex items-center gap-2 shadow-lg cursor-pointer"
               >
-                <span>{step === totalSteps ? (isRu ? 'Завершить настройку' : 'Finish Setup') : (isRu ? 'Продолжить' : 'Continue')}</span>
+                <span>
+                  {step === totalSteps 
+                    ? (isRu ? 'Завершить настройку' : isUk ? 'Завершити налаштування' : 'Finish Setup') 
+                    : (isRu ? 'Продолжить' : isUk ? 'Продовжити' : 'Continue')}
+                </span>
                 {step === totalSteps ? <Check size={16} /> : <ArrowRight size={16} />}
               </button>
             </div>
