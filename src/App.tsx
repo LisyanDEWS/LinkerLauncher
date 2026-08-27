@@ -83,6 +83,7 @@ import ServerModal from './components/ServerModal';
 import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
+import { LanguageSelector } from './components/LanguageSelector';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -3254,6 +3255,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                   },
                 } as Record<string, any>;
                 const activeCfg = cfg[id];
+
+                if (id === 'language') {
+                  return (
+                    <LanguageSelector
+                      key="language"
+                      lang={lang}
+                      onLangChange={handleLangChange}
+                      variant="toggle"
+                    />
+                  );
+                }
 
                 return (
                   <button

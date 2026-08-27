@@ -138,6 +138,7 @@ import { ColorPickerField } from './ColorPickerField';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { updatePassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
+import { LanguageSelector } from './LanguageSelector';
 
 const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string }> = {
   theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)' },
@@ -569,30 +570,12 @@ export default function FullSettingsModal({
         action: 'toggle_lang',
         icon: <Languages size={18} />,
         control: (
-          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-0.5 gap-0.5">
-            <motion.button
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onLangChange('en')}
-              className={`px-3 py-1 rounded-full text-[10px] font-black transition-all cursor-pointer ${
-                lang === 'en' ? 'text-[var(--surface)] shadow' : 'text-[var(--on-surface-var)]'
-              }`}
-              style={{ backgroundColor: lang === 'en' ? activePalette.primary : undefined }}
-            >
-              EN
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onLangChange('ru')}
-              className={`px-3 py-1 rounded-full text-[10px] font-black transition-all cursor-pointer ${
-                lang === 'ru' ? 'text-[var(--surface)] shadow' : 'text-[var(--on-surface-var)]'
-              }`}
-              style={{ backgroundColor: lang === 'ru' ? activePalette.primary : undefined }}
-            >
-              RU
-            </motion.button>
-          </div>
+          <LanguageSelector
+            lang={lang}
+            onLangChange={onLangChange}
+            variant="compact"
+            align="right"
+          />
         ),
       },
       {
@@ -1399,53 +1382,13 @@ export default function FullSettingsModal({
                             </div>
                           </div>
 
-                          <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative" id="language-tab-switcher">
-                            <button
-                              onClick={() => onLangChange('ru')}
-                              className={`relative z-10 px-3.5 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                lang === 'ru' ? 'text-white' : 'text-[var(--on-surface-var)]'
-                              }`}
-                            >
-                              {lang === 'ru' && (
-                                <motion.div
-                                  layoutId="lang-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
-                              Русский
-                            </button>
-                            <button
-                              onClick={() => onLangChange('en')}
-                              className={`relative z-10 px-3.5 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                lang === 'en' ? 'text-white' : 'text-[var(--on-surface-var)]'
-                              }`}
-                            >
-                              {lang === 'en' && (
-                                <motion.div
-                                  layoutId="lang-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
-                              English
-                            </button>
-                            <button
-                              onClick={() => onLangChange('uk')}
-                              className={`relative z-10 px-3.5 py-2 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                lang === 'uk' ? 'text-white' : 'text-[var(--on-surface-var)]'
-                              }`}
-                            >
-                              {lang === 'uk' && (
-                                <motion.div
-                                  layoutId="lang-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
-                              Українська
-                            </button>
-                          </div>
+                          <LanguageSelector
+                            lang={lang}
+                            onLangChange={onLangChange}
+                            variant="button"
+                            align="right"
+                            id="language-tab-switcher"
+                          />
                         </div>
 
                         {/* TIME FORMAT SETTING */}

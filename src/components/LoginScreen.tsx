@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
-import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Check, ArrowLeft, Loader2, Shield, Sun, Moon, Monitor, HelpCircle, AlertTriangle, Eye, EyeOff, Languages, ChevronDown } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -71,6 +71,26 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   // Privacy modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWhyGuestModalOpen, setIsWhyGuestModalOpen] = useState(false);
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+
+  const langOptions: { id: Language; label: string; flag: string }[] = [
+    { id: 'ru', label: 'Русский (RU)', flag: '🇷🇺' },
+    { id: 'en', label: 'English (EN)', flag: '🇬🇧' },
+    { id: 'uk', label: 'Українська (UK)', flag: '🇺🇦' },
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setIsLangMenuOpen(false);
+      }
+    };
+    if (isLangMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isLangMenuOpen]);
 
   // Error shake triggers
   const [errorField, setErrorField] = useState<string | null>(null);
@@ -388,34 +408,67 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
             <span className="text-[11px] font-bold tracking-wider uppercase">{themeLabel}</span>
           </motion.button>
 
-          <div className="flex bg-[var(--surface)] rounded-2xl p-1 border border-[var(--outline)] shadow-sm relative overflow-hidden h-9 items-center">
-            <button
+          <div className="relative" ref={langMenuRef}>
+            <motion.button
               type="button"
-              onClick={() => onLangChange('ru')}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold tracking-wider cursor-pointer transition-all ${
-                lang === 'ru' ? 'bg-white text-black shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
-              }`}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              className="flex items-center gap-2 bg-[var(--surface)] rounded-2xl px-3 py-2 border border-[var(--outline)] shadow-sm cursor-pointer text-[var(--on-surface)] hover:border-[var(--on-surface)] transition-colors h-9"
+              aria-label={lang === 'ru' ? 'Выбрать язык' : lang === 'uk' ? 'Обрати мову' : 'Select language'}
             >
-              RU
-            </button>
-            <button
-              type="button"
-              onClick={() => onLangChange('en')}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold tracking-wider cursor-pointer transition-all ${
-                lang === 'en' ? 'bg-white text-black shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
-              }`}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              onClick={() => onLangChange('uk')}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold tracking-wider cursor-pointer transition-all ${
-                lang === 'uk' ? 'bg-white text-black shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
-              }`}
-            >
-              UK
-            </button>
+              <Languages size={14} className="text-[var(--on-surface-var)]" />
+              <span className="text-[11px] font-bold tracking-wider uppercase">
+                {lang === 'ru' ? 'Язык' : lang === 'uk' ? 'Мова' : 'Language'}
+              </span>
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-[var(--accent)] text-white ml-0.5">
+                {lang.toUpperCase()}
+              </span>
+              <ChevronDown
+                size={13}
+                className={`text-[var(--on-surface-var)] transition-transform duration-200 ${
+                  isLangMenuOpen ? 'rotate-180 text-[var(--accent)]' : ''
+                }`}
+              />
+            </motion.button>
+
+            {/* Floating Dropdown Ladder Menu */}
+            <AnimatePresence>
+              {isLangMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                  className="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-[var(--surface)]/95 backdrop-blur-xl border border-[var(--outline)] rounded-2xl p-1.5 shadow-xl space-y-1"
+                >
+                  {langOptions.map((opt) => {
+                    const isSelected = lang === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          onLangChange(opt.id);
+                          setIsLangMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[var(--accent)] text-white shadow-sm'
+                            : 'text-[var(--on-surface)] hover:bg-[var(--container)]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{opt.flag}</span>
+                          <span>{opt.label}</span>
+                        </div>
+                        {isSelected && <Check size={14} className="stroke-[2.5]" />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </header>
