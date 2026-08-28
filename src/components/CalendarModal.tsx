@@ -121,7 +121,7 @@ export default function CalendarModal({ isOpen, onClose, lang, primaryColor }: C
     );
   };
 
-  const monthLabel = currentDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+  const monthLabel = currentDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'uk' ? 'uk-UA' : 'en-US', {
     month: 'long',
     year: 'numeric',
   });
@@ -268,7 +268,7 @@ export default function CalendarModal({ isOpen, onClose, lang, primaryColor }: C
               <div className="border-t border-[var(--outline-var)] pt-4" id="calendar-events-section">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)]">
-                    {selectedDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+                    {selectedDate.toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'uk' ? 'uk-UA' : 'en-US', {
                       day: 'numeric',
                       month: 'long',
                     })}

@@ -233,22 +233,26 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
       const dMin = daily.variables(1)!.valuesArray();
       const dCode = daily.variables(2)!.valuesArray();
 
-      const days = lang === 'ru' ? ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'] : ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+      const days = lang === 'ru' 
+        ? ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'] 
+        : lang === 'uk'
+        ? ['НД', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ']
+        : ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
       const dData: DailyForecast[] = [];
       for (let i = 0; i < Math.min(7, dMax.length); i++) {
         const d = new Date();
         d.setDate(d.getDate() + i);
         const code = dCode[i];
         let type = 'sun';
-        let desc = lang === 'ru' ? 'Ясно' : 'Clear';
-        if (code >= 1 && code <= 3) { type = 'cloudy_sun'; desc = lang === 'ru' ? 'Облачно' : 'Cloudy'; }
-        if (code >= 45 && code <= 48) { type = 'cloudy'; desc = lang === 'ru' ? 'Туман' : 'Fog'; }
-        if (code >= 51 && code <= 67) { type = 'rain'; desc = lang === 'ru' ? 'Дождь' : 'Rain'; }
-        if (code >= 71 && code <= 77) { type = 'snow'; desc = lang === 'ru' ? 'Снег' : 'Snow'; }
-        if (code >= 80 && code <= 99) { type = 'rain'; desc = lang === 'ru' ? 'Ливень' : 'Shower'; }
+        let desc = lang === 'ru' ? 'Ясно' : lang === 'uk' ? 'Ясно' : 'Clear';
+        if (code >= 1 && code <= 3) { type = 'cloudy_sun'; desc = lang === 'ru' ? 'Облачно' : lang === 'uk' ? 'Хмарно' : 'Cloudy'; }
+        if (code >= 45 && code <= 48) { type = 'cloudy'; desc = lang === 'ru' ? 'Туман' : lang === 'uk' ? 'Туман' : 'Fog'; }
+        if (code >= 51 && code <= 67) { type = 'rain'; desc = lang === 'ru' ? 'Дождь' : lang === 'uk' ? 'Дощ' : 'Rain'; }
+        if (code >= 71 && code <= 77) { type = 'snow'; desc = lang === 'ru' ? 'Снег' : lang === 'uk' ? 'Сніг' : 'Snow'; }
+        if (code >= 80 && code <= 99) { type = 'rain'; desc = lang === 'ru' ? 'Ливень' : lang === 'uk' ? 'Злива' : 'Shower'; }
 
         dData.push({
-          day: i === 0 ? (lang === 'ru' ? 'Сегодня' : 'Today') : `${days[d.getDay()]}`,
+          day: i === 0 ? (lang === 'ru' ? 'Сегодня' : lang === 'uk' ? 'Сьогодні' : 'Today') : `${days[d.getDay()]}`,
           maxTemp: dMax[i],
           minTemp: dMin[i],
           type,
@@ -325,7 +329,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               {t.weather_title}
             </h3>
             <p className="text-[10.5px] text-[var(--on-surface-var)] font-semibold truncate leading-tight">
-              {cityName || (lang === 'ru' ? 'Автоопределение' : 'Auto-detected')}
+              {cityName || (lang === 'ru' ? 'Автоопределение' : lang === 'uk' ? 'Автовизначення' : 'Auto-detected')}
             </p>
           </div>
         </div>
@@ -339,10 +343,10 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 ? 'bg-[var(--on-surface)] text-[var(--surface)] border-transparent shadow-xs'
                 : 'bg-[var(--surface)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container-high)]'
             }`}
-            title={lang === 'ru' ? 'Настройки локации' : 'Location settings'}
+            title={lang === 'ru' ? 'Настройки локации' : lang === 'uk' ? 'Налаштування локації' : 'Location settings'}
           >
             <MapPin size={12} />
-            <span className="hidden sm:inline text-[11px]">{lang === 'ru' ? 'Локация' : 'Location'}</span>
+            <span className="hidden sm:inline text-[11px]">{lang === 'ru' ? 'Локация' : lang === 'uk' ? 'Локація' : 'Location'}</span>
           </button>
 
           {/* Unit Switcher */}
@@ -401,13 +405,13 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-[var(--on-surface)] flex items-center gap-1.5">
                 <Compass size={13} className="text-[var(--on-surface)]" />
-                {lang === 'ru' ? 'Координаты погоды' : 'Weather Coordinates'}
+                {lang === 'ru' ? 'Координаты погоды' : lang === 'uk' ? 'Координати погоди' : 'Weather Coordinates'}
               </span>
               <button
                 onClick={() => setShowSettings(false)}
                 className="text-[11px] font-bold text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
               >
-                {lang === 'ru' ? 'Закрыть' : 'Close'}
+                {lang === 'ru' ? 'Закрыть' : lang === 'uk' ? 'Закрити' : 'Close'}
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -441,7 +445,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               }}
               className="w-full bg-[var(--on-surface)] text-[var(--surface)] py-2 rounded-xl text-xs font-extrabold shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
             >
-              {lang === 'ru' ? 'Обновить координаты' : 'Update Coordinates'}
+              {lang === 'ru' ? 'Обновить координаты' : lang === 'uk' ? 'Оновити координати' : 'Update Coordinates'}
             </button>
           </motion.div>
         )}
@@ -456,7 +460,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             <div className="flex items-start justify-between relative z-10">
               <div>
                 <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[var(--on-surface-var)] block mb-1">
-                  {lang === 'ru' ? 'Текущая погода' : 'Current weather'}
+                  {lang === 'ru' ? 'Текущая погода' : lang === 'uk' ? 'Поточна погода' : 'Current weather'}
                 </span>
                 {loading ? (
                   <div className="h-12 w-28 rounded-xl bg-[var(--surface-dim)] animate-pulse my-1" />
@@ -474,7 +478,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   {dailyData.length > 0 ? getWeatherIcon(dailyData[0].type, 32) : <Sun size={32} className="text-[var(--on-surface)]" />}
                 </div>
                 <span className="text-xs font-extrabold text-[var(--on-surface)] mt-1.5">
-                  {dailyData.length > 0 ? dailyData[0].desc : (lang === 'ru' ? 'Ясно' : 'Clear')}
+                  {dailyData.length > 0 ? dailyData[0].desc : (lang === 'ru' ? 'Ясно' : lang === 'uk' ? 'Ясно' : 'Clear')}
                 </span>
               </div>
             </div>
@@ -482,7 +486,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             {/* Bottom info row inside hero */}
             <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--outline-var)]/60 relative z-10 text-[11px]">
               <span className="font-bold text-[var(--on-surface-var)]">
-                {lang === 'ru' ? 'Сегодня' : 'Today'}
+                {lang === 'ru' ? 'Сегодня' : lang === 'uk' ? 'Сьогодні' : 'Today'}
               </span>
               {dailyData.length > 0 && (
                 <div className="flex items-center gap-1.5 font-black text-[var(--on-surface)] tabular-nums">
@@ -503,13 +507,13 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               </div>
               <div className="min-w-0">
                 <span className="text-[9.5px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block truncate">
-                  {lang === 'ru' ? 'Ветер' : 'Wind'}
+                  {lang === 'ru' ? 'Ветер' : lang === 'uk' ? 'Вітер' : 'Wind'}
                 </span>
                 {loading ? (
                   <div className="h-3.5 w-10 rounded bg-[var(--surface)] animate-pulse mt-0.5" />
                 ) : (
                   <span className="text-xs font-black text-[var(--on-surface)] block truncate tabular-nums">
-                    {windSpeed ? Math.round(windSpeed) : '--'} {lang === 'ru' ? 'м/с' : 'm/s'}
+                    {windSpeed ? Math.round(windSpeed) : '--'} {lang === 'ru' || lang === 'uk' ? 'м/с' : 'm/s'}
                   </span>
                 )}
               </div>
@@ -522,7 +526,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               </div>
               <div className="min-w-0">
                 <span className="text-[9.5px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block truncate">
-                  {lang === 'ru' ? 'Влажность' : 'Humidity'}
+                  {lang === 'ru' ? 'Влажность' : lang === 'uk' ? 'Вологість' : 'Humidity'}
                 </span>
                 {loading ? (
                   <div className="h-3.5 w-10 rounded bg-[var(--surface)] animate-pulse mt-0.5" />
@@ -578,7 +582,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               <CalendarDays size={13} />
             </div>
             <h4 className="text-[11px] font-black uppercase tracking-widest text-[var(--on-surface)]">
-              {lang === 'ru' ? 'Прогноз на 7 дней' : '7-Day Forecast'}
+              {lang === 'ru' ? 'Прогноз на 7 дней' : lang === 'uk' ? 'Прогноз на 7 днів' : '7-Day Forecast'}
             </h4>
           </div>
 

@@ -219,7 +219,7 @@ export default function ClockModal({ isOpen, onClose, lang, activePalette, onOpe
               className="mt-2 w-full py-2.5 rounded-2xl text-xs font-bold bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline)] hover:bg-[var(--surface-dim)] hover:border-[var(--on-surface-var)] transition-all flex items-center justify-center gap-2"
             >
               <Maximize size={14} />
-              <span>Standby Mode</span>
+              <span>{lang === 'ru' ? 'Режим ожидания (Standby)' : lang === 'uk' ? 'Режим очікування (Standby)' : 'Standby Mode'}</span>
             </button>
           </motion.div>
         </div>

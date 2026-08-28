@@ -55,7 +55,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
-    return d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+    return d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'uk' ? 'uk-UA' : 'en-US', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -86,7 +86,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <div className="w-6 h-6 border-2 border-[var(--outline-var)] border-t-[var(--accent)] rounded-full animate-spin" />
             <span className="text-xs text-[var(--on-surface-var)] font-semibold">
-              {lang === 'ru' ? 'Загрузка коммитов...' : 'Loading commits...'}
+              {lang === 'ru' ? 'Загрузка коммитов...' : lang === 'uk' ? 'Завантаження коммітів...' : 'Loading commits...'}
             </span>
           </div>
         )}
@@ -94,7 +94,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
         {error && !loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <span className="text-xs text-[var(--on-surface-var)] font-semibold">
-              {lang === 'ru' ? 'Не удалось загрузить изменения' : 'Failed to load changes'}
+              {lang === 'ru' ? 'Не удалось загрузить изменения' : lang === 'uk' ? 'Не вдалося завантажити зміни' : 'Failed to load changes'}
             </span>
             <a
               href="https://github.com/LisyanDEWS/LinkerLauncher/commits/main"
@@ -102,7 +102,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
               rel="noopener noreferrer"
               className="text-[10px] font-bold text-[var(--accent)] hover:underline"
             >
-              {lang === 'ru' ? 'Открыть на GitHub' : 'Open on GitHub'}
+              {lang === 'ru' ? 'Открыть на GitHub' : lang === 'uk' ? 'Відкрити на GitHub' : 'Open on GitHub'}
             </a>
           </div>
         )}
@@ -110,7 +110,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
         {!loading && !error && commits.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <span className="text-xs text-[var(--on-surface-var)] font-semibold">
-              {lang === 'ru' ? 'Нет коммитов' : 'No commits'}
+              {lang === 'ru' ? 'Нет коммитов' : lang === 'uk' ? 'Немає коммітів' : 'No commits'}
             </span>
           </div>
         )}
@@ -129,7 +129,7 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
               </div>
               {idx === 0 && (
                 <span className="text-[9px] font-black uppercase tracking-wider text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-full shrink-0">
-                  {lang === 'ru' ? 'Последний' : 'Latest'}
+                  {lang === 'ru' ? 'Последний' : lang === 'uk' ? 'Останній' : 'Latest'}
                 </span>
               )}
             </div>

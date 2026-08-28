@@ -678,11 +678,28 @@ export default function App() {
         if (newSha && newSha !== 'unknown') {
           const prevSha = localStorage.getItem('linkerru_last_commit_sha');
           if (prevSha && prevSha !== newSha) {
-            // Developers pushed a new commit to GitHub!
+            // Developers pushed a new commit to GitHub — update 3 minutes after push
+            let delayMs = 0;
+            if (latestCommit.dateStr) {
+              const commitTimestamp = new Date(latestCommit.dateStr).getTime();
+              if (!isNaN(commitTimestamp)) {
+                const elapsed = Date.now() - commitTimestamp;
+                const THREE_MINUTES_MS = 3 * 60 * 1000;
+                if (elapsed < THREE_MINUTES_MS) {
+                  delayMs = THREE_MINUTES_MS - elapsed;
+                }
+              }
+            }
             localStorage.setItem('linkerru_last_commit_sha', newSha);
-            localStorage.setItem('linkerru_is_updating', 'true');
-            // Auto reload to enter the updating screen
-            window.location.reload();
+            if (delayMs > 0) {
+              setTimeout(() => {
+                localStorage.setItem('linkerru_is_updating', 'true');
+                window.location.reload();
+              }, delayMs);
+            } else {
+              localStorage.setItem('linkerru_is_updating', 'true');
+              window.location.reload();
+            }
             return;
           }
           // Store current SHA baseline

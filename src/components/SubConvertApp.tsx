@@ -24,7 +24,7 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Material3Palette } from '../types';
+import { Material3Palette, Language } from '../types';
 
 interface Snippet {
   start: number;
@@ -56,7 +56,7 @@ interface TranscriptData {
 }
 
 interface SubConvertAppProps {
-  lang: 'ru' | 'en';
+  lang: Language;
   theme?: 'light' | 'dark';
   activePalette?: Material3Palette;
   playChime?: (type?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
@@ -65,12 +65,13 @@ interface SubConvertAppProps {
 }
 
 const PRESET_LANGUAGES = [
-  { code: 'ru', labelRu: 'Русский', labelEn: 'Russian' },
-  { code: 'en', labelRu: 'Английский', labelEn: 'English' },
-  { code: 'es', labelRu: 'Испанский', labelEn: 'Spanish' },
-  { code: 'de', labelRu: 'Немецкий', labelEn: 'German' },
-  { code: 'fr', labelRu: 'Французский', labelEn: 'French' },
-  { code: 'ja', labelRu: 'Японский', labelEn: 'Japanese' },
+  { code: 'uk', labelRu: 'Украинский', labelUk: 'Українська', labelEn: 'Ukrainian' },
+  { code: 'ru', labelRu: 'Русский', labelUk: 'Російська', labelEn: 'Russian' },
+  { code: 'en', labelRu: 'Английский', labelUk: 'Англійська', labelEn: 'English' },
+  { code: 'es', labelRu: 'Испанский', labelUk: 'Іспанська', labelEn: 'Spanish' },
+  { code: 'de', labelRu: 'Немецкий', labelUk: 'Німецька', labelEn: 'German' },
+  { code: 'fr', labelRu: 'Французский', labelUk: 'Французька', labelEn: 'French' },
+  { code: 'ja', labelRu: 'Японский', labelUk: 'Японська', labelEn: 'Japanese' },
 ];
 
 function extractVideoId(input: string): string {
@@ -258,7 +259,7 @@ export function SubConvertApp({
   openAgnoGPT,
 }: SubConvertAppProps) {
   const [videoUrl, setVideoUrl] = useState('');
-  const [preferredLang, setPreferredLang] = useState(lang === 'ru' ? 'ru' : 'en');
+  const [preferredLang, setPreferredLang] = useState(lang === 'ru' ? 'ru' : lang === 'uk' ? 'uk' : 'en');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TranscriptData | null>(null);
@@ -291,7 +292,7 @@ export function SubConvertApp({
   const handleFetch = async (targetLang?: string, targetUrl?: string) => {
     const queryUrl = (targetUrl !== undefined ? targetUrl : videoUrl).trim();
     if (!queryUrl) {
-      setError(lang === 'ru' ? 'Пожалуйста, вставьте ссылку на YouTube-видео или ID.' : 'Please paste a YouTube URL or video ID.');
+      setError(lang === 'ru' ? 'Пожалуйста, вставьте ссылку на YouTube-видео или ID.' : lang === 'uk' ? 'Будь ласка, вставте посилання на YouTube-відео або ID.' : 'Please paste a YouTube URL or video ID.');
       playChime?.('alert');
       return;
     }
@@ -305,7 +306,7 @@ export function SubConvertApp({
 
     try {
       if (!vidId) {
-        throw new Error(lang === 'ru' ? 'Неверная ссылка на YouTube-видео' : 'Invalid YouTube video URL');
+        throw new Error(lang === 'ru' ? 'Неверная ссылка на YouTube-видео' : lang === 'uk' ? 'Невірне посилання на YouTube-відео' : 'Invalid YouTube video URL');
       }
 
       const loadedData = await fetchClientTranscript(vidId, chosenLang);
@@ -330,15 +331,17 @@ export function SubConvertApp({
       });
 
       playChime?.('victory');
-      triggerToast?.(lang === 'ru' ? `Субтитры успешно загружены (${loadedData.snippetCount} строк)` : `Subtitles loaded (${loadedData.snippetCount} lines)`);
+      triggerToast?.(lang === 'ru' ? `Субтитры успешно загружены (${loadedData.snippetCount} строк)` : lang === 'uk' ? `Субтитри успішно завантажено (${loadedData.snippetCount} рядків)` : `Subtitles loaded (${loadedData.snippetCount} lines)`);
     } catch (err: any) {
       let errorMessage = err?.message || '';
       if (errorMessage.includes('Transcript is disabled') || errorMessage.includes('No subtitles')) {
         errorMessage = lang === 'ru' 
           ? 'Субтитры недоступны для этого видео (возможно отключены автором, либо YouTube блокирует серверные запросы).' 
+          : lang === 'uk'
+          ? 'Субтитри недоступні для цього відео (можливо вимкнені автором, або YouTube блокує серверні запити).'
           : 'Transcripts are disabled by the author, or YouTube is blocking the request.';
       }
-      setError(errorMessage || (lang === 'ru' ? 'Ошибка загрузки' : 'Extraction error'));
+      setError(errorMessage || (lang === 'ru' ? 'Ошибка загрузки' : lang === 'uk' ? 'Помилка завантаження' : 'Extraction error'));
       playChime?.('alert');
     } finally {
       setIsLoading(false);
@@ -350,7 +353,7 @@ export function SubConvertApp({
     navigator.clipboard.writeText(data.text);
     setCopiedType('text');
     playChime?.('toast');
-    triggerToast?.(lang === 'ru' ? 'Текст скопирован в буфер обмена' : 'Transcript copied to clipboard');
+    triggerToast?.(lang === 'ru' ? 'Текст скопирован в буфер обмена' : lang === 'uk' ? 'Текст скопійовано в буфер обміну' : 'Transcript copied to clipboard');
     setTimeout(() => setCopiedType(null), 2000);
   };
 
@@ -387,7 +390,7 @@ export function SubConvertApp({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    triggerToast?.(lang === 'ru' ? `Файл ${filename} скачан` : `Downloaded ${filename}`);
+    triggerToast?.(lang === 'ru' ? `Файл ${filename} скачан` : lang === 'uk' ? `Файл ${filename} завантажено` : `Downloaded ${filename}`);
   };
 
   const handleDownloadTxt = () => {
@@ -415,12 +418,12 @@ export function SubConvertApp({
       setCopiedType('agno');
       setTimeout(() => setCopiedType(null), 2000);
       playChime?.('click');
-      triggerToast?.(lang === 'ru' ? 'Текст скопирован. Открываем AgnoGPT...' : 'Text copied. Opening AgnoGPT...');
+      triggerToast?.(lang === 'ru' ? 'Текст скопирован. Открываем AgnoGPT...' : lang === 'uk' ? 'Текст скопійовано. Відкриваємо AgnoGPT...' : 'Text copied. Opening AgnoGPT...');
       if (openAgnoGPT) {
         openAgnoGPT();
       }
     } catch (err) {
-      triggerToast?.(lang === 'ru' ? 'Не удалось скопировать текст' : 'Failed to copy text');
+      triggerToast?.(lang === 'ru' ? 'Не удалось скопировать текст' : lang === 'uk' ? 'Не вдалося скопіювати текст' : 'Failed to copy text');
     }
   };
 
@@ -464,6 +467,8 @@ export function SubConvertApp({
               <p className="text-xs text-[var(--on-surface-var)] font-medium">
                 {lang === 'ru'
                   ? 'Мгновенное извлечение и конвертация субтитров (.txt, .srt, .json)'
+                  : lang === 'uk'
+                  ? 'Миттєве вилучення та конвертація субтитрів (.txt, .srt, .json)'
                   : 'Extract and convert YouTube subtitles & transcripts (.txt, .srt, .json)'}
               </p>
             </div>
@@ -480,7 +485,7 @@ export function SubConvertApp({
                 className="px-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] hover:bg-[var(--container-high)] text-xs font-bold text-[var(--on-surface)] transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <RefreshCw size={13} />
-                <span className="hidden sm:inline">{lang === 'ru' ? 'Новое видео' : 'New Video'}</span>
+                <span className="hidden sm:inline">{lang === 'ru' ? 'Новое видео' : lang === 'uk' ? 'Нове відео' : 'New Video'}</span>
               </button>
             )}
           </div>
@@ -500,6 +505,8 @@ export function SubConvertApp({
                 placeholder={
                   lang === 'ru'
                     ? 'Вставьте ссылку YouTube (например, https://youtu.be/...)'
+                    : lang === 'uk'
+                    ? 'Вставте посилання YouTube (наприклад, https://youtu.be/...)'
                     : 'Paste YouTube URL or Video ID (e.g. https://youtu.be/...)'
                 }
                 className="w-full pl-10 pr-24 py-3 rounded-2xl border border-[var(--outline)] bg-[var(--surface)] text-[var(--on-surface)] text-xs md:text-sm font-semibold placeholder:text-[var(--outline)] focus:outline-none focus:border-[var(--accent)] transition-all shadow-inner"
@@ -511,7 +518,7 @@ export function SubConvertApp({
                   <button
                     onClick={() => setVideoUrl('')}
                     className="p-1.5 rounded-lg hover:bg-[var(--surface-dim)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
-                    title={lang === 'ru' ? 'Очистить' : 'Clear'}
+                    title={lang === 'ru' ? 'Очистить' : lang === 'uk' ? 'Очистити' : 'Clear'}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -520,7 +527,7 @@ export function SubConvertApp({
                     onClick={handlePaste}
                     className="px-2 py-1 rounded-lg bg-[var(--surface-dim)] hover:bg-[var(--container-high)] text-[10px] font-bold text-[var(--on-surface-var)] transition-colors cursor-pointer"
                   >
-                    {lang === 'ru' ? 'Вставить' : 'Paste'}
+                    {lang === 'ru' ? 'Вставить' : lang === 'uk' ? 'Вставити' : 'Paste'}
                   </button>
                 )}
               </div>
@@ -535,12 +542,12 @@ export function SubConvertApp({
               {isLoading ? (
                 <>
                   <RefreshCw size={15} className="animate-spin" />
-                  <span>{lang === 'ru' ? 'Извлечение...' : 'Extracting...'}</span>
+                  <span>{lang === 'ru' ? 'Извлечение...' : lang === 'uk' ? 'Вилучення...' : 'Extracting...'}</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={15} />
-                  <span>{lang === 'ru' ? 'Извлечь субтитры' : 'Get Subtitles'}</span>
+                  <span>{lang === 'ru' ? 'Извлечь субтитры' : lang === 'uk' ? 'Вилучити субтитри' : 'Get Subtitles'}</span>
                 </>
               )}
             </button>
@@ -550,7 +557,7 @@ export function SubConvertApp({
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-[11px] font-bold text-[var(--on-surface-var)] flex items-center gap-1 mr-1">
               <Languages size={13} />
-              {lang === 'ru' ? 'Язык:' : 'Lang:'}
+              {lang === 'ru' ? 'Язык:' : lang === 'uk' ? 'Мова:' : 'Lang:'}
             </span>
             {PRESET_LANGUAGES.map((l) => (
               <button
@@ -566,7 +573,7 @@ export function SubConvertApp({
                 }`}
                 style={preferredLang === l.code ? { backgroundColor: primaryColor } : undefined}
               >
-                {lang === 'ru' ? l.labelRu : l.labelEn}
+                {lang === 'ru' ? l.labelRu : lang === 'uk' ? l.labelUk : l.labelEn}
               </button>
             ))}
           </div>
@@ -578,7 +585,7 @@ export function SubConvertApp({
         <div className="m-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold flex items-start gap-2.5">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-bold">{lang === 'ru' ? 'Не удалось извлечь субтитры:' : 'Could not extract subtitles:'}</span>
+            <span className="font-bold">{lang === 'ru' ? 'Не удалось извлечь субтитры:' : lang === 'uk' ? 'Не вдалося вилучити субтитри:' : 'Could not extract subtitles:'}</span>
             <p className="mt-0.5 text-red-300 leading-relaxed">{error}</p>
           </div>
         </div>
@@ -600,7 +607,7 @@ export function SubConvertApp({
                 <button
                   onClick={() => setShowPlayer(!showPlayer)}
                   className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-black/70 backdrop-blur-xs text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg cursor-pointer"
-                  title={lang === 'ru' ? 'Включить плеер' : 'Toggle player'}
+                  title={lang === 'ru' ? 'Включить плеер' : lang === 'uk' ? 'Увімкнути плеєр' : 'Toggle player'}
                 >
                   <Play size={16} className="ml-0.5" />
                 </button>
@@ -627,12 +634,12 @@ export function SubConvertApp({
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[10px] font-bold text-[var(--on-surface-var)]">
                     {data.isGenerated
-                      ? (lang === 'ru' ? 'Авто-субтитры' : 'Auto-generated')
-                      : (lang === 'ru' ? 'Авторские субтитры' : 'Manual subtitles')}
+                      ? (lang === 'ru' ? 'Авто-субтитры' : lang === 'uk' ? 'Авто-субтитри' : 'Auto-generated')
+                      : (lang === 'ru' ? 'Авторские субтитры' : lang === 'uk' ? 'Авторські субтитри' : 'Manual subtitles')}
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[10px] font-bold text-[var(--on-surface-var)] flex items-center gap-1">
                     <Clock size={11} />
-                    {data.snippetCount} {lang === 'ru' ? 'строк' : 'lines'}
+                    {data.snippetCount} {lang === 'ru' ? 'строк' : lang === 'uk' ? 'рядків' : 'lines'}
                   </span>
                   <a
                     href={`https://www.youtube.com/watch?v=${data.videoId}`}
@@ -667,7 +674,7 @@ export function SubConvertApp({
               <div className="mt-3 pt-3 border-t border-[var(--outline-var)]">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--outline)]">
-                    {lang === 'ru' ? 'Доступные дорожки:' : 'Available tracks:'}
+                    {lang === 'ru' ? 'Доступные дорожки:' : lang === 'uk' ? 'Доступні доріжки:' : 'Available tracks:'}
                   </span>
                   {data.availableLanguages.map((trk, i) => (
                     <button
@@ -699,7 +706,7 @@ export function SubConvertApp({
                     : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
                 }`}
               >
-                {lang === 'ru' ? 'Сплошной текст' : 'Full Transcript'}
+                {lang === 'ru' ? 'Сплошной текст' : lang === 'uk' ? 'Суцільний текст' : 'Full Transcript'}
               </button>
               <button
                 onClick={() => setViewMode('timed')}
@@ -709,7 +716,7 @@ export function SubConvertApp({
                     : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
                 }`}
               >
-                {lang === 'ru' ? 'С таймкодами' : 'Timed Subtitles'}
+                {lang === 'ru' ? 'С таймкодами' : lang === 'uk' ? 'З таймкодами' : 'Timed Subtitles'}
               </button>
             </div>
 
@@ -719,7 +726,7 @@ export function SubConvertApp({
                 type="text"
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                placeholder={lang === 'ru' ? 'Поиск в тексте...' : 'Search in transcript...'}
+                placeholder={lang === 'ru' ? 'Поиск в тексте...' : lang === 'uk' ? 'Пошук у тексті...' : 'Search in transcript...'}
                 className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] text-xs text-[var(--on-surface)] placeholder:text-[var(--outline)] focus:outline-none focus:border-[var(--accent)]"
               />
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--outline)]" />
@@ -742,14 +749,14 @@ export function SubConvertApp({
                 title="Analyze in AgnoGPT"
               >
                 {copiedType === 'agno' ? <Check size={13} className="text-white" /> : <Bot size={13} />}
-                <span>{copiedType === 'agno' ? (lang === 'ru' ? 'Открываем...' : 'Opening...') : (lang === 'ru' ? 'Анализ в AgnoGPT' : 'Analyze in AgnoGPT')}</span>
+                <span>{copiedType === 'agno' ? (lang === 'ru' ? 'Открываем...' : lang === 'uk' ? 'Відкриваємо...' : 'Opening...') : (lang === 'ru' ? 'Анализ в AgnoGPT' : lang === 'uk' ? 'Аналіз в AgnoGPT' : 'Analyze in AgnoGPT')}</span>
               </button>
               <button
                 onClick={handleCopyText}
                 className="px-3 py-1.5 rounded-xl border border-[var(--outline-var)] bg-[var(--surface)] hover:bg-[var(--container-high)] text-xs font-bold text-[var(--on-surface)] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
                 {copiedType === 'text' ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
-                <span>{copiedType === 'text' ? (lang === 'ru' ? 'Скопировано' : 'Copied') : (lang === 'ru' ? 'Копировать' : 'Copy')}</span>
+                <span>{copiedType === 'text' ? (lang === 'ru' ? 'Скопировано' : lang === 'uk' ? 'Скопійовано' : 'Copied') : (lang === 'ru' ? 'Копировать' : lang === 'uk' ? 'Копіювати' : 'Copy')}</span>
               </button>
 
               <button
@@ -796,7 +803,7 @@ export function SubConvertApp({
               <div className="space-y-2 select-text">
                 {filteredSnippets.length === 0 ? (
                   <div className="text-center py-8 text-xs text-[var(--outline)] italic">
-                    {lang === 'ru' ? 'Совпадений не найдено' : 'No matches found'}
+                    {lang === 'ru' ? 'Совпадений не найдено' : lang === 'uk' ? 'Збігів не знайдено' : 'No matches found'}
                   </div>
                 ) : (
                   filteredSnippets.map((s, idx) => (
@@ -817,10 +824,10 @@ export function SubConvertApp({
                         onClick={() => {
                           navigator.clipboard.writeText(s.text);
                           playChime?.('toast');
-                          triggerToast?.(lang === 'ru' ? 'Строка скопирована' : 'Line copied');
+                          triggerToast?.(lang === 'ru' ? 'Строка скопирована' : lang === 'uk' ? 'Рядок скопійовано' : 'Line copied');
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-[var(--surface-dim)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] transition-all cursor-pointer shrink-0"
-                        title={lang === 'ru' ? 'Копировать строку' : 'Copy line'}
+                        title={lang === 'ru' ? 'Копировать строку' : lang === 'uk' ? 'Копіювати рядок' : 'Copy line'}
                       >
                         <Copy size={12} />
                       </button>
@@ -842,11 +849,13 @@ export function SubConvertApp({
               <Subtitles size={32} />
             </div>
             <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">
-              {lang === 'ru' ? 'Конвертируйте YouTube-видео в субтитры' : 'Convert YouTube videos to subtitles'}
+              {lang === 'ru' ? 'Конвертируйте YouTube-видео в субтитры' : lang === 'uk' ? 'Конвертуйте YouTube-відео у субтитри' : 'Convert YouTube videos to subtitles'}
             </h3>
             <p className="text-xs md:text-sm text-[var(--on-surface-var)] max-w-md mt-1.5 leading-relaxed">
               {lang === 'ru'
                 ? 'Вставьте ссылку на любое видео YouTube сверху для моментального извлечения полного текста, таймкодов и экспорта в .TXT, .SRT или .JSON.'
+                : lang === 'uk'
+                ? 'Вставте посилання на будь-яке відео YouTube зверху для миттєвого вилучення повного тексту, таймкодів та експорту в .TXT, .SRT або .JSON.'
                 : 'Paste any YouTube video link above to instantly extract transcripts, timestamps, and export to .TXT, .SRT, or .JSON formats.'}
             </p>
           </div>
@@ -854,7 +863,7 @@ export function SubConvertApp({
           {recentTranscripts && recentTranscripts.length > 0 && (
             <div className="mt-8">
               <h4 className="text-sm font-bold text-[var(--on-surface)] mb-4">
-                {lang === 'ru' ? 'Недавние транскрипты' : 'Recent Transcripts'}
+                {lang === 'ru' ? 'Недавние транскрипты' : lang === 'uk' ? 'Нещодавні транскрипти' : 'Recent Transcripts'}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {recentTranscripts.map((t) => (

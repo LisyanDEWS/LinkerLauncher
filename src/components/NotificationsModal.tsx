@@ -41,14 +41,14 @@ export default function NotificationsModal({
           >
             <div className="p-4 border-b border-[var(--outline-var)] flex items-center justify-between bg-[var(--surface-dim)]">
               <span className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)]">
-                {lang === 'ru' ? 'Уведомления' : 'Notifications'}
+                {lang === 'ru' ? 'Уведомления' : lang === 'uk' ? 'Сповіщення' : 'Notifications'}
               </span>
               <div className="flex items-center gap-2">
                 {notifications.length > 0 && (
                   <button 
                     onClick={onClearAll}
                     className="p-1.5 rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container)] hover:text-[var(--on-surface)] transition-colors"
-                    title={lang === 'ru' ? 'Очистить все' : 'Clear all'}
+                    title={lang === 'ru' ? 'Очистить все' : lang === 'uk' ? 'Очистити все' : 'Clear all'}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -65,7 +65,7 @@ export default function NotificationsModal({
             <div className="max-h-[60vh] overflow-y-auto p-2 scrollbar-thin">
               {notifications.length === 0 ? (
                 <div className="py-10 text-center text-[var(--outline)] text-xs font-semibold">
-                  {lang === 'ru' ? 'Нет новых уведомлений' : 'No new notifications'}
+                  {lang === 'ru' ? 'Нет новых уведомлений' : lang === 'uk' ? 'Немає нових сповіщень' : 'No new notifications'}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -88,7 +88,7 @@ export default function NotificationsModal({
                             onClick={() => onMarkAsRead(n.id)}
                             className="shrink-0 text-[10px] font-black uppercase bg-[var(--surface)] border border-[var(--outline-var)] px-2 py-1 rounded-lg hover:bg-[var(--container-high)] transition-colors"
                           >
-                            {lang === 'ru' ? 'Прочитано' : 'Mark Read'}
+                            {lang === 'ru' ? 'Прочитано' : lang === 'uk' ? 'Прочитано' : 'Mark Read'}
                           </button>
                         )}
                       </div>

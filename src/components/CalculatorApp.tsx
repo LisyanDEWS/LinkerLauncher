@@ -31,6 +31,7 @@ interface HistoryEntry {
 
 export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
   const isRu = lang === 'ru';
+  const isUk = lang === 'uk';
   const accent = activePalette.primary;
 
   const [display, setDisplay] = useState('0');
@@ -67,6 +68,16 @@ export function CalculatorApp({ lang, activePalette }: CalculatorAppProps) {
         clearHistory: 'Очистить',
         historyTitle: 'История',
         historyEmpty: 'Здесь появятся ваши вычисления',
+      }
+    : isUk
+    ? {
+        clear: 'C',
+        delete: '⌫',
+        equals: '=',
+        history: 'Історія',
+        clearHistory: 'Очистити',
+        historyTitle: 'Історія',
+        historyEmpty: 'Тут з\'являться ваші обчислення',
       }
     : {
         clear: 'C',

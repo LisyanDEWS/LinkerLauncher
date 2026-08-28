@@ -48,6 +48,7 @@ const DARK_NOTE_COLORS = [
 
 export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
   const isRu = lang === 'ru';
+  const isUk = lang === 'uk';
   const accent = activePalette.primary;
   const colors = theme === 'dark' ? DARK_NOTE_COLORS : NOTE_COLORS;
 
@@ -173,11 +174,11 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
         <div className="flex items-center gap-2">
           <StickyNote size={18} className="text-[var(--accent)]" />
           <span className="text-sm font-black text-[var(--on-surface)] uppercase tracking-tight">
-            {isRu ? 'Заметки' : 'Keeps'}
+            {isRu ? 'Заметки' : isUk ? 'Нотатки' : 'Keeps'}
           </span>
         </div>
         <span className="text-[10px] text-[var(--on-surface-var)] font-bold">
-          {isRu ? 'Только локально' : 'Local only'}
+          {isRu ? 'Только локально' : isUk ? 'Тільки локально' : 'Local only'}
         </span>
       </div>
 
@@ -187,7 +188,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <StickyNote size={48} className="text-[var(--outline)]" />
             <p className="text-xs text-[var(--on-surface-var)] max-w-[220px]">
-              {isRu ? 'Нет заметок. Нажмите +, чтобы создать первую.' : 'No notes yet. Tap + to create your first one.'}
+              {isRu ? 'Нет заметок. Нажмите +, чтобы создать первую.' : isUk ? 'Немає нотаток. Натисніть +, щоб створити першу.' : 'No notes yet. Tap + to create your first one.'}
             </p>
           </div>
         ) : (
@@ -228,7 +229,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
                         handleUpdateNoteText(noteRef, text);
                       }, 600);
                     }}
-                    placeholder={isRu ? 'Текст заметки…' : 'Note text…'}
+                    placeholder={isRu ? 'Текст заметки…' : isUk ? 'Текст нотатки…' : 'Note text…'}
                     className="w-full resize-none bg-transparent text-xs text-[var(--on-surface)] outline-none placeholder:text-[var(--on-surface-var)]"
                     rows={Math.max(2, Math.ceil(note.text.length / 24))}
                   />
@@ -240,14 +241,14 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
                           onClick={() => handleUpdateNoteColor(note, i)}
                           className="h-3.5 w-3.5 rounded-full border border-[var(--outline-var)] transition-transform hover:scale-125"
                           style={{ backgroundColor: c }}
-                          title={isRu ? `Цвет ${i + 1}` : `Color ${i + 1}`}
+                          title={isRu ? `Цвет ${i + 1}` : isUk ? `Колір ${i + 1}` : `Color ${i + 1}`}
                         />
                       ))}
                     </div>
                     <button
                       onClick={() => handleDeleteNote(note)}
                       className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--on-surface-var)] hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                      title={isRu ? 'Удалить' : 'Delete'}
+                      title={isRu ? 'Удалить' : isUk ? 'Видалити' : 'Delete'}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -295,7 +296,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
                   autoFocus
                   value={composerText}
                   onChange={(e) => setComposerText(e.target.value)}
-                  placeholder={isRu ? 'Новая заметка…' : 'New note…'}
+                  placeholder={isRu ? 'Новая заметка…' : isUk ? 'Нова нотатка…' : 'New note…'}
                   className="w-full resize-none bg-transparent text-xs text-[var(--on-surface)] outline-none placeholder:text-[var(--on-surface-var)]"
                   rows={3}
                 />
@@ -304,7 +305,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors"
-                      title={isRu ? 'Добавить изображение' : 'Add image'}
+                      title={isRu ? 'Добавить изображение' : isUk ? 'Додати зображення' : 'Add image'}
                     >
                       <ImageIcon size={14} />
                     </button>
@@ -324,7 +325,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
                     className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white transition-transform hover:scale-105 active:scale-95"
                     style={{ backgroundColor: accent }}
                   >
-                    {isRu ? 'Готово' : 'Done'}
+                    {isRu ? 'Готово' : isUk ? 'Готово' : 'Done'}
                   </button>
                 </div>
               </div>
@@ -341,7 +342,7 @@ export function KeepsApp({ lang, theme, activePalette }: KeepsAppProps) {
           onClick={() => setComposerOpen(true)}
           className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg"
           style={{ backgroundColor: accent }}
-          title={isRu ? 'Новая заметка' : 'New note'}
+          title={isRu ? 'Новая заметка' : isUk ? 'Нова нотатка' : 'New note'}
         >
           <Plus size={22} />
         </motion.button>

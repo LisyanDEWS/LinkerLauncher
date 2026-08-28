@@ -2048,9 +2048,30 @@ export default function FullSettingsModal({
                                         const newSha = data[0].sha;
                                         const prevSha = localStorage.getItem('linkerru_last_commit_sha');
                                         if (prevSha && prevSha !== newSha) {
+                                          let delayMs = 0;
+                                          const dateStr = data[0].commit?.author?.date || data[0].commit?.committer?.date;
+                                          if (dateStr) {
+                                            const commitTimestamp = new Date(dateStr).getTime();
+                                            if (!isNaN(commitTimestamp)) {
+                                              const elapsed = Date.now() - commitTimestamp;
+                                              const THREE_MINUTES_MS = 3 * 60 * 1000;
+                                              if (elapsed < THREE_MINUTES_MS) {
+                                                delayMs = THREE_MINUTES_MS - elapsed;
+                                              }
+                                            }
+                                          }
                                           localStorage.setItem('linkerru_last_commit_sha', newSha);
-                                          localStorage.setItem('linkerru_is_updating', 'true');
-                                          window.location.reload();
+                                          if (delayMs > 0) {
+                                            const secLeft = Math.ceil(delayMs / 1000);
+                                            triggerToast?.(lang === 'ru' ? `Найдено обновление. Установка через ${secLeft} сек...` : lang === 'uk' ? `Знайдено оновлення. Встановлення через ${secLeft} сек...` : `Update found. Installing in ${secLeft}s...`);
+                                            setTimeout(() => {
+                                              localStorage.setItem('linkerru_is_updating', 'true');
+                                              window.location.reload();
+                                            }, delayMs);
+                                          } else {
+                                            localStorage.setItem('linkerru_is_updating', 'true');
+                                            window.location.reload();
+                                          }
                                           return;
                                         }
                                         localStorage.setItem('linkerru_last_commit_sha', newSha);

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Blocks, Paintbrush, Download, Check, Trash2, Search, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useWindows } from './WindowManager';
+import { Language } from '../types';
 
 interface ExtensionsManagerProps {
-  lang: 'ru' | 'en';
+  lang: Language;
   wm: ReturnType<typeof useWindows>;
   playChime?: (type?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
   triggerToast?: (text: string) => void;
@@ -14,7 +15,7 @@ interface ExtensionItem {
   id: string;
   name: string;
   category: string;
-  description: { ru: string; en: string };
+  description: { ru: string; en: string; uk: string };
   version: string;
   size: string;
   author: string;
@@ -46,9 +47,10 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
     {
       id: 'wallpaper-plus',
       name: 'Wallpaper+',
-      category: lang === 'ru' ? 'Персонализация' : 'Personalization',
+      category: lang === 'ru' ? 'Персонализация' : lang === 'uk' ? 'Персоналізація' : 'Personalization',
       description: {
         ru: 'Расширенная 4K галерея обоев с движком мгновенного применения на рабочий стол LinkerRu.',
+        uk: 'Розширена 4K галерея шпалер із рушієм миттєвого застосування на робочий стіл LinkerRu.',
         en: 'Advanced 4K wallpaper gallery with direct desktop engine for LinkerRu.',
       },
       version: 'v2.4.0',
@@ -79,7 +81,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
         ),
       });
     } else {
-      triggerToast?.(lang === 'ru' ? `Запуск ${extId}...` : `Launching ${extId}...`);
+      triggerToast?.(lang === 'ru' ? `Запуск ${extId}...` : lang === 'uk' ? `Запуск ${extId}...` : `Launching ${extId}...`);
     }
   };
 
@@ -89,16 +91,16 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
 
     let progress = 0;
     setDownloadingMap((prev) => ({ ...prev, [extId]: 0 }));
-    setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Подключение...' : 'Connecting...' }));
+    setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Подключение...' : lang === 'uk' ? 'Підключення...' : 'Connecting...' }));
 
     const interval = setInterval(() => {
       progress += Math.floor(Math.random() * 18) + 12;
       if (progress < 40) {
-        setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Загрузка пакета...' : 'Downloading package...' }));
+        setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Загрузка пакета...' : lang === 'uk' ? 'Завантаження пакета...' : 'Downloading package...' }));
       } else if (progress < 80) {
-        setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Распаковка ресурсов...' : 'Unpacking assets...' }));
+        setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Распаковка ресурсов...' : lang === 'uk' ? 'Розпакування ресурсів...' : 'Unpacking assets...' }));
       } else if (progress < 100) {
-        setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Регистрация манифеста...' : 'Registering manifest...' }));
+        setStatusTextMap((prev) => ({ ...prev, [extId]: lang === 'ru' ? 'Регистрация манифеста...' : lang === 'uk' ? 'Реєстрація маніфесту...' : 'Registering manifest...' }));
       }
 
       if (progress >= 100) {
@@ -118,7 +120,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
           setInstalledIds((prev) => Array.from(new Set([...prev, extId])));
           playChime?.('victory');
           const extName = extensionsList.find((e) => e.id === extId)?.name || extId;
-          triggerToast?.(lang === 'ru' ? `Расширение ${extName} установлено!` : `${extName} extension installed!`);
+          triggerToast?.(lang === 'ru' ? `Расширение ${extName} установлено!` : lang === 'uk' ? `Розширення ${extName} встановлено!` : `${extName} extension installed!`);
         }, 400);
       } else {
         setDownloadingMap((prev) => ({ ...prev, [extId]: progress }));
@@ -130,7 +132,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
     playChime?.('click');
     setInstalledIds((prev) => prev.filter((id) => id !== extId));
     const extName = extensionsList.find((e) => e.id === extId)?.name || extId;
-    triggerToast?.(lang === 'ru' ? `Расширение ${extName} удалено` : `${extName} uninstalled`);
+    triggerToast?.(lang === 'ru' ? `Расширение ${extName} удалено` : lang === 'uk' ? `Розширення ${extName} видалено` : `${extName} uninstalled`);
   };
 
   const filteredExtensions = extensionsList.filter((ext) => {
@@ -141,7 +143,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const matchName = ext.name.toLowerCase().includes(query);
-      const matchDesc = ext.description[lang].toLowerCase().includes(query);
+      const matchDesc = (ext.description[lang] || ext.description.en).toLowerCase().includes(query);
       const matchCat = ext.category.toLowerCase().includes(query);
       return matchName || matchDesc || matchCat;
     }
@@ -158,12 +160,14 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
               <Blocks size={20} />
             </div>
             <h2 className="text-xl font-bold tracking-tight">
-              {lang === 'ru' ? 'Менеджер расширений' : 'Extension Store & Manager'}
+              {lang === 'ru' ? 'Менеджер расширений' : lang === 'uk' ? 'Менеджер розширень' : 'Extension Store & Manager'}
             </h2>
           </div>
           <p className="text-xs text-[var(--on-surface-var)]">
             {lang === 'ru'
               ? 'Управление плагинами, обоями и системными виджетами'
+              : lang === 'uk'
+              ? 'Керування плагінами, шпалерами та системними віджетами'
               : 'Manage plugins, wallpapers, and desktop widgets'}
           </p>
         </div>
@@ -175,7 +179,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={lang === 'ru' ? 'Поиск расширений...' : 'Search extensions...'}
+            placeholder={lang === 'ru' ? 'Поиск расширений...' : lang === 'uk' ? 'Пошук розширень...' : 'Search extensions...'}
             className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--on-surface)] transition-all"
           />
         </div>
@@ -191,7 +195,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
               : 'bg-[var(--container)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
           }`}
         >
-          {lang === 'ru' ? 'Все' : 'All'} ({extensionsList.length})
+          {lang === 'ru' ? 'Все' : lang === 'uk' ? 'Усі' : 'All'} ({extensionsList.length})
         </button>
         <button
           onClick={() => { playChime?.('click'); setActiveTab('installed'); }}
@@ -201,7 +205,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
               : 'bg-[var(--container)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
           }`}
         >
-          {lang === 'ru' ? 'Установленные' : 'Installed'} ({installedIds.length})
+          {lang === 'ru' ? 'Установленные' : lang === 'uk' ? 'Встановлені' : 'Installed'} ({installedIds.length})
         </button>
         <button
           onClick={() => { playChime?.('click'); setActiveTab('store'); }}
@@ -211,7 +215,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
               : 'bg-[var(--container)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
           }`}
         >
-          {lang === 'ru' ? 'Каталог' : 'Store'} ({extensionsList.length - installedIds.length})
+          {lang === 'ru' ? 'Каталог' : lang === 'uk' ? 'Каталог' : 'Store'} ({extensionsList.length - installedIds.length})
         </button>
       </div>
 
@@ -247,20 +251,20 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
 
                   {isInstalled && (
                     <span className="px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-semibold text-[10px] flex items-center gap-1">
-                      <Check size={10} /> {lang === 'ru' ? 'Установлено' : 'Installed'}
+                      <Check size={10} /> {lang === 'ru' ? 'Установлено' : lang === 'uk' ? 'Встановлено' : 'Installed'}
                     </span>
                   )}
                 </div>
 
                 <p className="text-xs text-[var(--on-surface-var)] leading-relaxed mb-4">
-                  {ext.description[lang]}
+                  {ext.description[lang] || ext.description.en}
                 </p>
               </div>
 
               {/* Action area */}
               <div className="pt-3 border-t border-[var(--outline-var)]/60 flex items-center justify-between">
                 <span className="text-[10px] text-[var(--on-surface-var)]">
-                  {lang === 'ru' ? 'Автор:' : 'Author:'} <strong className="text-[var(--on-surface)]">{ext.author}</strong>
+                  {lang === 'ru' ? 'Автор:' : lang === 'uk' ? 'Автор:' : 'Author:'} <strong className="text-[var(--on-surface)]">{ext.author}</strong>
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -280,7 +284,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleUninstall(ext.id)}
-                        title={lang === 'ru' ? 'Удалить расширение' : 'Uninstall extension'}
+                        title={lang === 'ru' ? 'Удалить расширение' : lang === 'uk' ? 'Видалити розширення' : 'Uninstall extension'}
                         className="p-2 rounded-xl bg-[var(--surface)] text-[var(--on-surface-var)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
                       >
                         <Trash2 size={14} />
@@ -291,7 +295,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
                         className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white font-bold text-xs flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm"
                       >
                         <ExternalLink size={13} />
-                        {lang === 'ru' ? 'Открыть' : 'Open'}
+                        {lang === 'ru' ? 'Открыть' : lang === 'uk' ? 'Відкрити' : 'Open'}
                       </button>
                     </div>
                   ) : (
@@ -300,7 +304,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
                       className="px-4 py-2 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] hover:bg-[var(--accent)] hover:text-white hover:border-transparent font-semibold text-xs flex items-center gap-1.5 transition-all active:scale-95"
                     >
                       <Download size={13} />
-                      {lang === 'ru' ? 'Загрузить' : 'Install'}
+                      {lang === 'ru' ? 'Загрузить' : lang === 'uk' ? 'Завантажити' : 'Install'}
                     </button>
                   )}
                 </div>
@@ -314,7 +318,7 @@ export function ExtensionsManager({ lang, wm, playChime, triggerToast }: Extensi
         <div className="flex flex-col items-center justify-center p-12 text-center text-[var(--on-surface-var)]">
           <Blocks size={36} className="mb-2 opacity-40" />
           <p className="text-sm font-medium">
-            {lang === 'ru' ? 'Расширения не найдены' : 'No extensions found'}
+            {lang === 'ru' ? 'Расширения не найдены' : lang === 'uk' ? 'Розширення не знайдено' : 'No extensions found'}
           </p>
         </div>
       )}
