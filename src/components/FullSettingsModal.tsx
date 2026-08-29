@@ -1410,32 +1410,18 @@ export default function FullSettingsModal({
                           <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative">
                             <button
                               onClick={() => onTimeFormatChange?.('24h')}
-                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                timeFormat === '24h' ? 'text-white' : 'text-[var(--on-surface-var)]'
+                              className={`relative px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                timeFormat === '24h' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
                               }`}
                             >
-                              {timeFormat === '24h' && (
-                                <motion.div
-                                  layoutId="time-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
                               24h
                             </button>
                             <button
                               onClick={() => onTimeFormatChange?.('12h')}
-                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                timeFormat === '12h' ? 'text-white' : 'text-[var(--on-surface-var)]'
+                              className={`relative px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                timeFormat === '12h' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
                               }`}
                             >
-                              {timeFormat === '12h' && (
-                                <motion.div
-                                  layoutId="time-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
                               12h AM/PM
                             </button>
                           </div>
@@ -1460,32 +1446,18 @@ export default function FullSettingsModal({
                           <div className="flex bg-[var(--container)] border border-[var(--outline-var)] rounded-full p-1 gap-1 relative">
                             <button
                               onClick={() => onTempUnitChange?.('C')}
-                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                tempUnit === 'C' ? 'text-white' : 'text-[var(--on-surface-var)]'
+                              className={`relative px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                tempUnit === 'C' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
                               }`}
                             >
-                              {tempUnit === 'C' && (
-                                <motion.div
-                                  layoutId="temp-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
                               °C
                             </button>
                             <button
                               onClick={() => onTempUnitChange?.('F')}
-                              className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
-                                tempUnit === 'F' ? 'text-white' : 'text-[var(--on-surface-var)]'
+                              className={`relative px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                tempUnit === 'F' ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
                               }`}
                             >
-                              {tempUnit === 'F' && (
-                                <motion.div
-                                  layoutId="temp-pill-settings"
-                                  className="absolute inset-0 bg-[var(--accent)] rounded-xl shadow-sm -z-10"
-                                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                                />
-                              )}
                               °F
                             </button>
                           </div>

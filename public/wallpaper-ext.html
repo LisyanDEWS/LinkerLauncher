@@ -9,32 +9,47 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
+/* M3 Expressive token system — syncs from parent or uses defaults */
 :root {
-  --ink: var(--on-surface, #1d1b20);
-  --muted: var(--on-surface-var, #625b66);
-  --paper: var(--bg, #f8f6f9);
-  --surface: var(--container, #f5eff3);
-  --surface-2: color-mix(in srgb, var(--surface) 85%, #000 15%);
-  --line: var(--outline-var, #d3c6d1);
-  --primary: var(--accent, #8b5cf6);
-  --primary-ink: #ffffff;
-  --focus: color-mix(in srgb, var(--primary) 20%, transparent);
-  --shadow: 0 12px 32px rgba(0,0,0,0.12);
-  --glass: color-mix(in srgb, var(--paper) 75%, transparent);
+  --m3-bg: var(--bg, #f8f6f9);
+  --m3-surface: var(--surface, #f5eff3);
+  --m3-surface-dim: var(--surface-dim, #efe6ea);
+  --m3-surface-bright: var(--surface-bright, #ffffff);
+  --m3-container: var(--container, #f5eff3);
+  --m3-container-high: var(--container-high, #efe2ea);
+  --m3-on-surface: var(--on-surface, #1d1b20);
+  --m3-on-surface-var: var(--on-surface-var, #625b66);
+  --m3-outline: var(--outline, #7e757f);
+  --m3-outline-var: var(--outline-var, #d3c6d1);
+  --m3-accent: var(--accent, #6750a4);
+  --m3-on-accent: var(--on-accent, #ffffff);
+  --m3-accent-secondary: var(--accent-secondary, #625b71);
+  --m3-accent-tertiary: var(--accent-tertiary, #7d5260);
+  --m3-shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06);
+  --m3-shadow-2: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --m3-shadow-3: 0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.05);
+  --m3-glass: color-mix(in srgb, var(--m3-bg) 72%, transparent);
 }
 
 [data-theme="dark"] {
-  --ink: var(--on-surface, #e9e0e7);
-  --muted: var(--on-surface-var, #cec1cc);
-  --paper: var(--bg, #120e14);
-  --surface: var(--container, #1f1823);
-  --surface-2: color-mix(in srgb, var(--surface) 80%, #fff 20%);
-  --line: var(--outline-var, #443749);
-  --primary: var(--accent, #a78bfa);
-  --primary-ink: #120e14;
-  --focus: color-mix(in srgb, var(--primary) 25%, transparent);
-  --shadow: 0 16px 40px rgba(0,0,0,0.4);
-  --glass: color-mix(in srgb, var(--paper) 65%, transparent);
+  --m3-bg: var(--bg, #141218);
+  --m3-surface: var(--surface, #211f26);
+  --m3-surface-dim: var(--surface-dim, #141218);
+  --m3-surface-bright: var(--surface-bright, #383643);
+  --m3-container: var(--container, #28262e);
+  --m3-container-high: var(--container-high, #333143);
+  --m3-on-surface: var(--on-surface, #e6e0e9);
+  --m3-on-surface-var: var(--on-surface-var, #cac4d0);
+  --m3-outline: var(--outline, #938f99);
+  --m3-outline-var: var(--outline-var, #49454f);
+  --m3-accent: var(--accent, #d0bcff);
+  --m3-on-accent: var(--on-accent, #381e72);
+  --m3-accent-secondary: var(--accent-secondary, #ccc2dc);
+  --m3-accent-tertiary: var(--accent-tertiary, #efb8c8);
+  --m3-shadow-1: 0 1px 2px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+  --m3-shadow-2: 0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);
+  --m3-shadow-3: 0 12px 32px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.25);
+  --m3-glass: color-mix(in srgb, var(--m3-bg) 65%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -42,8 +57,8 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   min-width: 320px;
-  color: var(--ink);
-  background: transparent;
+  color: var(--m3-on-surface);
+  background: var(--m3-bg);
   font-family: 'Space Grotesk', Manrope, system-ui, sans-serif;
   transition: background-color .3s ease, color .3s ease;
 }
@@ -51,42 +66,44 @@ body {
 button, input, select { font: inherit; }
 button { color: inherit; }
 
+/* M3 Top App Bar */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 40%, transparent);
-  background: var(--glass);
-  backdrop-filter: blur(24px) saturate(1.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--m3-outline-var) 50%, transparent);
+  background: var(--m3-glass);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
 }
 
 .topbar-inner {
   width: min(1440px, calc(100% - 48px));
-  min-height: 72px;
+  min-height: 64px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
-  color: var(--ink);
+  color: var(--m3-on-surface);
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: var(--primary);
-  color: var(--primary-ink);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: var(--m3-accent);
+  color: var(--m3-on-accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--m3-accent) 30%, transparent);
 }
 
 .brand-mark svg {
@@ -96,15 +113,15 @@ button { color: inherit; }
 }
 
 .brand-name {
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .brand-name small {
   display: block;
-  margin-top: 1px;
-  color: var(--muted);
+  margin-top: 2px;
+  color: var(--m3-on-surface-var);
   font: 500 9px/1.2 "DM Mono", monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -113,10 +130,11 @@ button { color: inherit; }
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
+/* M3 Search — rounded full pill */
 .search {
   position: relative;
   width: min(280px, 30vw);
@@ -124,31 +142,35 @@ button { color: inherit; }
 
 .search input {
   width: 100%;
-  height: 40px;
-  padding: 0 16px 0 38px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  height: 44px;
+  padding: 0 16px 0 40px;
+  border: 1px solid var(--m3-outline-var);
+  border-radius: 999px;
   outline: none;
-  color: var(--ink);
-  background: var(--surface);
+  color: var(--m3-on-surface);
+  background: var(--m3-surface-dim);
   font-size: 13px;
-  transition: all .2s ease;
+  transition: all .2s cubic-bezier(.2,.8,.2,1);
 }
 
 .search input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--focus);
+  border-color: var(--m3-accent);
+  background: var(--m3-surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--m3-accent) 15%, transparent);
 }
+
+.search input::placeholder { color: var(--m3-on-surface-var); }
 
 .search svg {
   position: absolute;
-  left: 12px;
-  top: 11px;
+  left: 14px;
+  top: 13px;
   width: 16px;
   height: 16px;
-  stroke: var(--muted);
+  stroke: var(--m3-on-surface-var);
 }
 
+/* M3 Dropdown */
 .sort-select-wrapper {
   position: relative;
   display: flex;
@@ -156,78 +178,86 @@ button { color: inherit; }
 }
 
 .sort-select {
-  height: 40px;
-  padding: 0 30px 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  height: 44px;
+  padding: 0 32px 0 16px;
+  border: 1px solid var(--m3-outline-var);
+  border-radius: 999px;
   outline: none;
-  color: var(--ink);
-  background: var(--surface);
+  color: var(--m3-on-surface);
+  background: var(--m3-surface-dim);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   appearance: none;
-  transition: all .2s ease;
+  transition: all .2s cubic-bezier(.2,.8,.2,1);
 }
 
 .sort-select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--focus);
+  border-color: var(--m3-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--m3-accent) 15%, transparent);
 }
 
 .sort-icon {
   position: absolute;
-  right: 10px;
+  right: 12px;
   pointer-events: none;
-  color: var(--muted);
+  color: var(--m3-on-surface-var);
 }
 
+/* M3 Icon Buttons */
 .round-button, .filter, .text-button {
   border: 0;
   cursor: pointer;
-  transition: transform .2s ease, background .2s ease, color .2s ease;
+  transition: all .2s cubic-bezier(.2,.8,.2,1);
 }
 
 .round-button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
+  color: var(--m3-on-surface-var);
+  background: transparent;
 }
 
 .round-button:hover, .round-button:focus-visible {
-  transform: scale(1.05);
-  background: var(--focus);
+  background: color-mix(in srgb, var(--m3-accent) 12%, transparent);
+  color: var(--m3-accent);
   outline: none;
 }
 
+.round-button:active { background: color-mix(in srgb, var(--m3-accent) 20%, transparent); }
+
 .round-button svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   stroke: currentColor;
 }
 
 main {
-  width: min(1440px, calc(100% - 32px));
+  width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 32px 0 60px;
+  padding: 32px 0 80px;
 }
 
+/* M3 Hero intro */
 .intro {
   display: grid;
-  grid-template-columns: minmax(0,1fr) 280px;
+  grid-template-columns: minmax(0,1fr) auto;
   gap: 32px;
-  align-items: end;
-  margin-bottom: 28px;
+  align-items: center;
+  margin-bottom: 32px;
+  padding: 28px 32px;
+  border-radius: 28px;
+  background: var(--m3-container);
+  border: 1px solid var(--m3-outline-var);
+  box-shadow: var(--m3-shadow-1);
 }
 
 .eyebrow {
-  margin: 0 0 10px;
-  color: var(--primary);
+  margin: 0 0 8px;
+  color: var(--m3-accent);
   font: 600 11px/1 "DM Mono", monospace;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -236,78 +266,86 @@ main {
 h1 {
   max-width: 800px;
   margin: 0;
-  font-size: clamp(28px, 4vw, 50px);
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  font-weight: 800;
+  font-size: clamp(26px, 3.5vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
 }
 
 h1 span {
-  color: var(--primary);
+  color: var(--m3-accent);
 }
 
 .intro-copy {
   margin: 12px 0 0;
   max-width: 600px;
-  color: var(--muted);
+  color: var(--m3-on-surface-var);
   font-size: 14px;
   line-height: 1.6;
 }
 
 .library-total {
-  padding: 20px;
+  padding: 20px 28px;
   border-radius: 20px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--m3-accent) 10%, var(--m3-surface));
+  border: 1px solid color-mix(in srgb, var(--m3-accent) 20%, transparent);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .library-total strong {
   display: block;
-  font-size: 38px;
+  font-size: 36px;
   line-height: .95;
-  letter-spacing: -.05em;
-  color: var(--primary);
+  letter-spacing: -.04em;
+  color: var(--m3-accent);
+  font-weight: 800;
 }
 
 .library-total span {
   display: block;
   margin-top: 6px;
-  color: var(--muted);
+  color: var(--m3-on-surface-var);
   font: 500 10px/1.4 "DM Mono", monospace;
   text-transform: uppercase;
 }
 
+/* M3 Filter Chips */
 .filter-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 4px 0 24px;
+  padding: 4px 0 28px;
 }
 
 .filter {
-  padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 700;
+  padding: 8px 16px;
+  border: 1px solid var(--m3-outline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--m3-on-surface-var);
+  font-size: 13px;
+  font-weight: 500;
+  height: 36px;
 }
 
 .filter:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
+  background: color-mix(in srgb, var(--m3-on-surface) 8%, transparent);
+  border-color: var(--m3-on-surface);
 }
 
 .filter.active {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--primary-ink);
+  border-color: transparent;
+  background: var(--m3-accent);
+  color: var(--m3-on-accent);
+  font-weight: 600;
 }
 
+.filter:active { transform: scale(0.96); }
+
 .wallpaper-section {
-  margin: 0 0 40px;
+  margin: 0 0 48px;
   scroll-margin-top: 90px;
 }
 
@@ -321,20 +359,21 @@ h1 span {
 
 .section-heading h2 {
   margin: 0;
-  font-size: clamp(20px, 2vw, 24px);
-  line-height: 1.1;
-  letter-spacing: -.03em;
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  font-weight: 600;
 }
 
 .section-meta {
   margin: 4px 0 0;
-  color: var(--muted);
+  color: var(--m3-on-surface-var);
   font: 500 10px/1.4 "DM Mono", monospace;
   text-transform: uppercase;
 }
 
 .section-count {
-  color: var(--primary);
+  color: var(--m3-accent);
   font: 600 11px/1 "DM Mono", monospace;
   white-space: nowrap;
 }
@@ -342,20 +381,21 @@ h1 span {
 .wallpaper-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 
+/* M3 Cards */
 .wallpaper {
   position: relative;
   min-width: 0;
   aspect-ratio: 16/9;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
-  border-radius: 18px;
+  border: 1px solid var(--m3-outline-var);
+  border-radius: 16px;
   cursor: pointer;
-  background: var(--surface);
+  background: var(--m3-surface-dim);
   transition: all .3s cubic-bezier(.2, .8, .2, 1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  box-shadow: var(--m3-shadow-1);
 }
 
 .wallpaper img {
@@ -370,20 +410,20 @@ h1 span {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.85) 100%);
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.75) 100%);
   opacity: 0;
   transition: opacity .3s ease;
 }
 
 .wallpaper:hover, .wallpaper:focus-visible {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow);
-  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+  transform: translateY(-3px);
+  box-shadow: var(--m3-shadow-3);
+  border-color: var(--m3-accent);
 }
 
 .wallpaper:hover img, .wallpaper:focus-visible img {
-  transform: scale(1.08);
-  filter: saturate(1.15);
+  transform: scale(1.06);
+  filter: saturate(1.1);
 }
 
 .wallpaper:hover::after, .wallpaper:focus-visible::after {
@@ -391,20 +431,20 @@ h1 span {
 }
 
 .wallpaper:focus-visible {
-  outline: 3px solid var(--primary);
-  outline-offset: 4px;
+  outline: 3px solid var(--m3-accent);
+  outline-offset: 2px;
 }
 
 .image-label {
   position: absolute;
   z-index: 1;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
   color: white;
   text-align: left;
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(6px);
   transition: opacity .22s ease, transform .22s ease;
 }
 
@@ -419,13 +459,14 @@ h1 span {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  font-weight: 600;
 }
 
 .image-label small {
   display: block;
   margin-top: 2px;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.7);
   font: 500 9px/1 "DM Mono", monospace;
   text-transform: uppercase;
 }
@@ -435,33 +476,36 @@ h1 span {
   z-index: 1;
   left: 10px;
   top: 10px;
-  padding: 4px 8px;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
   color: white;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font: 500 9px/1 "DM Mono", monospace;
 }
 
 .empty {
-  padding: 42px 20px;
-  border: 1px dashed var(--line);
-  border-radius: 20px;
-  color: var(--muted);
+  padding: 48px 24px;
+  border: 1px dashed var(--m3-outline-var);
+  border-radius: 24px;
+  color: var(--m3-on-surface-var);
   text-align: center;
   font-size: 14px;
 }
 
+/* M3 Dialog */
 .dialog {
   position: fixed;
   z-index: 50;
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: 24px;
   border: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--m3-on-surface) 40%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s ease;
@@ -475,12 +519,12 @@ h1 span {
 .dialog-panel {
   width: min(1000px, 100%);
   overflow: hidden;
-  border-radius: 24px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  transform: translateY(16px) scale(.98);
-  transition: transform .28s cubic-bezier(.2, .8, .2, 1);
+  border-radius: 28px;
+  background: var(--m3-surface);
+  border: 1px solid var(--m3-outline-var);
+  box-shadow: var(--m3-shadow-3);
+  transform: translateY(20px) scale(.96);
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1);
 }
 
 .dialog.show .dialog-panel {
@@ -493,7 +537,7 @@ h1 span {
   max-height: min(60vh, 520px);
   aspect-ratio: 16/9;
   object-fit: cover;
-  background: var(--surface);
+  background: var(--m3-surface-dim);
 }
 
 .dialog-footer {
@@ -501,18 +545,19 @@ h1 span {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 18px 22px;
+  padding: 20px 24px;
 }
 
 .dialog-title {
   margin: 0;
   font-size: 18px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  font-weight: 600;
 }
 
 .dialog-detail {
   margin: 4px 0 0;
-  color: var(--muted);
+  color: var(--m3-on-surface-var);
   font: 500 10px/1.4 "DM Mono", monospace;
   text-transform: uppercase;
 }
@@ -522,30 +567,39 @@ h1 span {
   gap: 8px;
 }
 
+/* M3 Buttons */
 .text-button {
-  padding: 10px 16px;
-  border-radius: 12px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
+  padding: 0 24px;
+  height: 40px;
+  border-radius: 999px;
+  color: var(--m3-accent);
+  background: transparent;
+  border: 1px solid var(--m3-outline);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .text-button:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
+  background: color-mix(in srgb, var(--m3-accent) 10%, transparent);
+  border-color: var(--m3-accent);
 }
 
+.text-button:active { transform: scale(0.97); }
+
 .text-button.primary {
-  color: var(--primary-ink);
-  background: var(--primary);
+  color: var(--m3-on-accent);
+  background: var(--m3-accent);
   border-color: transparent;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--m3-accent) 25%, transparent);
+}
+
+.text-button.primary:hover {
+  background: color-mix(in srgb, var(--m3-accent) 88%, #000 12%);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--m3-accent) 30%, transparent);
 }
 
 .modal-close {
@@ -553,6 +607,9 @@ h1 span {
   top: 16px;
   right: 16px;
   z-index: 10;
+  background: color-mix(in srgb, var(--m3-surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 @media (max-width: 1050px) {
@@ -561,8 +618,8 @@ h1 span {
 
 @media (max-width: 720px) {
   .topbar-inner, main { width: min(100% - 24px, 1440px); }
-  .intro { grid-template-columns: 1fr; gap: 20px; }
-  .wallpaper-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .intro { grid-template-columns: 1fr; gap: 20px; padding: 24px; }
+  .wallpaper-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .dialog-footer { flex-direction: column; align-items: stretch; }
   .dialog-actions { width: 100%; }
   .dialog-actions > * { flex: 1; text-align: center; justify-content: center; }
@@ -606,19 +663,6 @@ h1 span {
         <input id="search" type="search" placeholder="Поиск обоев...">
       </label>
 
-      <button class="round-button" id="theme-toggle" type="button" title="Переключить тему">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-      </button>
     </div>
   </div>
 </header>
@@ -940,11 +984,6 @@ sortSelect.addEventListener('change', event => {
   renderGallery();
 });
 
-document.getElementById('theme-toggle').addEventListener('click', () => {
-  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', current);
-});
-
 // Apply Wallpaper action sent directly to LinkerRu parent window:
 applyLink.addEventListener('click', () => {
   const imageUrl = dialogImage.src;
@@ -971,12 +1010,28 @@ window.addEventListener('message', (e) => {
     if (e.data.theme) {
       document.documentElement.setAttribute('data-theme', e.data.theme);
     }
-    if (e.data.palette?.primary) {
-      document.documentElement.style.setProperty('--primary', e.data.palette.primary);
-      document.documentElement.style.setProperty('--accent', e.data.palette.primary);
+    if (e.data.palette) {
+      const p = e.data.palette;
+      if (p.primary) {
+        document.documentElement.style.setProperty('--m3-accent', p.primary);
+        document.documentElement.style.setProperty('--accent', p.primary);
+      }
+      if (p.secondary) document.documentElement.style.setProperty('--m3-accent-secondary', p.secondary);
+      if (p.tertiary) document.documentElement.style.setProperty('--m3-accent-tertiary', p.tertiary);
+    }
+    if (e.data.cssVars) {
+      const vars = e.data.cssVars;
+      Object.entries(vars).forEach(([key, val]) => {
+        document.documentElement.style.setProperty(key, val);
+      });
     }
   }
 });
+
+// Request theme config from parent on load
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({ type: 'WALLPAPER_EXT_READY' }, '*');
+}
 
 document.getElementById('total-count').textContent = allWallpapers.length;
 makeFilters();

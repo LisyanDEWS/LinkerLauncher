@@ -1186,11 +1186,20 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   useEffect(() => {
     // Stringified theme config for 'pipun' to read
     const themeStr = `LINKER-THEME=${theme.toUpperCase()}`;
+    const root = document.documentElement;
+    const cssVars: Record<string, string> = {};
+    ['--bg','--surface','--surface-dim','--surface-bright','--container','--container-high',
+     '--on-surface','--on-surface-var','--outline','--outline-var','--accent','--on-accent',
+     '--accent-secondary','--accent-tertiary'].forEach(v => {
+      const val = getComputedStyle(root).getPropertyValue(v).trim();
+      if (val) cssVars[v] = val;
+    });
     const message = {
       type: 'LINKER_CONFIG',
       theme,
       themeString: themeStr,
       palette: activePalette,
+      cssVars,
       userName: 'Guest User'
     };
     
@@ -1208,7 +1217,21 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     // Global variable
     (window as any).LINKER_THEME = theme.toUpperCase();
     (window as any).__LINKER_CONFIG = message;
-  }, [theme, activePalette]);
+  }, [theme, activePalette, activePaletteId]);
+
+  // Respond to extension ready requests with current theme config
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'WALLPAPER_EXT_READY') {
+        const config = (window as any).__LINKER_CONFIG;
+        if (config && e.source) {
+          (e.source as Window).postMessage(config, '*');
+        }
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   // --- Geolocation ---
   useEffect(() => {
