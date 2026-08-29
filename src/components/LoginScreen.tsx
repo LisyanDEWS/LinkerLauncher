@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Mail, 
@@ -9,11 +9,8 @@ import {
   ArrowRight, 
   Sun, 
   Moon, 
-  Monitor, 
   Eye, 
   EyeOff, 
-  Languages, 
-  ChevronDown, 
   ChevronLeft, 
   ChevronRight, 
   Paintbrush, 
@@ -66,7 +63,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const [registeredNick, setRegisteredNick] = useState('');
 
   // Onboarding choices
-  const [selectedLang, setSelectedLang] = useState<Language>(lang === 'ru' ? 'ru' : 'en');
+  const [selectedLang, setSelectedLang] = useState<Language>(lang || 'en');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark'>('dark');
   const [installWallpaperPlus, setInstallWallpaperPlus] = useState(true);
   const [selectedFont, setSelectedFont] = useState('Plus Jakarta Sans');
@@ -81,7 +78,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   }, []);
 
   // Theme mode for login screen
-  const [themeMode, setThemeMode] = useState<LoginThemeMode>(() => {
+  const [themeMode] = useState<LoginThemeMode>(() => {
     return (localStorage.getItem('linkerru_login_theme') as LoginThemeMode) || 'system';
   });
   const [systemDark, setSystemDark] = useState<boolean>(() => {
@@ -102,47 +99,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     return themeMode;
   }, [themeMode, systemDark]);
 
-  const cycleTheme = () => {
-    const order: LoginThemeMode[] = ['light', 'dark', 'system'];
-    const idx = order.indexOf(themeMode);
-    const next = order[(idx + 1) % order.length];
-    setThemeMode(next);
-    localStorage.setItem('linkerru_login_theme', next);
-  };
-
   // Toast / Error state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isToastShow, setIsToastShow] = useState(false);
   const [errorField, setErrorField] = useState<string | null>(null);
-  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
-  const langMenuRef = useRef<HTMLDivElement>(null);
-
-  const langOptions: { id: Language; name: string; desc: string; code: string }[] = [
-    {
-      id: 'ru',
-      name: 'Русский',
-      desc: lang === 'ru' ? 'Русский язык' : 'Russian language',
-      code: 'RU',
-    },
-    {
-      id: 'en',
-      name: 'English',
-      desc: lang === 'ru' ? 'Английский язык' : 'English language',
-      code: 'EN',
-    },
-  ];
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
-        setIsLangMenuOpen(false);
-      }
-    };
-    if (isLangMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isLangMenuOpen]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -401,13 +361,6 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const themeVars = effectiveTheme === 'dark' ? darkMonoThemeVars : lightMonoThemeVars;
   const isDark = effectiveTheme === 'dark';
 
-  const themeLabel = lang === 'ru'
-    ? (themeMode === 'light' ? 'Светлая' : themeMode === 'dark' ? 'Тёмная' : 'Авто')
-    : (themeMode === 'light' ? 'Light' : themeMode === 'dark' ? 'Dark' : 'Auto');
-  const themeIcon = themeMode === 'light' ? <Sun size={14} />
-    : themeMode === 'dark' ? <Moon size={14} />
-    : <Monitor size={14} />;
-
   return (
     <div
       style={themeVars}
@@ -423,100 +376,12 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         <div className={`absolute inset-0 bg-[radial-gradient(${isDark ? '#2a303f' : '#e5e7eb'}_1px,transparent_1px)] [background-size:24px_24px] opacity-40`} />
       </div>
 
-      {/* Top Header Controls (No oversized logo, clean minimal bar) */}
-      <header className="w-full max-w-6xl px-6 py-6 flex justify-between items-center z-20 relative">
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2.5"
-        >
-          <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)] animate-pulse" />
-          <span className="text-xs font-black tracking-widest uppercase text-[var(--on-surface)] opacity-80">
-            LinkerRu <span className="text-[10px] font-semibold lowercase opacity-50">:re</span>
-          </span>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3"
-        >
-          {/* Theme Mode Toggle */}
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={cycleTheme}
-            title={lang === 'ru' ? 'Переключить тему' : 'Toggle theme'}
-            className="flex items-center gap-2 bg-[var(--surface)] rounded-2xl px-3 py-2 border border-[var(--outline)] shadow-xs cursor-pointer text-[var(--on-surface)] hover:border-[var(--accent)] transition-all"
-          >
-            {themeIcon}
-            <span className="text-[11px] font-bold tracking-wider uppercase">{themeLabel}</span>
-          </motion.button>
-
-          {/* Language Switcher */}
-          <div className="relative" ref={langMenuRef}>
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-              className="flex items-center gap-2 bg-[var(--surface)] rounded-2xl px-3 py-2 border border-[var(--outline)] shadow-xs cursor-pointer text-[var(--on-surface)] hover:border-[var(--accent)] transition-all h-9"
-            >
-              <Languages size={14} className="text-[var(--on-surface-var)]" />
-              <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-[var(--accent)] text-[var(--on-accent)]">
-                {lang.toUpperCase()}
-              </span>
-              <ChevronDown
-                size={13}
-                className={`text-[var(--on-surface-var)] transition-transform duration-200 ${
-                  isLangMenuOpen ? 'rotate-180 text-[var(--accent)]' : ''
-                }`}
-              />
-            </motion.button>
-
-            <AnimatePresence>
-              {isLangMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  className="absolute right-0 top-11 z-50 w-44 rounded-2xl border border-[var(--outline)] bg-[var(--surface)] p-1.5 shadow-2xl backdrop-blur-xl"
-                >
-                  {langOptions.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        onLangChange(opt.id);
-                        setSelectedLang(opt.id);
-                        setIsLangMenuOpen(false);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                        lang === opt.id
-                          ? 'bg-[var(--accent)] text-[var(--on-accent)]'
-                          : 'text-[var(--on-surface)] hover:bg-[var(--surface-dim)]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black opacity-60">{opt.code}</span>
-                        <span>{opt.name}</span>
-                      </div>
-                      {lang === opt.id && <Check size={13} />}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      </header>
-
       {/* Main Centered Hub: The Big M3 Loading Element Hero */}
       <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8 z-10 relative overflow-hidden">
         {/* Background Large Loader */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <M3LoadingIndicator 
-            size={840} 
+            size={1300} 
             color="var(--accent)" 
             speed={isSpinningFast ? 0.2 : 0.08} 
           />

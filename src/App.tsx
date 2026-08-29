@@ -96,7 +96,7 @@ export default function App() {
   const [lang, setLang] = useState<Language>(() => {
     const stored = localStorage.getItem('linkerru_lang') as Language;
     if (stored) return stored;
-    return (navigator.language || navigator.languages?.[0] || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+    return 'en';
   });
 
   const [standbyBg, setStandbyBg] = useState<string>(() => {
