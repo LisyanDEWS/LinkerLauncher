@@ -381,7 +381,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         {/* Background Large Loader */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <M3LoadingIndicator 
-            size={1300} 
+            size={1040} 
             color="var(--accent)" 
             speed={isSpinningFast ? 0.2 : 0.08} 
           />
