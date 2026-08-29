@@ -1108,29 +1108,26 @@ function WindowFrame({
               <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <M3LoadingIndicator size={44} color="var(--accent)" speed={1} />
               </div>
-              <div className="relative overflow-hidden flex items-center justify-between w-full px-4 py-2 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
-                {/* Horizontal status fill — pure matte accent */}
-                <div
-                  className="absolute inset-y-0 left-0 transition-all duration-150 ease-out bg-[var(--accent)]"
-                  style={{
-                    width: `${Math.min(100, Math.round(loaderProgress))}%`,
-                    opacity: 0.9,
-                  }}
-                />
-
-                <div className="relative z-10 flex items-center gap-2">
+              <div className="flex flex-col items-center justify-center w-full gap-2">
+                <div className="flex items-center gap-2">
                   {win.icon && (
-                    <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-85">
+                    <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-80 text-[var(--accent)]">
                       {win.icon}
                     </div>
                   )}
-                  <span className={`text-[11px] md:text-xs font-bold tracking-tight transition-colors ${loaderProgress > 50 ? 'text-white' : 'text-[var(--on-surface)]'}`}>
-                    {win.loaderTitle || win.title} — {isRu ? 'Запуск' : isUk ? 'Запуск' : 'Launching'}
+                  <span className="text-xs font-bold tracking-tight text-[var(--on-surface)]">
+                    {win.loaderTitle || win.title} — {isRu ? 'Запуск' : isUk ? 'Запуск' : 'Launching'} <span className="text-[var(--on-surface-var)] ml-1">{Math.round(loaderProgress)}%</span>
                   </span>
                 </div>
-                <span className={`relative z-10 text-[10px] font-black tabular-nums transition-colors ${loaderProgress > 85 ? 'text-white' : 'text-[var(--on-surface-var)]'}`}>
-                  {Math.round(loaderProgress)}%
-                </span>
+                {/* Horizontal status fill — simple line */}
+                <div className="w-full h-0.5 bg-[var(--outline-var)] rounded-full overflow-hidden opacity-70">
+                  <div
+                    className="h-full bg-[var(--accent)] transition-all duration-150 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.round(loaderProgress))}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -137,7 +137,7 @@ export function AppLoader({
             </div>
 
             {/* Minimalist matte indeterminate progress bar */}
-            <div className="relative w-full h-1.5 rounded-full overflow-hidden bg-[var(--container-high)] mt-1">
+            <div className="relative w-full h-0.5 mt-1 overflow-hidden opacity-80">
               <div
                 className="absolute inset-y-0 h-full rounded-full bg-[var(--accent)]"
                 style={{

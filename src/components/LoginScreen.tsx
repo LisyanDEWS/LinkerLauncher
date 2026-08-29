@@ -512,22 +512,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       </header>
 
       {/* Main Centered Hub: The Big M3 Loading Element Hero */}
-      <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8 z-10">
-        <div className="w-full max-w-md flex flex-col items-center justify-center relative">
-          {/* Centered Large M3 Loading Element — Pure Minimalist & Expressive Matte Finish */}
-          <div className="relative flex items-center justify-center mb-6">
-            <div className="relative w-36 h-36 md:w-40 md:h-40 flex items-center justify-center">
-              {/* Fluid M3 shape morphing canvas — pure matte vector */}
-              <M3LoadingIndicator 
-                size={136} 
-                color="var(--accent)" 
-                speed={isSpinningFast ? 3.6 : 0.95} 
-              />
-            </div>
-          </div>
+      <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8 z-10 relative overflow-hidden">
+        {/* Background Large Loader */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+          <M3LoadingIndicator 
+            size={560} 
+            color="var(--accent)" 
+            speed={isSpinningFast ? 0.2 : 0.08} 
+          />
+        </div>
 
+        <div className="w-full max-w-md flex flex-col items-center justify-center relative z-10 text-[var(--on-accent)]">
           {/* Dynamic Content Stages Inside/Under the Loader */}
-          <div className="w-full flex flex-col items-center">
+          <div className="w-full flex flex-col items-center drop-shadow-sm">
             <AnimatePresence mode="wait">
               {/* 1. WELCOME GREETING STAGE */}
               {flow === 'welcome' && (
@@ -540,10 +537,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full flex flex-col items-center text-center gap-4"
                 >
                   <div className="space-y-1.5">
-                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--on-surface)]">
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Привет!' : 'Hi there!'}
                     </h1>
-                    <p className="text-xs sm:text-sm font-medium text-[var(--on-surface-var)]">
+                    <p className="text-xs sm:text-sm font-medium text-[var(--on-accent)] opacity-80">
                       {lang === 'ru' ? 'Как вы хотите продолжить?' : 'How would you like to continue?'}
                     </p>
                   </div>
@@ -553,7 +550,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => transitionTo('login_email')}
-                      className="w-full py-3.5 px-6 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] font-black text-xs uppercase tracking-wider shadow-lg hover:opacity-90 transition-all cursor-pointer"
+                      className="w-full py-3.5 px-6 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] font-black text-xs uppercase tracking-wider shadow-lg hover:bg-opacity-90 transition-all cursor-pointer"
                     >
                       {lang === 'ru' ? 'Вход' : 'Sign In'}
                     </motion.button>
@@ -562,7 +559,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => transitionTo('signup_email')}
-                      className="w-full py-3.5 px-6 rounded-2xl bg-[var(--surface)] border border-[var(--outline)] text-[var(--on-surface)] font-black text-xs uppercase tracking-wider hover:bg-[var(--container)] transition-all cursor-pointer"
+                      className="w-full py-3.5 px-6 rounded-2xl bg-transparent border border-[var(--on-accent)]/50 text-[var(--on-accent)] font-black text-xs uppercase tracking-wider hover:bg-[var(--on-accent)]/10 transition-all cursor-pointer"
                     >
                       {lang === 'ru' ? 'Регистрация' : 'Sign Up'}
                     </motion.button>
@@ -582,16 +579,16 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-xs flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Вход в аккаунт' : 'Sign In'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80">
                       {lang === 'ru' ? 'Введите ваш e-mail' : 'Enter your email address'}
                     </p>
                   </div>
 
                   <div className={`w-full relative ${errorField === 'login-email' ? 'animate-shake' : ''}`}>
-                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
+                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80" />
                     <input
                       type="email"
                       value={email}
@@ -599,7 +596,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       placeholder="name@domain.com"
                       autoFocus
                       required
-                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-4 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--accent)] text-[var(--on-surface)] shadow-xs transition-colors"
+                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-4 bg-transparent border-b-2 border-[var(--on-accent)]/30 outline-none focus:border-[var(--on-accent)] text-[var(--on-accent)] transition-colors rounded-none placeholder-[var(--on-accent)]/50"
                     />
                   </div>
 
@@ -607,13 +604,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('welcome')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                       <ArrowRight size={13} />
@@ -634,16 +631,16 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-xs flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Введите пароль' : 'Enter Password'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)] truncate max-w-[240px]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80 truncate max-w-[240px]">
                       {email}
                     </p>
                   </div>
 
                   <div className={`w-full relative ${errorField === 'login-pass' ? 'animate-shake' : ''}`}>
-                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
@@ -651,12 +648,12 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       placeholder={lang === 'ru' ? 'Ваш пароль' : 'Your password'}
                       autoFocus
                       required
-                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-10 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--accent)] text-[var(--on-surface)] shadow-xs transition-colors"
+                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-10 bg-transparent border-b-2 border-[var(--on-accent)]/30 outline-none focus:border-[var(--on-accent)] text-[var(--on-accent)] transition-colors rounded-none placeholder-[var(--on-accent)]/50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80 hover:text-[var(--on-accent)] cursor-pointer"
                     >
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
@@ -666,13 +663,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('login_email')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Войти' : 'Sign In'}</span>
                       <Check size={13} />
@@ -693,19 +690,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-xs flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Шаг 1 из 3' : 'Step 1 of 3'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Регистрация' : 'Create Account'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80">
                       {lang === 'ru' ? 'Укажите ваш e-mail' : 'Enter your email address'}
                     </p>
                   </div>
 
                   <div className={`w-full relative ${errorField === 'signup-email' ? 'animate-shake' : ''}`}>
-                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
+                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80" />
                     <input
                       type="email"
                       value={email}
@@ -713,7 +710,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       placeholder="name@domain.com"
                       autoFocus
                       required
-                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-4 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--accent)] text-[var(--on-surface)] shadow-xs transition-colors"
+                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-4 bg-transparent border-b-2 border-[var(--on-accent)]/30 outline-none focus:border-[var(--on-accent)] text-[var(--on-accent)] transition-colors rounded-none placeholder-[var(--on-accent)]/50"
                     />
                   </div>
 
@@ -721,13 +718,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('welcome')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                       <ArrowRight size={13} />
@@ -748,19 +745,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-xs flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Шаг 2 из 3' : 'Step 2 of 3'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Придумайте пароль' : 'Create Password'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80">
                       {lang === 'ru' ? 'Минимум 7 символов' : 'At least 7 characters'}
                     </p>
                   </div>
 
                   <div className={`w-full relative ${errorField === 'signup-pass' ? 'animate-shake' : ''}`}>
-                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
@@ -768,12 +765,12 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       placeholder={lang === 'ru' ? 'Надёжный пароль' : 'Secure password'}
                       autoFocus
                       required
-                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-10 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--accent)] text-[var(--on-surface)] shadow-xs transition-colors"
+                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-10 bg-transparent border-b-2 border-[var(--on-accent)]/30 outline-none focus:border-[var(--on-accent)] text-[var(--on-accent)] transition-colors rounded-none placeholder-[var(--on-accent)]/50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80 hover:text-[var(--on-accent)] cursor-pointer"
                     >
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
@@ -783,13 +780,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('signup_email')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                       <ArrowRight size={13} />
@@ -810,19 +807,19 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-xs flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Шаг 3 из 3' : 'Step 3 of 3'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Имя пользователя' : 'Choose Username'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80">
                       {lang === 'ru' ? 'Латиница и цифры' : 'Letters and numbers'}
                     </p>
                   </div>
 
                   <div className={`w-full relative ${errorField === 'signup-user' ? 'animate-shake' : ''}`}>
-                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-surface-var)]" />
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--on-accent)] opacity-80" />
                     <input
                       type="text"
                       value={username}
@@ -830,7 +827,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       placeholder="nickname"
                       autoFocus
                       required
-                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-4 bg-[var(--surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--accent)] text-[var(--on-surface)] shadow-xs transition-colors"
+                      className="w-full text-xs font-semibold py-3.5 pl-10 pr-4 bg-transparent border-b-2 border-[var(--on-accent)]/30 outline-none focus:border-[var(--on-accent)] text-[var(--on-accent)] transition-colors rounded-none placeholder-[var(--on-accent)]/50"
                     />
                   </div>
 
@@ -839,16 +836,16 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     onClick={() => setAcceptedTerms(!acceptedTerms)}
                     className={`flex items-start gap-2.5 text-left w-full p-2.5 rounded-xl border transition-colors cursor-pointer select-none ${
                       acceptedTerms 
-                        ? 'bg-[var(--surface)] border-[var(--accent)]' 
+                        ? 'bg-[var(--on-accent)]/10 border-[var(--on-accent)]' 
                         : 'border-[var(--outline)] bg-[var(--surface-dim)]'
                     } ${errorField === 'signup-terms' ? 'animate-shake border-red-500' : ''}`}
                   >
                     <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 mt-0.5 border transition-colors ${
-                      acceptedTerms ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]' : 'border-[var(--outline)] bg-[var(--surface)]'
+                      acceptedTerms ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]' : 'border-[var(--on-accent)]/40 bg-transparent'
                     }`}>
                       {acceptedTerms && <Check size={11} />}
                     </div>
-                    <span className="text-[11px] font-medium text-[var(--on-surface-var)] leading-tight">
+                    <span className="text-[11px] font-medium text-[var(--on-accent)] opacity-80 leading-tight">
                       {lang === 'ru' ? 'Я согласен с правилами и конфиденциальностью' : 'I agree with terms and privacy policy'}
                     </span>
                   </div>
@@ -857,13 +854,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('signup_password')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Создать' : 'Sign Up'}</span>
                       <Check size={13} />
@@ -885,10 +882,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Настройка 1 / 5' : 'Setup 1 / 5'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Выберите язык системы' : 'Select System Language'}
                     </h2>
                   </div>
@@ -903,7 +900,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       className={`p-4 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                         selectedLang === 'ru'
                           ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-[var(--surface)] border-[var(--outline)] text-[var(--on-surface)] hover:border-[var(--accent)]'
+                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
                       }`}
                     >
                       <span className="text-sm font-black">Русский</span>
@@ -919,7 +916,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       className={`p-4 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                         selectedLang === 'en'
                           ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-[var(--surface)] border-[var(--outline)] text-[var(--on-surface)] hover:border-[var(--accent)]'
+                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
                       }`}
                     >
                       <span className="text-sm font-black">English</span>
@@ -931,7 +928,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => transitionTo('onboarding_theme')}
-                    className="w-full py-3.5 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+                    className="w-full py-3.5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
                   >
                     <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                     <ArrowRight size={13} />
@@ -950,13 +947,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Настройка 2 / 5' : 'Setup 2 / 5'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Выберите тему оформления' : 'Choose Theme'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80">
                       {lang === 'ru'
                         ? 'Цвет темы вы сможете поменять в настройках'
                         : 'You can change the theme color in Settings'}
@@ -970,7 +967,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                         selectedTheme === 'light'
                           ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-[var(--surface)] border-[var(--outline)] text-[var(--on-surface)] hover:border-[var(--accent)]'
+                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
                       }`}
                     >
                       <Sun size={20} />
@@ -983,7 +980,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
                         selectedTheme === 'dark'
                           ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-[var(--surface)] border-[var(--outline)] text-[var(--on-surface)] hover:border-[var(--accent)]'
+                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
                       }`}
                     >
                       <Moon size={20} />
@@ -995,14 +992,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_lang')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_wallpaper')}
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                       <ArrowRight size={13} />
@@ -1022,13 +1019,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Настройка 3 / 5' : 'Setup 3 / 5'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Расширение «Обои+»' : '«Wallpaper+» Extension'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)]">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80">
                       {lang === 'ru'
                         ? 'Установить расширение для загрузки 4K обоев из расширенной библиотеки'
                         : 'Pre-install extension to set wallpapers from extended 4K library'}
@@ -1039,17 +1036,17 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     onClick={() => setInstallWallpaperPlus(!installWallpaperPlus)}
                     className={`w-full p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between text-left ${
                       installWallpaperPlus 
-                        ? 'bg-[var(--surface)] border-[var(--accent)] shadow-sm' 
+                        ? 'bg-[var(--on-accent)]/10 border-[var(--on-accent)] shadow-sm' 
                         : 'bg-[var(--surface-dim)] border-[var(--outline)] opacity-70'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-xl ${installWallpaperPlus ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'bg-[var(--container)] text-[var(--on-surface-var)]'}`}>
+                      <div className={`p-2.5 rounded-xl ${installWallpaperPlus ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'bg-[var(--container)] text-[var(--on-accent)] opacity-80'}`}>
                         <Paintbrush size={18} />
                       </div>
                       <div>
-                        <div className="text-xs font-black text-[var(--on-surface)]">Wallpaper+ 4K</div>
-                        <div className="text-[10px] text-[var(--on-surface-var)]">
+                        <div className="text-xs font-black text-[var(--on-accent)]">Wallpaper+ 4K</div>
+                        <div className="text-[10px] text-[var(--on-accent)] opacity-80">
                           {installWallpaperPlus 
                             ? (lang === 'ru' ? 'Будет установлено' : 'Will be installed') 
                             : (lang === 'ru' ? 'Пропустить установку' : 'Skip installation')}
@@ -1067,14 +1064,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_theme')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_font')}
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                       <ArrowRight size={13} />
@@ -1094,10 +1091,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Настройка 4 / 5' : 'Setup 4 / 5'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Выбор системного шрифта' : 'Choose System Font'}
                     </h2>
                   </div>
@@ -1111,7 +1108,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                         className={`p-3 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
                           selectedFont === f.id
                             ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-xs'
-                            : 'bg-[var(--surface)] border-[var(--outline)] text-[var(--on-surface)] hover:border-[var(--accent)]'
+                            : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
                         }`}
                         style={{ fontFamily: f.id }}
                       >
@@ -1125,14 +1122,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_wallpaper')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_clock')}
-                      className="flex-1 py-3 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
                       <ArrowRight size={13} />
@@ -1152,13 +1149,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--accent)]">
+                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Настройка 5 / 5' : 'Setup 5 / 5'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-surface)]">
+                    <h2 className="text-lg font-black text-[var(--on-accent)]">
                       {lang === 'ru' ? 'Часы для экрана блокировки' : 'Lock Screen Clock'}
                     </h2>
-                    <p className="text-xs text-[var(--on-surface-var)] font-medium">
+                    <p className="text-xs text-[var(--on-accent)] opacity-80 font-medium">
                       {lang === 'ru'
                         ? allClockStyles[currentClockIndex].titleRu
                         : allClockStyles[currentClockIndex].titleEn}
@@ -1173,7 +1170,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       whileTap={{ scale: 0.85 }}
                       type="button"
                       onClick={handlePrevClock}
-                      className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)] shadow-sm hover:bg-[var(--accent)] hover:text-[var(--on-accent)] transition-all cursor-pointer z-10"
+                      className="w-8 h-8 rounded-full bg-[var(--on-accent)]/20 border border-[var(--on-accent)]/40 flex items-center justify-center text-[var(--on-accent)] hover:bg-[var(--on-accent)]/40 transition-all cursor-pointer z-10"
                       title={lang === 'ru' ? 'Предыдущие часы' : 'Previous clock'}
                     >
                       <ChevronLeft size={16} />
@@ -1195,15 +1192,15 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                               <div
                                 className={`tracking-tight tabular-nums select-none ${
                                   clockVariation === 1
-                                    ? 'text-4xl sm:text-5xl font-black text-[var(--on-surface)]'
+                                    ? 'text-4xl sm:text-5xl font-black text-[var(--on-accent)]'
                                     : clockVariation === 2
-                                    ? 'font-mono text-3xl sm:text-4xl font-bold text-[var(--on-surface-var)]'
-                                    : 'font-light tracking-widest text-4xl sm:text-5xl text-[var(--accent)]'
+                                    ? 'font-mono text-3xl sm:text-4xl font-bold text-[var(--on-accent)] opacity-80'
+                                    : 'font-light tracking-widest text-4xl sm:text-5xl text-[var(--on-accent)]'
                                 }`}
                               >
                                 {hours}:{minutes}:{seconds}
                               </div>
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--on-surface-var)] mt-1 block">
+                              <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--on-accent)] opacity-80 mt-1 block">
                                 {currentTime.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
                                   weekday: 'short',
                                   month: 'short',
@@ -1213,7 +1210,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                             </div>
                           ) : (
                             <div
-                              className={`relative w-28 h-28 rounded-full border-2 border-[var(--on-surface)] bg-[var(--surface)] flex items-center justify-center shadow-md ${
+                              className={`relative w-28 h-28 rounded-full border-2 border-[var(--on-accent)] bg-[var(--accent)] flex items-center justify-center shadow-md ${
                                 clockVariation === 2 ? 'border-dashed' : clockVariation === 3 ? 'border-4' : ''
                               }`}
                             >
@@ -1255,7 +1252,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       whileTap={{ scale: 0.85 }}
                       type="button"
                       onClick={handleNextClock}
-                      className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--outline)] flex items-center justify-center text-[var(--on-surface)] shadow-sm hover:bg-[var(--accent)] hover:text-[var(--on-accent)] transition-all cursor-pointer z-10"
+                      className="w-8 h-8 rounded-full bg-[var(--on-accent)]/20 border border-[var(--on-accent)]/40 flex items-center justify-center text-[var(--on-accent)] hover:bg-[var(--on-accent)]/40 transition-all cursor-pointer z-10"
                       title={lang === 'ru' ? 'Следующие часы' : 'Next clock'}
                     >
                       <ChevronRight size={16} />
@@ -1266,7 +1263,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('onboarding_font')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--outline)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
@@ -1275,7 +1272,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       whileTap={{ scale: 0.97 }}
                       type="button"
                       onClick={handleFinishOnboarding}
-                      className="flex-1 py-3.5 rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                      className="flex-1 py-3.5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
                     >
                       <span>{lang === 'ru' ? 'Начать работу' : 'Start Working'}</span>
                       <Check size={14} />
@@ -1292,10 +1289,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   className="w-full max-w-xs flex flex-col items-center gap-3 text-center"
                 >
-                  <h2 className="text-lg font-black text-[var(--on-surface)]">
+                  <h2 className="text-lg font-black text-[var(--on-accent)]">
                     {lang === 'ru' ? 'Запуск системы...' : 'Launching LinkerRu...'}
                   </h2>
-                  <p className="text-xs text-[var(--on-surface-var)]">
+                  <p className="text-xs text-[var(--on-accent)] opacity-80">
                     {lang === 'ru' ? 'Применение ваших настроек' : 'Applying your preferences'}
                   </p>
                 </motion.div>

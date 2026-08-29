@@ -126,26 +126,24 @@ export function TelegramRouteApp({ lang = 'ru', onReloadTrigger }: TelegramRoute
                 <M3LoadingIndicator size={48} color="var(--accent)" speed={1} />
               </div>
               
-              {/* Status Bar Pill with minimalist matte filling */}
-              <div className="relative overflow-hidden flex items-center justify-between w-full px-4 py-2.5 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
-                {/* Horizontal status fill — matte accent */}
-                <div
-                  className="absolute inset-y-0 left-0 transition-all duration-150 ease-out bg-[var(--accent)]"
-                  style={{
-                    width: `${Math.min(100, Math.round(progress))}%`,
-                    opacity: 0.9,
-                  }}
-                />
-
-                <div className="relative z-10 flex items-center gap-2 text-[var(--on-surface)]">
-                  <Send size={13} className={progress > 20 ? 'text-white' : 'text-[var(--accent)]'} />
-                  <span className={`text-xs font-bold transition-colors ${progress > 45 ? 'text-white' : 'text-[var(--on-surface)]'}`}>
+              {/* Minimalist status line */}
+              <div className="flex flex-col items-center justify-center w-full gap-2">
+                <div className="flex items-center gap-2">
+                  <Send size={13} className="text-[var(--accent)] shrink-0 opacity-80" />
+                  <span className="text-xs font-bold tracking-tight text-[var(--on-surface)]">
                     {isRu ? 'Обновление сессии Telegram...' : isUk ? 'Оновлення сесії Telegram...' : 'Refreshing Telegram session...'}
+                    <span className="text-[var(--on-surface-var)] ml-1">{Math.round(progress)}%</span>
                   </span>
                 </div>
-                <span className={`relative z-10 text-[11px] font-black tabular-nums transition-colors ${progress > 85 ? 'text-white' : 'text-[var(--on-surface-var)]'}`}>
-                  {Math.round(progress)}%
-                </span>
+                {/* Horizontal status fill — simple line */}
+                <div className="w-full h-0.5 bg-[var(--outline-var)] rounded-full overflow-hidden opacity-70">
+                  <div
+                    className="h-full bg-[var(--accent)] transition-all duration-150 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.round(progress))}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
