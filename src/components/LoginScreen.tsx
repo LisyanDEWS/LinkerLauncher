@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 import { Language } from '../types';
 
@@ -200,6 +200,8 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
     try {
       setIsSpinningFast(true);
+      // Mark signup in progress so App.tsx onAuthStateChanged does not unmount before onboarding
+      sessionStorage.setItem('linkerru_signup_in_progress', 'true');
       const userCredential = await createUserWithEmailAndPassword(userAuth, email.trim(), password);
       const user = userCredential.user;
 
@@ -220,6 +222,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         transitionTo('onboarding_setup');
       }, 500);
     } catch (err: any) {
+      sessionStorage.removeItem('linkerru_signup_in_progress');
       setIsSpinningFast(false);
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка регистрации' : 'Registration failed';
@@ -236,11 +239,26 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const handleFinishOnboarding = () => {
     transitionTo('finalizing');
 
-    // Save preferences
+    // Save preferences locally
     onLangChange(selectedLang);
     localStorage.setItem('linkerru_lang', selectedLang);
     localStorage.setItem('linkerru_theme', selectedTheme);
     localStorage.setItem('linkerru_onboarded', 'true');
+    sessionStorage.removeItem('linkerru_signup_in_progress');
+
+    // Persist language & theme in Firestore user settings
+    if (userAuth.currentUser) {
+      try {
+        const userDocRef = doc(userDb, 'users', userAuth.currentUser.uid);
+        updateDoc(userDocRef, {
+          'settings.lang': selectedLang,
+          'settings.theme': selectedTheme,
+          updatedAt: Date.now(),
+        }).catch(console.error);
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
     setTimeout(() => {
       onLogin(registeredNick || username || 'User', true);

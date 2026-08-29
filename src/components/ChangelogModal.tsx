@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { History, Sparkles, GitCommit, ChevronDown, ChevronUp, FileCode, Plus, Minus, ExternalLink, ArrowLeft, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { History, GitCommit, ChevronDown, ChevronUp, FileCode, Plus, Minus, ExternalLink, RotateCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Language } from '../types';
 import { translations } from '../data/translations';
+import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 
 interface ChangelogModalProps {
   isOpen?: boolean;
@@ -47,43 +48,67 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
   const [commitDetail, setCommitDetail] = useState<CommitDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=30', {
-          headers: { 'Accept': 'application/vnd.github+json' },
-        });
-        const data = await res.json();
-        if (cancelled) return;
-        if (Array.isArray(data)) {
-          const formatted: CommitEntry[] = data.map((c: any) => {
-            const rawMsg = c.commit?.message || 'No message';
-            const lines = rawMsg.split('\n');
-            const title = lines[0] || 'No message';
-            const body = lines.slice(1).join('\n').trim();
+  const fetchCommitsList = useCallback(async () => {
+    setLoading(true);
+    setError(false);
 
-            return {
-              sha: c.sha?.slice(0, 7) || 'unknown',
-              fullSha: c.sha || '',
-              message: title,
-              body: body,
-              author: (c.commit?.author?.name || c.commit?.committer?.name || 'Unknown') === 'zxc-mrt1n-o4' ? 'nark0zz-dev' : (c.commit?.author?.name || c.commit?.committer?.name || 'Unknown'),
-              date: c.commit?.author?.date || c.commit?.committer?.date || '',
-            };
-          });
-          setCommits(formatted);
-        }
-        setLoading(false);
-      } catch {
-        if (!cancelled) {
-          setError(true);
+    const parseCommitData = (data: any[]): CommitEntry[] => {
+      return data.map((c: any) => {
+        const rawMsg = c.commit?.message || 'No message';
+        const lines = rawMsg.split('\n');
+        const title = lines[0] || 'No message';
+        const body = lines.slice(1).join('\n').trim();
+
+        return {
+          sha: c.sha?.slice(0, 7) || 'unknown',
+          fullSha: c.sha || '',
+          message: title,
+          body: body,
+          author: (c.commit?.author?.name || c.commit?.committer?.name || 'Unknown') === 'zxc-mrt1n-o4' ? 'nark0zz-dev' : (c.commit?.author?.name || c.commit?.committer?.name || 'Unknown'),
+          date: c.commit?.author?.date || c.commit?.committer?.date || '',
+        };
+      });
+    };
+
+    try {
+      // 1. Try server proxy endpoint first (fast, cached, bypasses client CORS/rate limit)
+      const res = await fetch('/api/changelog');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setCommits(parseCommitData(data));
           setLoading(false);
+          return;
         }
       }
-    })();
-    return () => { cancelled = true; };
+    } catch {
+      // Fallback below
+    }
+
+    try {
+      // 2. Direct GitHub API fallback
+      const ghRes = await fetch('https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=30', {
+        headers: { 'Accept': 'application/vnd.github+json' },
+      });
+      if (ghRes.ok) {
+        const ghData = await ghRes.json();
+        if (Array.isArray(ghData) && ghData.length > 0) {
+          setCommits(parseCommitData(ghData));
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {
+      // Failed
+    }
+
+    setError(true);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    fetchCommitsList();
+  }, [fetchCommitsList]);
 
   // Fetch detailed commit info when a commit is clicked
   const handleSelectCommit = async (commit: CommitEntry) => {
@@ -98,15 +123,34 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
     setDetailLoading(true);
 
     try {
-      const res = await fetch(`https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits/${commit.fullSha}`, {
+      // Try local server proxy for commit details
+      const res = await fetch(`/api/changelog/commit/${commit.fullSha}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.files || data.stats)) {
+          setCommitDetail({
+            stats: data.stats,
+            files: data.files,
+          });
+          return;
+        }
+      }
+    } catch {
+      // Fallback to GitHub direct
+    }
+
+    try {
+      const ghRes = await fetch(`https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits/${commit.fullSha}`, {
         headers: { 'Accept': 'application/vnd.github+json' },
       });
-      const data = await res.json();
-      if (data && data.files) {
-        setCommitDetail({
-          stats: data.stats,
-          files: data.files,
-        });
+      if (ghRes.ok) {
+        const data = await ghRes.json();
+        if (data && (data.files || data.stats)) {
+          setCommitDetail({
+            stats: data.stats,
+            files: data.files,
+          });
+        }
       }
     } catch (e) {
       console.error('Failed to load commit detail', e);
@@ -138,6 +182,15 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchCommitsList}
+            disabled={loading}
+            title={lang === 'ru' ? 'Обновить список' : 'Refresh list'}
+            className="p-1.5 rounded-full hover:bg-[var(--surface-dim)] text-[var(--on-surface-var)] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RotateCw size={13} className={loading ? 'animate-spin' : ''} />
+          </button>
           <a
             href="https://github.com/LisyanDEWS/LinkerLauncher/commits/main"
             target="_blank"
@@ -153,35 +206,51 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
       {/* Main Commit List and Details Split/View */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-2.5" id="changelog-list-content">
         {loading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <div className="w-6 h-6 border-2 border-[var(--outline-var)] border-t-[var(--accent)] rounded-full animate-spin" />
-            <span className="text-xs text-[var(--on-surface-var)] font-semibold">
+          <div className="flex flex-col items-center justify-center py-14 gap-4">
+            <M3LoadingIndicator size={48} color="var(--accent)" speed={1} />
+            <span className="text-xs text-[var(--on-surface-var)] font-semibold tracking-wide">
               {lang === 'ru' ? 'Загрузка коммитов...' : 'Loading commits...'}
             </span>
           </div>
         )}
 
         {error && !loading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
             <span className="text-xs text-[var(--on-surface-var)] font-semibold">
-              {lang === 'ru' ? 'Не удалось загрузить изменения' : 'Failed to load changes'}
+              {lang === 'ru' ? 'Не удалось загрузить изменения с GitHub' : 'Failed to load changes from GitHub'}
             </span>
-            <a
-              href="https://github.com/LisyanDEWS/LinkerLauncher/commits/main"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] font-bold text-[var(--accent)] hover:underline"
-            >
-              {lang === 'ru' ? 'Открыть на GitHub' : 'Open on GitHub'}
-            </a>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={fetchCommitsList}
+                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--on-accent)] cursor-pointer hover:opacity-90 transition-all"
+              >
+                {lang === 'ru' ? 'Повторить попытку' : 'Retry'}
+              </button>
+              <a
+                href="https://github.com/LisyanDEWS/LinkerLauncher/commits/main"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-[var(--accent)] hover:underline"
+              >
+                {lang === 'ru' ? 'Открыть на GitHub' : 'Open on GitHub'}
+              </a>
+            </div>
           </div>
         )}
 
         {!loading && !error && commits.length === 0 && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
             <span className="text-xs text-[var(--on-surface-var)] font-semibold">
               {lang === 'ru' ? 'Нет коммитов' : 'No commits'}
             </span>
+            <button
+              type="button"
+              onClick={fetchCommitsList}
+              className="text-xs font-bold text-[var(--accent)] hover:underline cursor-pointer"
+            >
+              {lang === 'ru' ? 'Обновить' : 'Refresh'}
+            </button>
           </div>
         )}
 
@@ -254,9 +323,9 @@ export default function ChangelogModal({ lang, embeddedInWindow = true }: Change
 
                     {/* Stats & Files Modified Breakdown */}
                     {detailLoading && (
-                      <div className="flex items-center justify-center py-4 gap-2 text-xs text-[var(--on-surface-var)] font-semibold">
-                        <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
-                        <span>{lang === 'ru' ? 'Загрузка списка изменённых файлов...' : 'Loading changed files...'}</span>
+                      <div className="flex flex-col items-center justify-center py-6 gap-2.5 text-xs text-[var(--on-surface-var)] font-semibold">
+                        <M3LoadingIndicator size={28} color="var(--accent)" speed={1} />
+                        <span className="text-[11px] opacity-80">{lang === 'ru' ? 'Загрузка списка изменённых файлов...' : 'Loading changed files...'}</span>
                       </div>
                     )}
 

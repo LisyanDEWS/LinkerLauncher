@@ -431,7 +431,37 @@ async function startServer() {
       cacheTime = Date.now();
       res.json(commits);
     } catch (err) {
-      res.status(200).json([]);
+      if (cachedCommits && cachedCommits.length > 0) {
+        res.json(cachedCommits);
+      } else {
+        res.status(200).json([]);
+      }
+    }
+  });
+
+  // Single commit detail endpoint
+  const commitDetailCache = new Map<string, { data: any; time: number }>();
+  app.get('/api/changelog/commit/:sha', async (req, res) => {
+    try {
+      const sha = req.params.sha;
+      const cached = commitDetailCache.get(sha);
+      if (cached && Date.now() - cached.time < 300000) {
+        res.json(cached.data);
+        return;
+      }
+      const url = `https://api.github.com/repos/${GITHUB_REPO}/commits/${sha}`;
+      const apiRes = await fetchWithTimeout(url, {
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'LinkerRu-Server',
+        },
+      }, 10000);
+      if (!apiRes.ok) throw new Error(`GitHub API returned ${apiRes.status}`);
+      const data = await apiRes.json();
+      commitDetailCache.set(sha, { data, time: Date.now() });
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch commit detail' });
     }
   });
 
