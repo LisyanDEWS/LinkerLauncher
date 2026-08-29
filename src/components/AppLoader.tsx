@@ -93,15 +93,14 @@ export function AppLoader({
     <div
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center pointer-events-none select-none"
       style={{
-        backdropFilter: 'blur(28px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(150%)',
-        // Semi-transparent tint over the wallpaper so the blurred interface
-        // is visible behind the loader, not fully covered.
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        // Semi-transparent tint over the wallpaper for a clean matte glass layer
         background: background
-          ? `color-mix(in srgb, ${background} 60%, transparent)`
-          : 'color-mix(in srgb, var(--bg) 60%, transparent)',
+          ? `color-mix(in srgb, ${background} 75%, transparent)`
+          : 'color-mix(in srgb, var(--bg) 75%, transparent)',
         opacity: phase === 'fading' ? 0 : 1,
-        transition: 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       {/* Brightness dim overlay — matches the app's brightness setting so
@@ -123,29 +122,27 @@ export function AppLoader({
             position: 'relative',
           }}
         >
-          <M3LoadingIndicator size={isUpdating ? 78 : 56} color={color} speed={isUpdating ? 1.1 : 1} />
+          <M3LoadingIndicator size={isUpdating ? 76 : 54} color={color} speed={isUpdating ? 1.15 : 1} />
         </div>
 
         {isUpdating && (
-          <div className="mt-7 flex flex-col items-center gap-3 text-center px-4 max-w-sm w-full">
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-base sm:text-lg font-black tracking-tight text-[var(--on-surface)] leading-snug">
+          <div className="mt-6 flex flex-col items-center gap-3 text-center px-4 max-w-xs w-full">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-sm sm:text-base font-extrabold tracking-tight text-[var(--on-surface)] leading-snug">
                 {updatingTitle || 'Ваша система обновляется'}
               </span>
-              <span className="text-xs sm:text-[13px] font-semibold text-[var(--on-surface-var)] opacity-85 leading-relaxed">
+              <span className="text-xs font-medium text-[var(--on-surface-var)] opacity-80 leading-relaxed">
                 {updatingSubtitle || 'Применение последних изменений и синхронизация'}
               </span>
             </div>
 
-            {/* Status bar with horizontal wave effect */}
-            <div className="relative w-full h-2 rounded-full overflow-hidden bg-[var(--container-high)] border border-[var(--outline-var)] shadow-inner mt-1">
+            {/* Minimalist matte indeterminate progress bar */}
+            <div className="relative w-full h-1.5 rounded-full overflow-hidden bg-[var(--container-high)] mt-1">
               <div
-                className="absolute inset-y-0 left-0 h-full rounded-full transition-all duration-300 ease-out"
+                className="absolute inset-y-0 h-full rounded-full bg-[var(--accent)]"
                 style={{
-                  width: '100%',
-                  background: 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, white) 50%, var(--accent) 100%)',
-                  backgroundSize: '200% 100%',
-                  animation: 'shimmerWave 2s ease-in-out infinite',
+                  width: '45%',
+                  animation: 'indeterminateTrack 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
                 }}
               />
             </div>

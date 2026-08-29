@@ -1109,21 +1109,12 @@ function WindowFrame({
                 <M3LoadingIndicator size={44} color="var(--accent)" speed={1} />
               </div>
               <div className="relative overflow-hidden flex items-center justify-between w-full px-4 py-2 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
-                {/* Horizontal status fill */}
+                {/* Horizontal status fill — pure matte accent */}
                 <div
-                  className="absolute inset-y-0 left-0 transition-all duration-100 ease-out"
+                  className="absolute inset-y-0 left-0 transition-all duration-150 ease-out bg-[var(--accent)]"
                   style={{
                     width: `${Math.min(100, Math.round(loaderProgress))}%`,
-                    background: 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 75%, white) 50%, var(--accent) 100%)',
-                    opacity: 0.85,
-                  }}
-                />
-                
-                {/* Subtle animated shimmer */}
-                <div
-                  className="absolute inset-0 pointer-events-none opacity-25 animate-pulse"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                    opacity: 0.9,
                   }}
                 />
 

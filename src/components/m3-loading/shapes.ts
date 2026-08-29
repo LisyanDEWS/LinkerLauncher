@@ -9,8 +9,8 @@ export type Point = [x: number, y: number];
 
 export const SHAPE_COUNT = 7;
 
-const SAMPLES_PER_CURVE = 14;
-const POINTS_PER_SHAPE = 180;
+const SAMPLES_PER_CURVE = 20;
+const POINTS_PER_SHAPE = 240;
 
 // ---------------------------------------------------------------------------
 // Raw SVG path data from Material Design shape files

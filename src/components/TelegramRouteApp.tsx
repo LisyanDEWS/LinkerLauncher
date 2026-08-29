@@ -126,30 +126,20 @@ export function TelegramRouteApp({ lang = 'ru', onReloadTrigger }: TelegramRoute
                 <M3LoadingIndicator size={48} color="var(--accent)" speed={1} />
               </div>
               
-              {/* Status Bar Pill with wave filling effect */}
-              <div className="relative overflow-hidden flex items-center justify-between w-full px-4 py-2.5 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-sm">
-                {/* Horizontal status fill */}
+              {/* Status Bar Pill with minimalist matte filling */}
+              <div className="relative overflow-hidden flex items-center justify-between w-full px-4 py-2.5 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
+                {/* Horizontal status fill — matte accent */}
                 <div
-                  className="absolute inset-y-0 left-0 transition-all duration-100 ease-out"
+                  className="absolute inset-y-0 left-0 transition-all duration-150 ease-out bg-[var(--accent)]"
                   style={{
                     width: `${Math.min(100, Math.round(progress))}%`,
-                    background: 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 75%, white) 50%, var(--accent) 100%)',
-                    backgroundSize: '200% 100%',
-                    opacity: 0.88,
-                  }}
-                />
-                
-                {/* Subtle animated wave shimmer */}
-                <div
-                  className="absolute inset-0 pointer-events-none opacity-30 animate-pulse"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                    opacity: 0.9,
                   }}
                 />
 
                 <div className="relative z-10 flex items-center gap-2 text-[var(--on-surface)]">
                   <Send size={13} className={progress > 20 ? 'text-white' : 'text-[var(--accent)]'} />
-                  <span className={`text-xs font-bold transition-colors ${progress > 45 ? 'text-white drop-shadow-xs' : 'text-[var(--on-surface)]'}`}>
+                  <span className={`text-xs font-bold transition-colors ${progress > 45 ? 'text-white' : 'text-[var(--on-surface)]'}`}>
                     {isRu ? 'Обновление сессии Telegram...' : isUk ? 'Оновлення сесії Telegram...' : 'Refreshing Telegram session...'}
                   </span>
                 </div>

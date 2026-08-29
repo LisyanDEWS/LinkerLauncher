@@ -37,12 +37,12 @@ export function drawIndicator(
 
   ctx.clearRect(0, 0, cssSize, cssSize);
 
-  // Draw circular container if contained mode
+  // Draw circular container if contained mode (clean matte container)
   if (options.contained) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, cssSize / 2, 0, Math.PI * 2);
-    ctx.fillStyle = options.containerColor ?? "rgba(0,0,0,0.08)";
+    ctx.fillStyle = options.containerColor ?? "rgba(0,0,0,0.06)";
     ctx.fill();
     ctx.restore();
   }
@@ -51,15 +51,32 @@ export function drawIndicator(
   ctx.translate(cx, cy);
   ctx.rotate((rotation * Math.PI) / 180);
 
-  ctx.beginPath();
-  for (let i = 0; i <= points.length; i++) {
-    const [px, py] = points[i % points.length];
-    if (i === 0) ctx.moveTo(px * scale, py * scale);
-    else ctx.lineTo(px * scale, py * scale);
+  // Smooth closed curve path
+  const len = points.length;
+  if (len > 2) {
+    ctx.beginPath();
+    
+    // Compute midpoint between last point and first point
+    const pLast = points[len - 1];
+    const pFirst = points[0];
+    const startX = ((pLast[0] + pFirst[0]) / 2) * scale;
+    const startY = ((pLast[1] + pFirst[1]) / 2) * scale;
+    ctx.moveTo(startX, startY);
+
+    for (let i = 0; i < len; i++) {
+      const pCurrent = points[i];
+      const pNext = points[(i + 1) % len];
+      const midX = ((pCurrent[0] + pNext[0]) / 2) * scale;
+      const midY = ((pCurrent[1] + pNext[1]) / 2) * scale;
+      ctx.quadraticCurveTo(pCurrent[0] * scale, pCurrent[1] * scale, midX, midY);
+    }
+    ctx.closePath();
+    
+    // Crisp, pure matte fill (non-glossy, high precision)
+    ctx.fillStyle = options.color;
+    ctx.fill();
   }
-  ctx.closePath();
-  ctx.fillStyle = options.color;
-  ctx.fill();
+
   ctx.restore();
 }
 

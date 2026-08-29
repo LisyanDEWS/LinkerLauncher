@@ -514,20 +514,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       {/* Main Centered Hub: The Big M3 Loading Element Hero */}
       <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8 z-10">
         <div className="w-full max-w-md flex flex-col items-center justify-center relative">
-          {/* Centered Large M3 Loading Element (taking prominent ~1/5 screen visual anchor) */}
+          {/* Centered Large M3 Loading Element — Pure Minimalist & Expressive Matte Finish */}
           <div className="relative flex items-center justify-center mb-6">
-            <div className="relative w-36 h-36 md:w-44 md:h-44 flex items-center justify-center">
-              {/* Pulsing ring aura */}
-              <div 
-                className="absolute inset-0 rounded-full blur-xl opacity-20 transition-all duration-500"
-                style={{ background: 'var(--accent)' }}
-              />
-              
-              {/* Fluid M3 shape morphing canvas */}
+            <div className="relative w-36 h-36 md:w-40 md:h-40 flex items-center justify-center">
+              {/* Fluid M3 shape morphing canvas — pure matte vector */}
               <M3LoadingIndicator 
-                size={144} 
+                size={136} 
                 color="var(--accent)" 
-                speed={isSpinningFast ? 3.8 : 0.9} 
+                speed={isSpinningFast ? 3.6 : 0.95} 
               />
             </div>
           </div>
