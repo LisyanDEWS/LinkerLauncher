@@ -2411,12 +2411,18 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         <div className="fixed inset-0 z-[9999] pointer-events-none bg-[#ffad33] opacity-[0.15] mix-blend-multiply" style={{ mixBlendMode: theme === 'dark' ? 'color-burn' : 'multiply' }} />
       )}
 
+      {/* Fixed fullscreen wallpaper layer */}
+      <div
+        className="fixed inset-0 -z-10 pointer-events-none"
+        style={{ background: getWallpaperStyle(), backgroundAttachment: 'fixed' }}
+        aria-hidden
+      />
+
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="min-h-screen text-[var(--on-surface)] p-5 transition-colors duration-300 md:p-8 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white"
-        style={{ background: getWallpaperStyle() }}
         id="root-launcher-app"
       >
       <div className="fixed top-6 right-6 z-[100] pointer-events-auto flex flex-col items-end">
@@ -3604,15 +3610,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         activePalette={activePalette}
         background={standbyBg}
         setBackground={handleStandbyBgSave}
+        wallpaper={mainWallpaper}
         onLaunch={() => {
           playChime('click');
           setIsStandbySetupOpen(false);
           setIsStandbyOpen(true);
-          try {
-            document.documentElement.requestFullscreen();
-          } catch (e) {
-            console.error('Fullscreen request failed', e);
-          }
         }}
       />
 
@@ -3621,24 +3623,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         onClose={() => {
           playChime('click');
           setIsStandbyOpen(false);
-          try {
-            if (document.fullscreenElement) {
-              document.exitFullscreen();
-            }
-          } catch (e) {}
         }}
         lang={lang}
         activePalette={activePalette}
         background={standbyBg}
+        wallpaper={mainWallpaper}
         onOpenSetup={() => {
           playChime('click');
           setIsStandbyOpen(false);
           setIsStandbySetupOpen(true);
-          try {
-            if (document.fullscreenElement) {
-              document.exitFullscreen();
-            }
-          } catch (e) {}
         }}
         clockType={clockType}
         clockVariation={clockVariation}

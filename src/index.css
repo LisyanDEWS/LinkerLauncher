@@ -116,6 +116,30 @@ body, #root {
   backdrop-filter: none !important;
 }
 
+/* Standby mode: lock scroll and smoothly hide scrollbar */
+html {
+  scrollbar-width: thin;
+  transition: scrollbar-color 0.4s ease;
+}
+html.standby-active {
+  overflow: hidden !important;
+  scrollbar-color: transparent transparent;
+}
+html.standby-active::-webkit-scrollbar {
+  width: 0;
+  transition: width 0.4s ease;
+}
+
+/* Brighter accent for text/icons — mixes accent with white for more vibrancy */
+.accent-bright {
+  color: color-mix(in srgb, var(--accent) 72%, #ffffff);
+}
+
+/* Hide AI Designer watermark badge */
+[data-aifx-wm] {
+  display: none !important;
+}
+
 .panel-bg-gradient {
   background: linear-gradient(var(--panel-bg), var(--panel-bg)) padding-box,
               linear-gradient(135deg, color-mix(in srgb, var(--outline) 60%, rgba(255,255,255,0.15)), transparent 75%) border-box;

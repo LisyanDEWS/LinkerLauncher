@@ -282,18 +282,18 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   } as React.CSSProperties;
 
   const darkMonoThemeVars = {
-    '--bg': '#090A0F',
-    '--surface': '#13151D',
-    '--surface-dim': '#1E222D',
-    '--surface-bright': '#2A303F',
-    '--on-surface': '#F9FAFB',
+    '--bg': '#14151C',
+    '--surface': '#1A1C26',
+    '--surface-dim': '#22242F',
+    '--surface-bright': '#2E3140',
+    '--on-surface': '#E8EAF0',
     '--on-surface-var': '#9CA3AF',
     '--outline': '#2E3545',
-    '--outline-var': '#1E222D',
-    '--container': '#13151D',
-    '--container-high': '#1E222D',
-    '--accent': '#F9FAFB',
-    '--on-accent': '#090A0F',
+    '--outline-var': '#22242F',
+    '--container': '#1A1C26',
+    '--container-high': '#22242F',
+    '--accent': '#C7CBD9',
+    '--on-accent': '#14151C',
   } as React.CSSProperties;
 
   const themeVars = effectiveTheme === 'dark' ? darkMonoThemeVars : lightMonoThemeVars;
@@ -833,12 +833,10 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         )}
       </AnimatePresence>
 
-      {/* Footer copyright */}
-      <footer className="w-full py-4 text-center z-10">
-        <span className="text-[10px] font-semibold text-[var(--on-surface-var)] opacity-60">
-          Linker Studio &copy; {new Date().getFullYear()}
-        </span>
-      </footer>
+      {/* Floating copyright pill */}
+      <span className="fixed bottom-5 left-1/2 -translate-x-1/2 z-20 text-[10px] font-semibold text-[var(--on-surface-var)] opacity-70 px-3 py-1 rounded-full border border-[var(--outline-var)] bg-[var(--surface)]/60 backdrop-blur-md">
+        Linker Studio &copy; {new Date().getFullYear()}
+      </span>
     </div>
   );
 }

@@ -318,10 +318,10 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             }
       }
     >
-      {/* 1. TOP HEADER BAR: Monochromatic rounded pill card */}
+      {/* 1. TOP HEADER BAR: rounded pill card with accent icon */}
       <div className="flex items-center justify-between gap-3 p-2.5 px-3.5 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--container-high)] border border-[var(--outline-var)] text-[var(--on-surface)]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/12 border border-[var(--accent)]/20 text-[var(--accent)] accent-bright">
             <CloudSun size={18} />
           </div>
           <div className="min-w-0">
@@ -340,8 +340,8 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             onClick={() => setShowSettings(!showSettings)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
               showSettings
-                ? 'bg-[var(--on-surface)] text-[var(--surface)] border-transparent shadow-xs'
-                : 'bg-[var(--surface)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)] border-[var(--outline-var)] hover:bg-[var(--container-high)]'
+                ? 'bg-[var(--accent)] text-[var(--on-accent)] border-transparent shadow-xs'
+                : 'bg-[var(--surface)] text-[var(--on-surface-var)] hover:text-[var(--accent)] border-[var(--outline-var)] hover:bg-[var(--container-high)]'
             }`}
             title={lang === 'ru' ? 'Настройки локации' : lang === 'uk' ? 'Налаштування локації' : 'Location settings'}
           >
@@ -359,7 +359,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               }}
               className={`h-6.5 px-2.5 rounded-full text-xs font-black transition-all cursor-pointer ${
                 unit === 'C'
-                  ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs'
+                  ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-xs'
                   : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
@@ -373,7 +373,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               }}
               className={`h-6.5 px-2.5 rounded-full text-xs font-black transition-all cursor-pointer ${
                 unit === 'F'
-                  ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs'
+                  ? 'bg-[var(--accent)] text-[var(--on-accent)] shadow-xs'
                   : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
               }`}
             >
@@ -423,7 +423,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   type="text"
                   value={latStr}
                   onChange={(e) => setLatStr(e.target.value)}
-                  className="bg-[var(--surface)] text-xs font-semibold rounded-xl px-3 py-1.5 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--on-surface)]"
+                  className="bg-[var(--surface)] text-xs font-semibold rounded-xl px-3 py-1.5 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--accent)]"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -434,7 +434,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   type="text"
                   value={lonStr}
                   onChange={(e) => setLonStr(e.target.value)}
-                  className="bg-[var(--surface)] text-xs font-semibold rounded-xl px-3 py-1.5 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--on-surface)]"
+                  className="bg-[var(--surface)] text-xs font-semibold rounded-xl px-3 py-1.5 border border-[var(--outline-var)] text-[var(--on-surface)] focus:outline-hidden focus:border-[var(--accent)]"
                 />
               </div>
             </div>
@@ -443,7 +443,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 setShowSettings(false);
                 loadWeather(Number(latStr), Number(lonStr));
               }}
-              className="w-full bg-[var(--on-surface)] text-[var(--surface)] py-2 rounded-xl text-xs font-extrabold shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
+              className="w-full bg-[var(--accent)] text-[var(--on-accent)] py-2 rounded-xl text-xs font-extrabold shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
             >
               {lang === 'ru' ? 'Обновить координаты' : lang === 'uk' ? 'Оновити координати' : 'Update Coordinates'}
             </button>
@@ -466,7 +466,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   <div className="h-12 w-28 rounded-xl bg-[var(--surface-dim)] animate-pulse my-1" />
                 ) : (
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-black tracking-tighter text-[var(--on-surface)]">
+                    <span className="text-5xl font-black tracking-tighter text-[var(--accent)] accent-bright">
                       {convertTemp(currentTempC)}
                     </span>
                   </div>
@@ -474,8 +474,8 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
               </div>
 
               <div className="flex flex-col items-end">
-                <div className="p-2.5 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline-var)] shadow-xs">
-                  {dailyData.length > 0 ? getWeatherIcon(dailyData[0].type, 32) : <Sun size={32} className="text-[var(--on-surface)]" />}
+                <div className="p-2.5 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-xs">
+                  {dailyData.length > 0 ? getWeatherIcon(dailyData[0].type, 32) : <Sun size={32} className="text-[var(--accent)] accent-bright" />}
                 </div>
                 <span className="text-xs font-extrabold text-[var(--on-surface)] mt-1.5">
                   {dailyData.length > 0 ? dailyData[0].desc : (lang === 'ru' ? 'Ясно' : lang === 'uk' ? 'Ясно' : 'Clear')}
@@ -489,10 +489,10 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 {lang === 'ru' ? 'Сегодня' : lang === 'uk' ? 'Сьогодні' : 'Today'}
               </span>
               {dailyData.length > 0 && (
-                <div className="flex items-center gap-1.5 font-black text-[var(--on-surface)] tabular-nums">
+                <div className="flex items-center gap-1.5 font-black tabular-nums">
                   <span className="text-[var(--on-surface-var)]">{convertTemp(dailyData[0].minTemp)}</span>
                   <span className="text-[var(--outline-var)]">/</span>
-                  <span>{convertTemp(dailyData[0].maxTemp)}</span>
+                  <span className="text-[var(--accent)] accent-bright">{convertTemp(dailyData[0].maxTemp)}</span>
                 </div>
               )}
             </div>
@@ -502,7 +502,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
           <div className="grid grid-cols-2 gap-2.5 shrink-0">
             {/* Wind Card */}
             <div className="p-3 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex items-center gap-3 shadow-xs">
-              <div className="h-8.5 w-8.5 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center shrink-0 text-[var(--on-surface)]">
+              <div className="h-8.5 w-8.5 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-center shrink-0 text-[var(--accent)] accent-bright">
                 <Wind size={16} />
               </div>
               <div className="min-w-0">
@@ -521,7 +521,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
 
             {/* Humidity Card */}
             <div className="p-3 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex items-center gap-3 shadow-xs">
-              <div className="h-8.5 w-8.5 rounded-xl bg-[var(--container)] border border-[var(--outline-var)] flex items-center justify-center shrink-0 text-[var(--on-surface)]">
+              <div className="h-8.5 w-8.5 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-center shrink-0 text-[var(--accent)] accent-bright">
                 <Droplets size={16} />
               </div>
               <div className="min-w-0">
@@ -563,7 +563,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                 {hourlyData.map((h, idx) => (
                   <div
                     key={idx}
-                    className="min-w-[68px] flex-shrink-0 flex flex-col items-center justify-center gap-1.5 p-2.5 bg-[var(--surface)] border border-[var(--outline-var)]/60 rounded-xl hover:border-[var(--on-surface-var)] transition-all shadow-2xs"
+                    className="min-w-[68px] flex-shrink-0 flex flex-col items-center justify-center gap-1.5 p-2.5 bg-[var(--surface)] border border-[var(--outline-var)]/60 rounded-xl hover:border-[var(--accent)]/40 transition-all shadow-2xs"
                   >
                     <span className="text-[9.5px] font-black text-[var(--on-surface-var)]">{h.time}</span>
                     <div className="my-0.5">{getWeatherIcon(h.type, 18)}</div>
@@ -578,7 +578,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
         {/* RIGHT COLUMN: 7-Day Forecast Bounded Container */}
         <div className="w-full md:w-[300px] lg:w-[330px] p-3.5 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex flex-col gap-2.5 shadow-xs shrink-0 min-h-0 h-full max-h-full">
           <div className="flex items-center gap-2 pb-0.5 shrink-0">
-            <div className="p-1 rounded-lg bg-[var(--container)] border border-[var(--outline-var)] text-[var(--on-surface)]">
+            <div className="p-1 rounded-lg bg-[var(--accent)]/12 border border-[var(--accent)]/20 text-[var(--accent)] accent-bright">
               <CalendarDays size={13} />
             </div>
             <h4 className="text-[11px] font-black uppercase tracking-widest text-[var(--on-surface)]">
@@ -613,7 +613,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
                   <div className="flex items-center gap-1 text-[11px] font-black tabular-nums shrink-0">
                     <span className="text-[var(--on-surface-var)]">{convertTemp(d.minTemp)}</span>
                     <span className="text-[var(--outline-var)] font-normal">/</span>
-                    <span className="text-[var(--on-surface)]">{convertTemp(d.maxTemp)}</span>
+                    <span className="text-[var(--accent)] accent-bright">{convertTemp(d.maxTemp)}</span>
                   </div>
                 </div>
               ))
