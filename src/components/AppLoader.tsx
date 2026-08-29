@@ -127,13 +127,28 @@ export function AppLoader({
         </div>
 
         {isUpdating && (
-          <div className="mt-7 flex flex-col items-center gap-1.5 text-center px-4 max-w-sm">
-            <span className="text-base sm:text-lg font-black tracking-tight text-[var(--on-surface)] leading-snug">
-              {updatingTitle || 'Ваша система обновляется'}
-            </span>
-            <span className="text-xs sm:text-[13px] font-semibold text-[var(--on-surface-var)] opacity-85 leading-relaxed">
-              {updatingSubtitle || 'Применение последних изменений и синхронизация'}
-            </span>
+          <div className="mt-7 flex flex-col items-center gap-3 text-center px-4 max-w-sm w-full">
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-base sm:text-lg font-black tracking-tight text-[var(--on-surface)] leading-snug">
+                {updatingTitle || 'Ваша система обновляется'}
+              </span>
+              <span className="text-xs sm:text-[13px] font-semibold text-[var(--on-surface-var)] opacity-85 leading-relaxed">
+                {updatingSubtitle || 'Применение последних изменений и синхронизация'}
+              </span>
+            </div>
+
+            {/* Status bar with horizontal wave effect */}
+            <div className="relative w-full h-2 rounded-full overflow-hidden bg-[var(--container-high)] border border-[var(--outline-var)] shadow-inner mt-1">
+              <div
+                className="absolute inset-y-0 left-0 h-full rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, white) 50%, var(--accent) 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmerWave 2s ease-in-out infinite',
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

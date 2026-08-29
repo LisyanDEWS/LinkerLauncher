@@ -741,6 +741,26 @@ button, a, input, select, textarea, [role="button"] {
   }
 }
 
+@keyframes shimmerWave {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes pulseWave {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.3);
+  }
+}
+
 
 
 

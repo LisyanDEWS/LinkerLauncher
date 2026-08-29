@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, X, AlertCircle, EyeOff, Check, Search, Globe } from 'lucide-react';
+import { Language } from '../types';
 
 interface WeatherLocationErrorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  lang: 'ru' | 'en';
+  lang: Language;
   onSetCustomCity: (city: string) => void;
   onDisableWidget: () => void;
   onEnableGeolocation?: () => void;
@@ -16,6 +17,10 @@ interface WeatherLocationErrorModalProps {
 const POPULAR_CITIES = [
   'Москва',
   'Санкт-Петербург',
+  'Київ',
+  'Львів',
+  'Одеса',
+  'Харків',
   'Алматы',
   'Астана',
   'Минск',
@@ -68,16 +73,16 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
               </div>
               <div>
                 <h3 className="text-base font-black text-[var(--on-surface)] leading-tight">
-                  {lang === 'ru' ? 'Настройка локации погоды' : 'Weather Location Setup'}
+                  {lang === 'ru' ? 'Настройка локации погоды' : lang === 'uk' ? 'Налаштування локації погоди' : 'Weather Location Setup'}
                 </h3>
                 <p className="text-xs text-[var(--on-surface-var)] font-medium">
-                  {lang === 'ru' ? 'Нет доступа к геопозиции' : 'Geolocation unavailable'}
+                  {lang === 'ru' ? 'Нет доступа к геопозиции' : lang === 'uk' ? 'Немає доступу до геопозиції' : 'Geolocation unavailable'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -88,6 +93,8 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
               <p className="text-xs text-[var(--on-surface-var)] leading-relaxed mb-4">
                 {lang === 'ru'
                   ? 'Приложение не может автоматически определить вашу геопозицию. Выберите действие:'
+                  : lang === 'uk'
+                  ? 'Додаток не може автоматично визначити вашу геопозицію. Оберіть дію:'
                   : 'Unable to detect your current location automatically. Select an option:'}
               </p>
 
@@ -107,11 +114,13 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                   </div>
                   <div>
                     <div className="text-xs font-extrabold text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
-                      {lang === 'ru' ? 'Разрешить геолокацию' : 'Allow Geolocation'}
+                      {lang === 'ru' ? 'Разрешить геолокацию' : lang === 'uk' ? 'Дозволити геолокацію' : 'Allow Geolocation'}
                     </div>
                     <div className="text-[11px] text-[var(--on-surface-var)]">
                       {lang === 'ru'
                         ? 'Попробовать снова определить авто-позицию браузера'
+                        : lang === 'uk'
+                        ? 'Спробувати знову визначити авто-позицію браузера'
                         : 'Try auto-detecting location via browser again'}
                     </div>
                   </div>
@@ -129,12 +138,12 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                   </div>
                   <div>
                     <div className="text-xs font-extrabold text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
-                      {lang === 'ru' ? 'Добавить локацию вручную' : 'Add location manually'}
+                      {lang === 'ru' ? 'Добавить локацию вручную' : lang === 'uk' ? 'Додати локацію вручну' : 'Add location manually'}
                     </div>
                     <div className="text-[11px] text-[var(--on-surface-var)]">
                       {currentCity
-                        ? `${lang === 'ru' ? 'Текущий город:' : 'Current city:'} ${currentCity}`
-                        : (lang === 'ru' ? 'Ввести название города или выбрать из списка' : 'Type a city name or pick from list')}
+                        ? `${lang === 'ru' ? 'Текущий город:' : lang === 'uk' ? 'Поточне місто:' : 'Current city:'} ${currentCity}`
+                        : (lang === 'ru' ? 'Ввести название города или выбрать из списка' : lang === 'uk' ? 'Ввести назву міста або обрати зі списку' : 'Type a city name or pick from list')}
                     </div>
                   </div>
                 </div>
@@ -154,11 +163,13 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                   </div>
                   <div>
                     <div className="text-xs font-extrabold text-[var(--on-surface)]">
-                      {lang === 'ru' ? 'Отключить виджет полностью' : 'Disable widget completely'}
+                      {lang === 'ru' ? 'Отключить виджет полностью' : lang === 'uk' ? 'Вимкнути віджет повністю' : 'Disable widget completely'}
                     </div>
                     <div className="text-[11px] text-[var(--on-surface-var)]">
                       {lang === 'ru'
                         ? 'Виджет скроется. Включить его можно в Настройках'
+                        : lang === 'uk'
+                        ? 'Віджет сховається. Увімкнути його можна в Налаштуваннях'
                         : 'Hides the widget. You can re-enable it in Settings'}
                     </div>
                   </div>
@@ -173,7 +184,7 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
                   type="text"
                   value={cityInput}
                   onChange={(e) => setCityInput(e.target.value)}
-                  placeholder={lang === 'ru' ? 'Введите город (например, Москва)...' : 'Enter city (e.g. London)...'}
+                  placeholder={lang === 'ru' ? 'Введите город (например, Киев, Лондон)...' : lang === 'uk' ? 'Введіть місто (наприклад, Київ, Лондон)...' : 'Enter city (e.g. London)...'}
                   className="w-full text-xs font-semibold py-3 pl-10 pr-4 bg-[var(--surface-dim)] text-[var(--on-surface)] border border-[var(--outline)] rounded-2xl outline-none focus:border-[var(--accent)]"
                   autoFocus
                   onKeyDown={(e) => {
@@ -185,7 +196,7 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
               {/* Popular cities tags */}
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--on-surface-var)] block mb-2">
-                  {lang === 'ru' ? 'Популярные города' : 'Popular Cities'}
+                  {lang === 'ru' ? 'Популярные города' : lang === 'uk' ? 'Популярні міста' : 'Popular Cities'}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {POPULAR_CITIES.map((c) => (
@@ -203,16 +214,16 @@ export const WeatherLocationErrorModal: React.FC<WeatherLocationErrorModalProps>
               <div className="flex items-center gap-2 pt-2">
                 <button
                   onClick={() => setActiveView('options')}
-                  className="flex-1 py-2.5 rounded-xl border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] transition-colors"
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--surface-dim)] transition-colors cursor-pointer"
                 >
-                  {lang === 'ru' ? 'Назад' : 'Back'}
+                  {lang === 'ru' ? 'Назад' : lang === 'uk' ? 'Назад' : 'Back'}
                 </button>
                 <button
                   onClick={() => handleSaveCity(cityInput)}
                   disabled={!cityInput.trim() || isSearching}
-                  className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  {lang === 'ru' ? 'Сохранить' : 'Save'}
+                  {lang === 'ru' ? 'Сохранить' : lang === 'uk' ? 'Зберегти' : 'Save'}
                 </button>
               </div>
             </div>

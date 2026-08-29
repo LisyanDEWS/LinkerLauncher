@@ -44,6 +44,7 @@ export interface WindowInstance {
   /** Custom action buttons rendered in the title bar (left of minimize/maximize/close). */
   headerActions?: React.ReactNode;
   disableLoader?: boolean;
+  disableReload?: boolean;
   loadingDuration?: number;
   loaderTitle?: string;
 }
@@ -63,6 +64,7 @@ export interface OpenWindowOptions {
   /** Custom action buttons rendered in the title bar (left of minimize/maximize/close). */
   headerActions?: React.ReactNode;
   disableLoader?: boolean;
+  disableReload?: boolean;
   loadingDuration?: number;
   loaderTitle?: string;
 }
@@ -116,6 +118,7 @@ export function useWindows(): WindowManager {
                   allowMaximize: opts.allowMaximize ?? true,
                   headerActions: opts.headerActions,
                   disableLoader: opts.disableLoader,
+                  disableReload: opts.disableReload,
                   loadingDuration: opts.loadingDuration,
                   loaderTitle: opts.loaderTitle,
                 }
@@ -174,6 +177,7 @@ export function useWindows(): WindowManager {
         allowMaximize: opts.allowMaximize ?? true,
         headerActions: opts.headerActions,
         disableLoader: opts.disableLoader,
+        disableReload: opts.disableReload,
         loadingDuration: opts.loadingDuration,
         loaderTitle: opts.loaderTitle,
       };
@@ -262,6 +266,7 @@ export function WindowManagerLayer({
   if (isStandbyOpen) return null;
 
   const isRu = lang === 'ru';
+  const isUk = lang === 'uk';
   const updateGeometry = (wm as any).__updateGeometry as (id: string, patch: Partial<WindowInstance>) => void;
   // Taskbar shows ALL open windows (not just minimized)
   const taskbarItems = wm.windows;
@@ -288,6 +293,7 @@ export function WindowManagerLayer({
   }, [ctxMenu]);
 
   const ctxWin = ctxMenu ? wm.windows.find((w) => w.id === ctxMenu.id) : null;
+  const isCtxSystemApp = ctxWin ? (ctxWin.disableLoader ?? (ctxWin.id === 'settings' || ctxWin.id === 'account' || ctxWin.id === 'changelog' || ctxWin.id === 'extensions' || ctxWin.id === 'calculator' || ctxWin.id === 'keeps' || ctxWin.id === 'weather' || ctxWin.id === 'clock' || ctxWin.id === 'calendar' || ctxWin.id === 'notifications' || ctxWin.id === 'server' || ctxWin.disableReload)) : false;
 
   // Auto-hide taskbar capsule after 5s, pop back up when mouse comes near bottom (< 100px)
   const [isTaskbarVisible, setIsTaskbarVisible] = useState(true);
@@ -462,6 +468,22 @@ export function WindowManagerLayer({
                         style={{ background: 'var(--accent)' }}
                       />
                     )}
+
+                    {/* Bottom status bar with wave fill */}
+                    {(isActive || isMinimized) && (
+                      <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full overflow-hidden">
+                        <div
+                          className="h-full w-full rounded-full transition-all duration-300"
+                          style={{
+                            background: isActive
+                              ? 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 50%, white) 50%, var(--accent) 100%)'
+                              : 'color-mix(in srgb, var(--accent) 40%, transparent)',
+                            backgroundSize: '200% 100%',
+                            animation: isActive ? 'shimmerWave 2.5s ease-in-out infinite' : undefined,
+                          }}
+                        />
+                      </div>
+                    )}
                     <span className="relative z-10 flex items-center gap-2">
                       {w.icon}
                       <span>{w.title}</span>
@@ -482,17 +504,29 @@ export function WindowManagerLayer({
                     onClick={() => {
                       wm.closeAll();
                     }}
-                    className="flex items-center gap-1.5 rounded-[1rem] px-2.5 py-2 text-xs font-bold transition-all cursor-pointer overflow-hidden select-none hover:bg-red-500/12 text-[var(--on-surface-var)] hover:text-red-500"
-                    title={isRu ? 'Закрыть все окна' : 'Close all windows'}
+                    className="relative flex items-center gap-1.5 rounded-[1rem] px-2.5 py-2 text-xs font-bold transition-all cursor-pointer overflow-hidden select-none hover:bg-red-500/12 text-[var(--on-surface-var)] hover:text-red-500"
+                    title={isRu ? 'Закрыть все окна' : isUk ? 'Закрити всі вікна' : 'Close all windows'}
                     id="wm-close-all-btn"
                   >
                     <Trash2 size={13} className="shrink-0" />
                     <span className="text-[11px] font-semibold hidden sm:inline whitespace-nowrap">
-                      {isRu ? 'Закрыть все' : 'Close all'}
+                      {isRu ? 'Закрыть все' : isUk ? 'Закрити всі' : 'Close all'}
                     </span>
                   </motion.button>
                 </>
               )}
+            </div>
+
+            {/* Taskbar bottom wave status line */}
+            <div className="absolute -bottom-1 left-4 right-4 h-[2px] rounded-full overflow-hidden opacity-60">
+              <div
+                className="w-full h-full"
+                style={{
+                  background: 'linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmerWave 3s ease-in-out infinite',
+                }}
+              />
             </div>
           </motion.div>
         )}
@@ -533,12 +567,14 @@ export function WindowManagerLayer({
               onClick={() => { wm.restore(ctxWin.id); setCtxMenu(null); }}
             />
 
-            {/* Reload app */}
-            <CtxItem
-              icon={<RotateCw size={14} />}
-              label={isRu ? 'Перезагрузить' : 'Reload'}
-              onClick={() => { wm.reload(ctxWin.id); setCtxMenu(null); }}
-            />
+            {/* Reload app — only for non-system apps */}
+            {!isCtxSystemApp && (
+              <CtxItem
+                icon={<RotateCw size={14} />}
+                label={isRu ? 'Перезагрузить' : isUk ? 'Перезавантажити' : 'Reload'}
+                onClick={() => { wm.reload(ctxWin.id); setCtxMenu(null); }}
+              />
+            )}
 
             <div className="mx-2 my-1 h-px" style={{ background: 'var(--outline-var)' }} />
 
@@ -626,11 +662,13 @@ function WindowFrame({
   renderWindowContent,
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
-  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator' || win.id === 'keeps');
-  const defaultDuration = win.id === 'telegramroute' ? 9000 : win.id === 'weather' ? 350 : 600;
+  const isUk = lang === 'uk';
+  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator' || win.id === 'keeps' || win.id === 'weather' || win.id === 'clock' || win.id === 'calendar' || win.id === 'notifications' || win.id === 'server' || win.disableReload);
+  const defaultDuration = win.id === 'telegramroute' ? 20000 : win.id === 'weather' ? 350 : 600;
   const duration = win.loadingDuration ?? defaultDuration;
 
   const [loaderPhase, setLoaderPhase] = useState<'visible' | 'fading' | 'hidden'>(() => (isSystemApp ? 'hidden' : 'visible'));
+  const [loaderProgress, setLoaderProgress] = useState(0);
 
   useEffect(() => {
     if (isSystemApp) {
@@ -638,10 +676,20 @@ function WindowFrame({
       return;
     }
     setLoaderPhase('visible');
-    const timer = setTimeout(() => {
-      setLoaderPhase('fading');
-    }, duration);
-    return () => clearTimeout(timer);
+    setLoaderProgress(0);
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const prog = Math.min(100, (elapsed / duration) * 100);
+      setLoaderProgress(prog);
+      if (elapsed >= duration) {
+        clearInterval(interval);
+        setLoaderPhase('fading');
+      }
+    }, 40);
+
+    return () => clearInterval(interval);
   }, [win.renderKey, isSystemApp, duration]);
 
   useEffect(() => {
@@ -959,19 +1007,21 @@ function WindowFrame({
             <div className="flex items-center gap-1">
               {win.headerActions}
               {!isMobileLayout && (
-                <>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onReload();
-                    }}
-                    title={isRu ? 'Перезагрузить' : 'Reload'}
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer group"
-                  >
-                    <RotateCw size={11} className="group-hover:rotate-180 transition-transform duration-500" />
-                  </motion.button>
+                 <>
+                  {!isSystemApp && !win.disableReload && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReload();
+                      }}
+                      title={isRu ? 'Перезагрузить' : isUk ? 'Перезавантажити' : 'Reload'}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer group"
+                    >
+                      <RotateCw size={11} className="group-hover:rotate-180 transition-transform duration-500" />
+                    </motion.button>
+                  )}
                   {win.isMaximized && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
@@ -980,7 +1030,7 @@ function WindowFrame({
                         e.stopPropagation();
                         setIsHeaderHidden(true);
                       }}
-                      title={isRu ? 'Скрыть панель' : 'Hide panel'}
+                      title={isRu ? 'Скрыть панель' : isUk ? 'Приховати панель' : 'Hide panel'}
                       className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
                     >
                       <ChevronUp size={13} />
@@ -990,7 +1040,7 @@ function WindowFrame({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); onMinimize(); }}
-                    title={isRu ? 'Свернуть' : 'Minimize'}
+                    title={isRu ? 'Свернуть' : isUk ? 'Згорнути' : 'Minimize'}
                     className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
                   >
                     <Minus size={13} />
@@ -1000,7 +1050,7 @@ function WindowFrame({
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-                      title={win.isMaximized ? (isRu ? 'Восстановить' : 'Restore') : (isRu ? 'Развернуть' : 'Maximize')}
+                      title={win.isMaximized ? (isRu ? 'Восстановить' : isUk ? 'Відновити' : 'Restore') : (isRu ? 'Развернуть' : isUk ? 'Розгорнути' : 'Maximize')}
                       className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer"
                     >
                       {win.isMaximized ? <Copy size={12} /> : <Square size={12} />}
@@ -1008,7 +1058,7 @@ function WindowFrame({
                   )}
                 </>
               )}
-              {isMobileLayout && (
+              {isMobileLayout && !isSystemApp && !win.disableReload && (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -1016,7 +1066,7 @@ function WindowFrame({
                     e.stopPropagation();
                     onReload();
                   }}
-                  title={isRu ? 'Перезагрузить' : 'Reload'}
+                  title={isRu ? 'Перезагрузить' : isUk ? 'Перезавантажити' : 'Reload'}
                   className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-dim)] border border-[var(--outline)] text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] transition-colors cursor-pointer group"
                 >
                   <RotateCw size={13} className="group-hover:rotate-180 transition-transform duration-500" />
@@ -1026,7 +1076,7 @@ function WindowFrame({
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={(e) => { e.stopPropagation(); onClose(); }}
-                title={isRu ? 'Закрыть' : 'Close'}
+                title={isRu ? 'Закрыть' : isUk ? 'Закрити' : 'Close'}
                 className={`flex items-center justify-center rounded-full text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${isMobileLayout ? 'h-7 w-7 bg-[var(--surface-dim)] border border-[var(--outline)]' : 'h-6 w-6'}`}
               >
                 <X size={isMobileLayout ? 16 : 14} />
@@ -1054,18 +1104,41 @@ function WindowFrame({
               transition: 'opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
-            <div className="flex flex-col items-center justify-center gap-3.5 px-4 text-center">
+            <div className="flex flex-col items-center justify-center gap-3.5 px-4 text-center w-full max-w-xs">
               <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <M3LoadingIndicator size={44} color="var(--accent)" speed={1} />
               </div>
-              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
-                {win.icon && (
-                  <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-85">
-                    {win.icon}
-                  </div>
-                )}
-                <span className="text-[11px] md:text-xs font-bold tracking-tight text-[var(--on-surface)]">
-                  {win.loaderTitle || win.title} — {isRu ? 'Запуск' : 'Launching'}
+              <div className="relative overflow-hidden flex items-center justify-between w-full px-4 py-2 rounded-full bg-[var(--container-high)] border border-[var(--outline-var)] shadow-xs">
+                {/* Horizontal status fill */}
+                <div
+                  className="absolute inset-y-0 left-0 transition-all duration-100 ease-out"
+                  style={{
+                    width: `${Math.min(100, Math.round(loaderProgress))}%`,
+                    background: 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 75%, white) 50%, var(--accent) 100%)',
+                    opacity: 0.85,
+                  }}
+                />
+                
+                {/* Subtle animated shimmer */}
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-25 animate-pulse"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                  }}
+                />
+
+                <div className="relative z-10 flex items-center gap-2">
+                  {win.icon && (
+                    <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-85">
+                      {win.icon}
+                    </div>
+                  )}
+                  <span className={`text-[11px] md:text-xs font-bold tracking-tight transition-colors ${loaderProgress > 50 ? 'text-white' : 'text-[var(--on-surface)]'}`}>
+                    {win.loaderTitle || win.title} — {isRu ? 'Запуск' : isUk ? 'Запуск' : 'Launching'}
+                  </span>
+                </div>
+                <span className={`relative z-10 text-[10px] font-black tabular-nums transition-colors ${loaderProgress > 85 ? 'text-white' : 'text-[var(--on-surface-var)]'}`}>
+                  {Math.round(loaderProgress)}%
                 </span>
               </div>
             </div>

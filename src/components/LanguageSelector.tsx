@@ -45,16 +45,6 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
       uk: 'Англійська мова',
     },
   },
-  {
-    id: 'uk',
-    name: 'Українська',
-    code: 'UK',
-    descriptions: {
-      ru: 'Украинский язык',
-      en: 'Ukrainian language',
-      uk: 'Українська мова',
-    },
-  },
 ];
 
 export function LanguageSelector({
@@ -180,15 +170,12 @@ export function LanguageSelector({
           </div>
           <div className="flex flex-col items-start text-left min-w-0 flex-1">
             <span className="text-[11px] font-extrabold leading-tight truncate w-full text-[var(--on-surface)]">
-              {currentOption.name}
+              {getLangTitle()}
             </span>
             <span className="text-[9px] font-bold truncate w-full mt-0.5 text-[var(--on-surface-var)]">
-              {currentOption.descriptions[lang]}
+              {currentOption.name}
             </span>
           </div>
-          <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-            {currentOption.code}
-          </span>
           <ChevronDown
             size={13}
             className={`text-[var(--on-surface-var)] transition-transform duration-200 ${

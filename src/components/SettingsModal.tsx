@@ -50,20 +50,14 @@ export default function SettingsModal({
     {
       id: 'ru',
       name: 'Русский',
-      desc: lang === 'ru' ? 'Русский язык' : lang === 'uk' ? 'Російська мова' : 'Russian language',
+      desc: lang === 'ru' ? 'Русский язык' : 'Russian language',
       code: 'RU',
     },
     {
       id: 'en',
       name: 'English',
-      desc: lang === 'ru' ? 'Английский язык' : lang === 'uk' ? 'Англійська мова' : 'English language',
+      desc: lang === 'ru' ? 'Английский язык' : 'English language',
       code: 'EN',
-    },
-    {
-      id: 'uk',
-      name: 'Українська',
-      desc: lang === 'ru' ? 'Украинский язык' : lang === 'uk' ? 'Українська мова' : 'Ukrainian language',
-      code: 'UK',
     },
   ];
 

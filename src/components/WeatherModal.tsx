@@ -129,7 +129,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             const newLon = pos.coords.longitude.toString();
             setLatStr(newLat);
             setLonStr(newLon);
-            const myLocName = lang === 'ru' ? 'Моё местоположение' : 'My location';
+            const myLocName = lang === 'ru' ? 'Моё местоположение' : lang === 'uk' ? 'Моє місце розташування' : 'My location';
             setCityName(myLocName);
             localStorage.setItem('linkerru_cached_weather_city', myLocName);
             lastCoordsRef.current = { lat: pos.coords.latitude, lon: pos.coords.longitude };
@@ -139,7 +139,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
             console.warn('Geolocation failed or timed out', err);
             const lat = Number(latStr) || 52.52;
             const lon = Number(lonStr) || 13.41;
-            const fallbackCity = lang === 'ru' ? 'Берлин' : 'Berlin';
+            const fallbackCity = lang === 'ru' ? 'Берлин' : lang === 'uk' ? 'Берлін' : 'Berlin';
             setCityName(fallbackCity);
             localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
             lastCoordsRef.current = { lat, lon };
@@ -150,7 +150,7 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
       } else {
         const lat = Number(latStr) || 52.52;
         const lon = Number(lonStr) || 13.41;
-        const fallbackCity = lang === 'ru' ? 'Берлин' : 'Berlin';
+        const fallbackCity = lang === 'ru' ? 'Берлин' : lang === 'uk' ? 'Берлін' : 'Berlin';
         setCityName(fallbackCity);
         localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
         lastCoordsRef.current = { lat, lon };
