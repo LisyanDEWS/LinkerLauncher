@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Mail, 
@@ -10,15 +10,7 @@ import {
   Sun, 
   Moon, 
   Eye, 
-  EyeOff, 
-  ChevronLeft, 
-  ChevronRight, 
-  Paintbrush, 
-  Sparkles, 
-  Clock as ClockIcon, 
-  Type, 
-  Download, 
-  ShieldCheck
+  EyeOff
 } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -41,11 +33,7 @@ type ScreenFlow =
   | 'signup_email' 
   | 'signup_password' 
   | 'signup_username'
-  | 'onboarding_lang'
-  | 'onboarding_theme'
-  | 'onboarding_wallpaper'
-  | 'onboarding_font'
-  | 'onboarding_clock'
+  | 'onboarding_setup'
   | 'finalizing';
 
 export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
@@ -65,17 +53,6 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   // Onboarding choices
   const [selectedLang, setSelectedLang] = useState<Language>(lang || 'en');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark'>('dark');
-  const [installWallpaperPlus, setInstallWallpaperPlus] = useState(true);
-  const [selectedFont, setSelectedFont] = useState('Plus Jakarta Sans');
-  const [clockType, setClockType] = useState<'digital' | 'analog'>('digital');
-  const [clockVariation, setClockVariation] = useState<1 | 2 | 3>(1);
-
-  // Clock live ticking state for preview
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Theme mode for login screen
   const [themeMode] = useState<LoginThemeMode>(() => {
@@ -236,12 +213,12 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       });
 
       setRegisteredNick(username.trim());
-      showToast(lang === 'ru' ? 'Аккаунт создан! Настройка системы...' : 'Account created! System setup...');
+      showToast(lang === 'ru' ? 'Аккаунт создан!' : 'Account created!');
       
       // Start onboarding sequence right on the loading widget
       setTimeout(() => {
-        transitionTo('onboarding_lang');
-      }, 700);
+        transitionTo('onboarding_setup');
+      }, 500);
     } catch (err: any) {
       setIsSpinningFast(false);
       console.error(err);
@@ -263,69 +240,12 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     onLangChange(selectedLang);
     localStorage.setItem('linkerru_lang', selectedLang);
     localStorage.setItem('linkerru_theme', selectedTheme);
-    localStorage.setItem('linkerru_font', selectedFont);
-    localStorage.setItem('linkerru_clock_type', clockType);
-    localStorage.setItem('linkerru_clock_variation', clockVariation.toString());
     localStorage.setItem('linkerru_onboarded', 'true');
-
-    if (installWallpaperPlus) {
-      try {
-        const raw = localStorage.getItem('linkerru_installed_extensions');
-        const list: string[] = raw ? JSON.parse(raw) : [];
-        if (!list.includes('wallpaper-plus')) {
-          list.push('wallpaper-plus');
-          localStorage.setItem('linkerru_installed_extensions', JSON.stringify(list));
-        }
-      } catch {
-        localStorage.setItem('linkerru_installed_extensions', JSON.stringify(['wallpaper-plus']));
-      }
-    }
 
     setTimeout(() => {
       onLogin(registeredNick || username || 'User', true);
     }, 1200);
   };
-
-  // Clock cycling helper
-  const allClockStyles: { type: 'digital' | 'analog'; variation: 1 | 2 | 3; titleRu: string; titleEn: string }[] = [
-    { type: 'digital', variation: 1, titleRu: 'Цифровые: Жирный современный', titleEn: 'Digital: Modern Bold' },
-    { type: 'digital', variation: 2, titleRu: 'Цифровые: Моноширинный кибер', titleEn: 'Digital: Cyber Mono' },
-    { type: 'digital', variation: 3, titleRu: 'Цифровые: Минималистичные тонкие', titleEn: 'Digital: Minimal Thin' },
-    { type: 'analog', variation: 1, titleRu: 'Аналоговые: Баухаус классика', titleEn: 'Analog: Bauhaus Classic' },
-    { type: 'analog', variation: 2, titleRu: 'Аналоговые: Мягкий минимализм', titleEn: 'Analog: Soft Minimal' },
-    { type: 'analog', variation: 3, titleRu: 'Аналоговые: Контурные современные', titleEn: 'Analog: Modern Outline' },
-  ];
-
-  const currentClockIndex = allClockStyles.findIndex(
-    (c) => c.type === clockType && c.variation === clockVariation
-  );
-
-  const handlePrevClock = () => {
-    const prevIdx = (currentClockIndex - 1 + allClockStyles.length) % allClockStyles.length;
-    const picked = allClockStyles[prevIdx];
-    setClockType(picked.type);
-    setClockVariation(picked.variation);
-  };
-
-  const handleNextClock = () => {
-    const nextIdx = (currentClockIndex + 1) % allClockStyles.length;
-    const picked = allClockStyles[nextIdx];
-    setClockType(picked.type);
-    setClockVariation(picked.variation);
-  };
-
-  // Format hours/mins for live preview
-  const hours = currentTime.getHours().toString().padStart(2, '0');
-  const minutes = currentTime.getMinutes().toString().padStart(2, '0');
-  const seconds = currentTime.getSeconds().toString().padStart(2, '0');
-
-  const availableFonts = [
-    { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans', sample: 'Aa Bb 123' },
-    { id: 'Inter', name: 'Inter', sample: 'Aa Bb 123' },
-    { id: 'Outfit', name: 'Outfit', sample: 'Aa Bb 123' },
-    { id: 'Playfair Display', name: 'Playfair Display', sample: 'Aa Bb 123' },
-    { id: 'system-ui', name: 'System Sans', sample: 'Aa Bb 123' },
-  ];
 
   // Colors & Palettes
   const lightMonoThemeVars = {
@@ -734,415 +654,129 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                 </motion.form>
               )}
 
-              {/* --- ONBOARDING WIZARD (POST-REGISTRATION) --- */}
-
-              {/* 7. ONBOARDING STEP A: LANGUAGE */}
-              {flow === 'onboarding_lang' && (
+              {/* --- ONBOARDING SETUP (POST-REGISTRATION: LANGUAGE & THEME) --- */}
+              {flow === 'onboarding_setup' && (
                 <motion.div
-                  key="onboarding_lang"
+                  key="onboarding_setup"
                   initial={{ opacity: 0, y: 15, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -15, scale: 0.95 }}
                   transition={{ duration: 0.25 }}
-                  className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
+                  className="w-full max-w-sm flex flex-col items-center gap-5 text-center"
                 >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Настройка 1 / 5' : 'Setup 1 / 5'}
+                    <span className="text-[10px] font-black tracking-widest uppercase text-[var(--on-accent)] opacity-80">
+                      {lang === 'ru' ? 'Персонализация' : 'Personalization'}
                     </span>
-                    <h2 className="text-lg font-black text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Выберите язык системы' : 'Select System Language'}
+                    <h2 className="text-xl font-black text-[var(--on-accent)] tracking-tight">
+                      {lang === 'ru' ? 'Язык и тема' : 'Language & Theme'}
                     </h2>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 w-full">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedLang('ru');
-                        onLangChange('ru');
-                      }}
-                      className={`p-4 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                        selectedLang === 'ru'
-                          ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
-                      }`}
-                    >
-                      <span className="text-sm font-black">Русский</span>
-                      <span className="text-[10px] opacity-75 font-semibold">RU</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedLang('en');
-                        onLangChange('en');
-                      }}
-                      className={`p-4 rounded-2xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                        selectedLang === 'en'
-                          ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
-                      }`}
-                    >
-                      <span className="text-sm font-black">English</span>
-                      <span className="text-[10px] opacity-75 font-semibold">EN</span>
-                    </button>
-                  </div>
-
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => transitionTo('onboarding_theme')}
-                    className="w-full py-3.5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-                  >
-                    <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
-                    <ArrowRight size={13} />
-                  </motion.button>
-                </motion.div>
-              )}
-
-              {/* 8. ONBOARDING STEP B: THEME */}
-              {flow === 'onboarding_theme' && (
-                <motion.div
-                  key="onboarding_theme"
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -15, scale: 0.95 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Настройка 2 / 5' : 'Setup 2 / 5'}
-                    </span>
-                    <h2 className="text-lg font-black text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Выберите тему оформления' : 'Choose Theme'}
-                    </h2>
-                    <p className="text-xs text-[var(--on-accent)] opacity-80">
+                    <p className="text-xs text-[var(--on-accent)] opacity-75 max-w-xs">
                       {lang === 'ru'
-                        ? 'Цвет темы вы сможете поменять в настройках'
-                        : 'You can change the theme color in Settings'}
+                        ? 'Выберите параметры для первого запуска LinkerRu'
+                        : 'Choose your preferences for starting LinkerRu'}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 w-full">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTheme('light')}
-                      className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
-                        selectedTheme === 'light'
-                          ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
-                      }`}
-                    >
-                      <Sun size={20} />
-                      <span className="text-xs font-black">{lang === 'ru' ? 'Светлая' : 'Light'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTheme('dark')}
-                      className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
-                        selectedTheme === 'dark'
-                          ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-md'
-                          : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
-                      }`}
-                    >
-                      <Moon size={20} />
-                      <span className="text-xs font-black">{lang === 'ru' ? 'Тёмная' : 'Dark'}</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 w-full mt-2">
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_lang')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
-                    >
-                      {lang === 'ru' ? 'Назад' : 'Back'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_wallpaper')}
-                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
-                      <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* 9. ONBOARDING STEP C: WALLPAPER+ EXTENSION */}
-              {flow === 'onboarding_wallpaper' && (
-                <motion.div
-                  key="onboarding_wallpaper"
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -15, scale: 0.95 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Настройка 3 / 5' : 'Setup 3 / 5'}
-                    </span>
-                    <h2 className="text-lg font-black text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Расширение «Обои+»' : '«Wallpaper+» Extension'}
-                    </h2>
-                    <p className="text-xs text-[var(--on-accent)] opacity-80">
-                      {lang === 'ru'
-                        ? 'Установить расширение для загрузки 4K обоев из расширенной библиотеки'
-                        : 'Pre-install extension to set wallpapers from extended 4K library'}
-                    </p>
-                  </div>
-
-                  <div 
-                    onClick={() => setInstallWallpaperPlus(!installWallpaperPlus)}
-                    className={`w-full p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between text-left ${
-                      installWallpaperPlus 
-                        ? 'bg-[var(--on-accent)]/10 border-[var(--on-accent)] shadow-sm' 
-                        : 'bg-[var(--surface-dim)] border-[var(--outline)] opacity-70'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-xl ${installWallpaperPlus ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'bg-[var(--container)] text-[var(--on-accent)] opacity-80'}`}>
-                        <Paintbrush size={18} />
-                      </div>
-                      <div>
-                        <div className="text-xs font-black text-[var(--on-accent)]">Wallpaper+ 4K</div>
-                        <div className="text-[10px] text-[var(--on-accent)] opacity-80">
-                          {installWallpaperPlus 
-                            ? (lang === 'ru' ? 'Будет установлено' : 'Will be installed') 
-                            : (lang === 'ru' ? 'Пропустить установку' : 'Skip installation')}
-                        </div>
-                      </div>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
-                      installWallpaperPlus ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]' : 'border-[var(--outline)]'
-                    }`}>
-                      {installWallpaperPlus && <Check size={12} />}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 w-full mt-2">
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_theme')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
-                    >
-                      {lang === 'ru' ? 'Назад' : 'Back'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_font')}
-                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
-                      <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* 10. ONBOARDING STEP D: FONT SELECTION */}
-              {flow === 'onboarding_font' && (
-                <motion.div
-                  key="onboarding_font"
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -15, scale: 0.95 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Настройка 4 / 5' : 'Setup 4 / 5'}
-                    </span>
-                    <h2 className="text-lg font-black text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Выбор системного шрифта' : 'Choose System Font'}
-                    </h2>
-                  </div>
-
-                  <div className="flex flex-col gap-2 w-full max-h-52 overflow-y-auto pr-1">
-                    {availableFonts.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setSelectedFont(f.id)}
-                        className={`p-3 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                          selectedFont === f.id
-                            ? 'bg-[var(--accent)] text-[var(--on-accent)] border-[var(--accent)] shadow-xs'
-                            : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
-                        }`}
-                        style={{ fontFamily: f.id }}
-                      >
-                        <span className="text-xs font-bold">{f.name}</span>
-                        <span className="text-[11px] opacity-75">{f.sample}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2 w-full mt-2">
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_wallpaper')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
-                    >
-                      {lang === 'ru' ? 'Назад' : 'Back'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_clock')}
-                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span>{lang === 'ru' ? 'Далее' : 'Next'}</span>
-                      <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* 11. ONBOARDING STEP E: CLOCK SELECTION (INTERACTIVE PREVIEW CAROUSEL WITH PREV/NEXT BUTTONS) */}
-              {flow === 'onboarding_clock' && (
-                <motion.div
-                  key="onboarding_clock"
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -15, scale: 0.95 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full max-w-sm flex flex-col items-center gap-4 text-center"
-                >
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Настройка 5 / 5' : 'Setup 5 / 5'}
-                    </span>
-                    <h2 className="text-lg font-black text-[var(--on-accent)]">
-                      {lang === 'ru' ? 'Часы для экрана блокировки' : 'Lock Screen Clock'}
-                    </h2>
-                    <p className="text-xs text-[var(--on-accent)] opacity-80 font-medium">
-                      {lang === 'ru'
-                        ? allClockStyles[currentClockIndex].titleRu
-                        : allClockStyles[currentClockIndex].titleEn}
-                    </p>
-                  </div>
-
-                  {/* Interactive Clock Live Visual Preview with < and > Controls */}
-                  <div className="relative w-full h-44 rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline)] flex items-center justify-between px-3 overflow-hidden shadow-inner">
-                    {/* Previous Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.85 }}
-                      type="button"
-                      onClick={handlePrevClock}
-                      className="w-8 h-8 rounded-full bg-[var(--on-accent)]/20 border border-[var(--on-accent)]/40 flex items-center justify-center text-[var(--on-accent)] hover:bg-[var(--on-accent)]/40 transition-all cursor-pointer z-10"
-                      title={lang === 'ru' ? 'Предыдущие часы' : 'Previous clock'}
-                    >
-                      <ChevronLeft size={16} />
-                    </motion.button>
-
-                    {/* Live Clock Visual Rendering */}
-                    <div className="flex-1 flex items-center justify-center p-2">
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={`${clockType}-${clockVariation}`}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.2 }}
-                          className="flex items-center justify-center"
+                  <div className="w-full space-y-4 text-left">
+                    {/* Language Selection */}
+                    <div>
+                      <label className="text-[10px] font-bold tracking-wider uppercase text-[var(--on-accent)] opacity-80 mb-2 block">
+                        {lang === 'ru' ? 'Язык системы' : 'System Language'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedLang('en');
+                            onLangChange('en');
+                          }}
+                          className={`p-3 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${
+                            selectedLang === 'en'
+                              ? 'bg-[var(--on-accent)] text-[var(--accent)] border-[var(--on-accent)] shadow-md'
+                              : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
+                          }`}
                         >
-                          {clockType === 'digital' ? (
-                            <div className="text-center">
-                              <div
-                                className={`tracking-tight tabular-nums select-none ${
-                                  clockVariation === 1
-                                    ? 'text-4xl sm:text-5xl font-black text-[var(--on-accent)]'
-                                    : clockVariation === 2
-                                    ? 'font-mono text-3xl sm:text-4xl font-bold text-[var(--on-accent)] opacity-80'
-                                    : 'font-light tracking-widest text-4xl sm:text-5xl text-[var(--on-accent)]'
-                                }`}
-                              >
-                                {hours}:{minutes}:{seconds}
-                              </div>
-                              <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--on-accent)] opacity-80 mt-1 block">
-                                {currentTime.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric',
-                                })}
-                              </span>
-                            </div>
-                          ) : (
-                            <div
-                              className={`relative w-28 h-28 rounded-full border-2 border-[var(--on-accent)] bg-[var(--accent)] flex items-center justify-center shadow-md ${
-                                clockVariation === 2 ? 'border-dashed' : clockVariation === 3 ? 'border-4' : ''
-                              }`}
-                            >
-                              {/* Clock Hands */}
-                              <div
-                                className="absolute w-1 bg-[var(--on-surface)] rounded-full origin-bottom"
-                                style={{
-                                  height: '28px',
-                                  bottom: '50%',
-                                  transform: `rotate(${(currentTime.getHours() % 12) * 30 + currentTime.getMinutes() * 0.5}deg)`,
-                                }}
-                              />
-                              <div
-                                className="absolute w-0.5 bg-[var(--on-surface-var)] rounded-full origin-bottom"
-                                style={{
-                                  height: '38px',
-                                  bottom: '50%',
-                                  transform: `rotate(${currentTime.getMinutes() * 6}deg)`,
-                                }}
-                              />
-                              <div
-                                className="absolute w-0.5 bg-[var(--accent)] rounded-full origin-bottom"
-                                style={{
-                                  height: '42px',
-                                  bottom: '50%',
-                                  transform: `rotate(${currentTime.getSeconds() * 6}deg)`,
-                                }}
-                              />
-                              <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)] z-10" />
-                            </div>
-                          )}
-                        </motion.div>
-                      </AnimatePresence>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black opacity-60">EN</span>
+                            <span className="text-xs font-black">English</span>
+                          </div>
+                          {selectedLang === 'en' && <Check size={14} />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedLang('ru');
+                            onLangChange('ru');
+                          }}
+                          className={`p-3 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${
+                            selectedLang === 'ru'
+                              ? 'bg-[var(--on-accent)] text-[var(--accent)] border-[var(--on-accent)] shadow-md'
+                              : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black opacity-60">RU</span>
+                            <span className="text-xs font-black">Русский</span>
+                          </div>
+                          {selectedLang === 'ru' && <Check size={14} />}
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Next Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.85 }}
-                      type="button"
-                      onClick={handleNextClock}
-                      className="w-8 h-8 rounded-full bg-[var(--on-accent)]/20 border border-[var(--on-accent)]/40 flex items-center justify-center text-[var(--on-accent)] hover:bg-[var(--on-accent)]/40 transition-all cursor-pointer z-10"
-                      title={lang === 'ru' ? 'Следующие часы' : 'Next clock'}
-                    >
-                      <ChevronRight size={16} />
-                    </motion.button>
+                    {/* Theme Selection */}
+                    <div>
+                      <label className="text-[10px] font-bold tracking-wider uppercase text-[var(--on-accent)] opacity-80 mb-2 block">
+                        {lang === 'ru' ? 'Оформление' : 'Appearance'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTheme('light')}
+                          className={`p-3 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${
+                            selectedTheme === 'light'
+                              ? 'bg-[var(--on-accent)] text-[var(--accent)] border-[var(--on-accent)] shadow-md'
+                              : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Sun size={15} />
+                            <span className="text-xs font-black">{lang === 'ru' ? 'Светлая' : 'Light'}</span>
+                          </div>
+                          {selectedTheme === 'light' && <Check size={14} />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTheme('dark')}
+                          className={`p-3 rounded-2xl border flex items-center justify-between transition-all cursor-pointer ${
+                            selectedTheme === 'dark'
+                              ? 'bg-[var(--on-accent)] text-[var(--accent)] border-[var(--on-accent)] shadow-md'
+                              : 'bg-transparent border-[var(--on-accent)]/30 text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 hover:border-[var(--on-accent)]/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Moon size={15} />
+                            <span className="text-xs font-black">{lang === 'ru' ? 'Тёмная' : 'Dark'}</span>
+                          </div>
+                          {selectedTheme === 'dark' && <Check size={14} />}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 w-full mt-2">
-                    <button
-                      type="button"
-                      onClick={() => transitionTo('onboarding_font')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
-                    >
-                      {lang === 'ru' ? 'Назад' : 'Back'}
-                    </button>
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      onClick={handleFinishOnboarding}
-                      className="flex-1 py-3.5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
-                    >
-                      <span>{lang === 'ru' ? 'Начать работу' : 'Start Working'}</span>
-                      <Check size={14} />
-                    </motion.button>
-                  </div>
+                  {/* Finish / Start Working Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={handleFinishOnboarding}
+                    className="w-full py-3.5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg mt-1"
+                  >
+                    <span>{lang === 'ru' ? 'Начать работу' : 'Start Working'}</span>
+                    <ArrowRight size={14} />
+                  </motion.button>
                 </motion.div>
               )}
 
