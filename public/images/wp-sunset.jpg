@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="g1" cx="30%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="#f58228"/>
+      <stop offset="50%" stop-color="#d73c55"/>
+      <stop offset="100%" stop-color="#46145a"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="80%" cy="75%" r="65%">
+      <stop offset="0%" stop-color="#46145a" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#f58228" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="90"/>
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g1)"/>
+  <rect width="100%" height="100%" fill="url(#g2)"/>
+  <g filter="url(#blur)">
+    <ellipse cx="450" cy="350" rx="500" ry="380" fill="#f58228" opacity="0.6"/>
+    <ellipse cx="1450" cy="750" rx="600" ry="420" fill="#d73c55" opacity="0.55"/>
+    <ellipse cx="1000" cy="500" rx="450" ry="350" fill="#46145a" opacity="0.5"/>
+  </g>
+</svg>

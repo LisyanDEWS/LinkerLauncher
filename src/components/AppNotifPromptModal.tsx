@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, ShieldAlert, Check, X } from 'lucide-react';
+import { Language } from '../types';
 
 interface AppNotifPromptModalProps {
   isOpen: boolean;
   appId: string;
   appName: string;
-  lang: 'ru' | 'en';
+  lang: Language;
   onRespond: (appId: string, allowed: boolean) => void;
 }
 

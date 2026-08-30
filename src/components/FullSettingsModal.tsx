@@ -43,92 +43,6 @@ import {
 } from 'lucide-react';
 import { useWindows } from './WindowManager';
 
-const RECOMMENDED_EXT_WALLPAPERS = [
-  {
-    id: 'ext-braies',
-    name: 'Горное озеро',
-    category: 'Пейзаж',
-    preview: 'https://picsum.photos/id/10/600/350',
-    full: 'https://picsum.photos/id/10/1920/1080',
-  },
-  {
-    id: 'ext-misty-slope',
-    name: 'Лесная тропа',
-    category: 'Природа',
-    preview: 'https://picsum.photos/id/28/600/350',
-    full: 'https://picsum.photos/id/28/1920/1080',
-  },
-  {
-    id: 'ext-ny-night',
-    name: 'Мегаполис: ночь',
-    category: 'Город 4K',
-    preview: 'https://picsum.photos/id/122/600/350',
-    full: 'https://picsum.photos/id/122/1920/1080',
-  },
-  {
-    id: 'ext-dark-mountains',
-    name: 'Ночные горы',
-    category: 'Тёмные',
-    preview: 'https://picsum.photos/id/49/600/350',
-    full: 'https://picsum.photos/id/49/1920/1080',
-  },
-  {
-    id: 'ext-ocean-calm',
-    name: 'Спокойствие океана',
-    category: 'Минимализм',
-    preview: 'https://picsum.photos/id/37/600/350',
-    full: 'https://picsum.photos/id/37/1920/1080',
-  },
-  {
-    id: 'ext-sunrise-valley',
-    name: 'Долина на рассвете',
-    category: 'Природа',
-    preview: 'https://picsum.photos/id/11/600/350',
-    full: 'https://picsum.photos/id/11/1920/1080',
-  },
-  {
-    id: 'ext-canyon-waterfall',
-    name: 'Водопад в ущелье',
-    category: 'Пейзаж',
-    preview: 'https://picsum.photos/id/15/600/350',
-    full: 'https://picsum.photos/id/15/1920/1080',
-  },
-  {
-    id: 'ext-tropical-beach',
-    name: 'Тропический берег',
-    category: 'Вода',
-    preview: 'https://picsum.photos/id/16/600/350',
-    full: 'https://picsum.photos/id/16/1920/1080',
-  },
-  {
-    id: 'ext-sunset-peaks',
-    name: 'Горы на закате',
-    category: 'Пейзаж',
-    preview: 'https://picsum.photos/id/29/600/350',
-    full: 'https://picsum.photos/id/29/1920/1080',
-  },
-  {
-    id: 'ext-highway-night',
-    name: 'Автомагистраль ночью',
-    category: 'Город 4K',
-    preview: 'https://picsum.photos/id/133/600/350',
-    full: 'https://picsum.photos/id/133/1920/1080',
-  },
-  {
-    id: 'ext-dark-silhouettes',
-    name: 'Ночные силуэты',
-    category: 'Тёмные',
-    preview: 'https://picsum.photos/id/48/600/350',
-    full: 'https://picsum.photos/id/48/1920/1080',
-  },
-  {
-    id: 'ext-dark-ocean',
-    name: 'Тёмный океан',
-    category: 'Тёмные',
-    preview: 'https://picsum.photos/id/85/600/350',
-    full: 'https://picsum.photos/id/85/1920/1080',
-  }
-].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
 import { translations } from '../data/translations';
@@ -205,6 +119,7 @@ interface FullSettingsModalProps {
   onAppNotifPermissionToggle?: (appId: string, allowed: boolean) => void;
   isWeatherDisabled?: boolean;
   onWeatherDisabledToggle?: (disabled: boolean) => void;
+  onOpenWallpaperManager?: () => void;
 }
 
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account';
@@ -266,118 +181,11 @@ export default function FullSettingsModal({
   onAppNotifPermissionToggle,
   isWeatherDisabled = false,
   onWeatherDisabledToggle,
+  onOpenWallpaperManager,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(isMobileLayout && initialTab === 'account' ? 'appearance' : (initialTab || 'appearance'));
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileContent, setShowMobileContent] = useState(false);
-
-  // --- Installed extensions state ---
-  const [installedExtensions, setInstalledExtensions] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('linkerru_installed_extensions');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const isWallpaperPlusInstalled = installedExtensions.includes('wallpaper-plus');
-
-  // --- Download simulation state for Wallpaper+ ---
-  const [isDownloadingWallpaperPlus, setIsDownloadingWallpaperPlus] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadStatusText, setDownloadStatusText] = useState('');
-
-  // --- Recent extension wallpapers state ---
-  const [recentExtWallpapers, setRecentExtWallpapers] = useState<Array<{ id: string; name: string; preview: string; full: string }>>(() => {
-    try {
-      const saved = localStorage.getItem('linkerru_recent_ext_wallpapers');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Sync recent extension wallpapers if mainWallpaper is set to a remote image URL
-  useEffect(() => {
-    if (
-      mainWallpaper &&
-      mainWallpaper !== 'none' &&
-      !mainWallpaper.startsWith('gradient') &&
-      !mainWallpaper.startsWith('linear-gradient') &&
-      !mainWallpaper.startsWith('radial-gradient') &&
-      !mainWallpaper.startsWith('conic-gradient') &&
-      !mainWallpaper.startsWith('var(--bg)')
-    ) {
-      setRecentExtWallpapers((prev) => {
-        const exists = prev.some((item) => item.full === mainWallpaper);
-        if (!exists) {
-          const recMatch = RECOMMENDED_EXT_WALLPAPERS.find((r) => r.full === mainWallpaper);
-          const newItem = {
-            id: recMatch?.id || 'ext-' + Date.now(),
-            name: recMatch?.name || (lang === 'ru' ? 'Обои из Wallpaper+' : 'Wallpaper+ Image'),
-            preview: recMatch?.preview || mainWallpaper,
-            full: mainWallpaper,
-          };
-          const updated = [newItem, ...prev].slice(0, 10);
-          localStorage.setItem('linkerru_recent_ext_wallpapers', JSON.stringify(updated));
-          return updated;
-        }
-        return prev;
-      });
-    }
-  }, [mainWallpaper, lang]);
-
-  const handleInstallWallpaperPlus = (onFinished?: () => void) => {
-    if (isDownloadingWallpaperPlus) return;
-    playChime?.('click');
-    setIsDownloadingWallpaperPlus(true);
-    setDownloadProgress(0);
-    setDownloadStatusText(lang === 'ru' ? 'Подключение к серверу...' : 'Connecting to server...');
-
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 18) + 12;
-      if (progress < 40) {
-        setDownloadStatusText(lang === 'ru' ? 'Загрузка 4K ресурсов Обои+...' : 'Downloading 4K Wallpaper+ assets...');
-      } else if (progress < 80) {
-        setDownloadStatusText(lang === 'ru' ? 'Распаковка библиотеки...' : 'Unpacking library...');
-      } else if (progress < 100) {
-        setDownloadStatusText(lang === 'ru' ? 'Регистрация манифеста...' : 'Registering manifest...');
-      }
-
-      if (progress >= 100) {
-        progress = 100;
-        setDownloadProgress(100);
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsDownloadingWallpaperPlus(false);
-          setInstalledExtensions((prev) => {
-            const next = Array.from(new Set([...prev, 'wallpaper-plus']));
-            localStorage.setItem('linkerru_installed_extensions', JSON.stringify(next));
-            return next;
-          });
-          playChime?.('victory');
-          triggerToast?.(lang === 'ru' ? 'Расширение «Обои+» успешно установлено!' : '«Wallpaper+» extension installed!');
-          onFinished?.();
-        }, 300);
-      } else {
-        setDownloadProgress(progress);
-      }
-    }, 200);
-  };
-
-  const handleApplyExtWallpaper = (item: { id: string; name: string; preview: string; full: string }) => {
-    onMainWallpaperChange(item.full);
-    setRecentExtWallpapers((prev) => {
-      const filtered = prev.filter((i) => i.full !== item.full && i.id !== item.id);
-      const updated = [item, ...filtered].slice(0, 10);
-      localStorage.setItem('linkerru_recent_ext_wallpapers', JSON.stringify(updated));
-      return updated;
-    });
-    playChime?.('victory');
-    triggerToast?.(lang === 'ru' ? 'Обои успешно применены!' : 'Wallpaper successfully applied!');
-  };
 
   // Track the container (window manager) width to switch between
   // wide (iPadOS split-view) and narrow (iOS stack navigation) layouts.
@@ -490,44 +298,6 @@ export default function FullSettingsModal({
       { id: 'gradient-4', name: 'Gradient 4', style: `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)` },
     ];
   }, [activePalette, theme]);
-
-  // Unified Wallpapers list: Recent items first, filled with Recommended items (no duplicates)
-  const combinedWallpapers = useMemo(() => {
-    const list: Array<{ id: string; name: string; category?: string; preview: string; full: string; isRecent: boolean }> = [];
-    const seen = new Set<string>();
-
-    for (const wp of recentExtWallpapers) {
-      const key = wp.full || wp.id;
-      if (!seen.has(key)) {
-        seen.add(key);
-        list.push({
-          id: wp.id,
-          name: wp.name,
-          category: wp.category || (lang === 'ru' ? 'Недавно' : 'Recent'),
-          preview: wp.preview || wp.full,
-          full: wp.full,
-          isRecent: true,
-        });
-      }
-    }
-
-    for (const wp of RECOMMENDED_EXT_WALLPAPERS) {
-      const key = wp.full || wp.id;
-      if (!seen.has(key)) {
-        seen.add(key);
-        list.push({
-          id: wp.id,
-          name: wp.name,
-          category: wp.category,
-          preview: wp.preview,
-          full: wp.full,
-          isRecent: false,
-        });
-      }
-    }
-
-    return list;
-  }, [recentExtWallpapers, lang]);
 
   // List of all items for search indexing
   const searchableSettings = useMemo(() => {
@@ -863,7 +633,7 @@ export default function FullSettingsModal({
                       t.page_notifications
                     ) : activeTab === 'security' ? (
                       lang === 'ru' ? 'Безопасность' : 'Security'
-                    ) : activeTab === 'links' ? (
+                    ) : activeTab === 'toggles' ? (
                       lang === 'ru' ? 'Настройка переключателей' : 'Quick Toggles Setup'
                     ) : (
                       t.page_about
@@ -1064,72 +834,26 @@ export default function FullSettingsModal({
                               ))}
                             </div>
 
-                            {/* Single Unified Wallpapers Row (Recent + Recommended with uniform compact sizing) */}
-                            <div className="flex flex-col gap-2 mt-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-xs font-extrabold text-[var(--on-surface)]">
-                                  <Sparkles size={14} className="text-purple-500" />
-                                  <span>
-                                    {lang === 'ru'
-                                      ? 'Недавно использованные и рекомендованные обои'
-                                      : 'Recently used & recommended wallpapers'}
-                                  </span>
-                                </div>
-                                {recentExtWallpapers.length > 0 && (
-                                  <button
-                                    onClick={() => {
-                                      setRecentExtWallpapers([]);
-                                      localStorage.removeItem('linkerru_recent_ext_wallpapers');
-                                    }}
-                                    className="text-[10px] font-bold text-[var(--on-surface-var)] hover:text-red-500 transition-colors cursor-pointer"
-                                  >
-                                    {lang === 'ru' ? 'Очистить историю' : 'Clear history'}
-                                  </button>
-                                )}
+                            {/* More Wallpapers in Wallpaper Manager Button */}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--outline-var)]">
+                              <div className="flex flex-col">
+                                <span className="text-xs font-extrabold text-[var(--on-surface)]">
+                                  {lang === 'ru' ? 'Галерея 4K обоев' : '4K Wallpaper Library'}
+                                </span>
+                                <span className="text-[11px] text-[var(--on-surface-var)]">
+                                  {lang === 'ru' ? 'Коллекции природы, мегаполисов, текстур и часов' : 'Curated collections of nature, cities, and minimal wallpapers'}
+                                </span>
                               </div>
-
-                              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
-                                {combinedWallpapers.map((wp) => {
-                                  const isSelected = mainWallpaper === wp.full;
-                                  return (
-                                    <div
-                                      key={wp.id}
-                                      onClick={() => {
-                                        if (!isWallpaperPlusInstalled && !wp.isRecent) {
-                                          handleInstallWallpaperPlus(() => handleApplyExtWallpaper(wp));
-                                        } else {
-                                          handleApplyExtWallpaper(wp);
-                                        }
-                                      }}
-                                      className={`group relative shrink-0 w-32 h-18 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                                        isSelected
-                                          ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-95'
-                                          : 'border-[var(--outline-var)] hover:border-[var(--accent)] hover:scale-[1.02]'
-                                      }`}
-                                    >
-                                      <img src={wp.preview} alt={wp.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-1.5 flex flex-col justify-end">
-                                        <span className="text-[10px] font-extrabold text-white truncate drop-shadow">{wp.name}</span>
-                                        <div className="flex items-center justify-between">
-                                          {wp.category && (
-                                            <span className="text-[8px] font-medium text-white/70 uppercase tracking-wider truncate max-w-[70px]">{wp.category}</span>
-                                          )}
-                                          {wp.isRecent && (
-                                            <span className="text-[8px] font-bold text-amber-300 bg-black/40 px-1 rounded ml-auto">
-                                              {lang === 'ru' ? 'Недавно' : 'Recent'}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      {isSelected && (
-                                        <div className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-sm">
-                                          <Check size={10} />
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              <button
+                                onClick={() => {
+                                  playChime?.('click');
+                                  onOpenWallpaperManager?.();
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-bold shadow-sm hover:opacity-90 transition-all cursor-pointer shrink-0 ml-3"
+                              >
+                                <Image size={14} />
+                                <span>{lang === 'ru' ? 'Больше обоев в Менеджере обоев' : 'More in Wallpaper Manager'}</span>
+                              </button>
                             </div>
                           </div>
                           )}
@@ -1154,7 +878,7 @@ export default function FullSettingsModal({
                                   {lang === 'ru' ? 'Автоматическая тема из обоев' : 'Adaptive Theme from Wallpaper'}
                                 </span>
                                 <span className="text-xs text-[var(--on-surface-var)] mt-0.5">
-                                  {lang === 'ru' ? 'Адаптировать акцентные цвета под текущие обои Wallpaper+' : 'Adapt accent colors to match the current Wallpaper+ background'}
+                                  {lang === 'ru' ? 'Адаптировать акцентные цвета под текущие обои' : 'Adapt accent colors to match the current wallpaper'}
                                 </span>
                               </div>
                               <label className="relative inline-flex items-center cursor-pointer">
@@ -1515,7 +1239,7 @@ export default function FullSettingsModal({
                               { id: 'keeps', name: 'Заметки (Keeps)', nameEn: 'Notes (Keeps)', Icon: StickyNote },
                               { id: 'calculator', name: 'Калькулятор', nameEn: 'Calculator', Icon: Calculator },
                               { id: 'nexus', name: 'Nexus Game Box', nameEn: 'Nexus Game Box', Icon: Gamepad2 },
-                              { id: 'extensions', name: 'Расширения', nameEn: 'Extensions', Icon: Blocks },
+                              { id: 'wallpapers', name: 'Менеджер обоев', nameEn: 'Wallpaper Manager', Icon: Image },
                             ].map((appItem) => {
                               const isAllowed = appNotifPermissions[appItem.id] !== 'denied';
                               const AppIcon = appItem.Icon;

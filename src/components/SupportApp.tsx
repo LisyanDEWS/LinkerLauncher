@@ -2,11 +2,12 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { Mail, Send, HelpCircle, Code, ChevronRight, User, X } from 'lucide-react';
+import { Language } from '../types';
 
 interface SupportQRModalProps {
   contactId: string | null;
   onClose: () => void;
-  lang: 'ru' | 'en';
+  lang: Language;
   theme?: 'light' | 'dark';
 }
 

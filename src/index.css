@@ -789,6 +789,116 @@ button, a, input, select, textarea, [role="button"] {
   }
 }
 
+@keyframes blobmorph {
+  0%,
+  100% {
+    border-radius: 62% 38% 46% 54% / 48% 44% 56% 52%;
+  }
+  34% {
+    border-radius: 38% 62% 52% 48% / 56% 48% 52% 44%;
+  }
+  67% {
+    border-radius: 54% 46% 38% 62% / 44% 58% 42% 56%;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes glowpulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px currentColor);
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 18px currentColor);
+    opacity: 0.82;
+  }
+}
+
+@keyframes wobble {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes tickpop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+.blob-morph {
+  animation: blobmorph 9s ease-in-out infinite;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 16s linear infinite;
+}
+
+.floaty {
+  animation: floaty 5s ease-in-out infinite;
+}
+
+.glowpulse {
+  animation: glowpulse 2.8s ease-in-out infinite;
+}
+
+.wobble {
+  animation: wobble 6s ease-in-out infinite;
+}
+
+.tickpop {
+  animation: tickpop 1s ease-in-out infinite;
+}
+
+.phone-shine::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.03) 28%,
+    transparent 48%
+  );
+}
+
+.outline-fill {
+  -webkit-text-stroke: 2px currentColor;
+  color: transparent;
+}
+
+
 
 
 

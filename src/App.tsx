@@ -1,4 +1,4 @@
-import { ExtensionsManager } from './components/ExtensionsManager';
+import { WallpaperManagerApp } from './components/WallpaperManagerApp';
 import { SubConvertApp } from './components/SubConvertApp';
 import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
@@ -15,6 +15,7 @@ import {
   CloudSun,
   Settings,
   Blocks,
+  Image as ImageIcon,
   User,
   History,
   Globe,
@@ -84,6 +85,7 @@ import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 import { LanguageSelector } from './components/LanguageSelector';
+import { LockScreenManagerApp } from './components/LockScreenManagerApp';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -1094,7 +1096,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       mainWallpaper.startsWith('https://') ||
       mainWallpaper.startsWith('data:') ||
       mainWallpaper.startsWith('blob:') ||
-      mainWallpaper.startsWith('url(')
+      mainWallpaper.startsWith('url(') ||
+      mainWallpaper.startsWith('/')
     )) {
       const cleanUrl = mainWallpaper.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
       extractWallpaperAnalysis(cleanUrl).then((analysis) => {
@@ -1140,6 +1143,49 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           setWallpaperTitleColor(theme === 'dark' ? '#ffffff' : '#09090b');
         }
       });
+    } else if (typeof mainWallpaper === 'string' && (mainWallpaper.startsWith('animated-') || mainWallpaper.startsWith('gradient-'))) {
+      // Live Shaders and Animated Wallpapers direct adaptation
+      const LIVE_COLOR_MAP: Record<string, { dom: string; p2: string; p3: string; lum: number }> = {
+        'animated-1': { dom: '#22c55e', p2: '#16a34a', p3: '#15803d', lum: 65 }, // Silk Waves
+        'animated-2': { dom: '#0d9488', p2: '#14b8a6', p3: '#0f766e', lum: 70 }, // Fluted Glass
+        'animated-3': { dom: '#9333ea', p2: '#a855f7', p3: '#7e22ce', lum: 55 }, // Riso Dither
+        'animated-4': { dom: '#6366f1', p2: '#818cf8', p3: '#4f46e5', lum: 45 }, // Starfield
+        'gradient-1': { dom: '#8fa882', p2: '#6b8a5d', p3: '#adbfa4', lum: 110 },
+        'gradient-2': { dom: '#80cbc4', p2: '#4db6ac', p3: '#b2dfdb', lum: 120 },
+        'gradient-3': { dom: '#b39ddb', p2: '#9575cd', p3: '#d1c4e9', lum: 115 },
+        'gradient-4': { dom: '#d4a373', p2: '#bc8a5f', p3: '#e0b589', lum: 110 },
+      };
+
+      const match = LIVE_COLOR_MAP[mainWallpaper] || { dom: '#6366f1', p2: '#818cf8', p3: '#4f46e5', lum: 50 };
+      setWallpaperLuminance(match.lum);
+      setWallpaperHeaderAvgHex(match.dom);
+      setWallpaperTitleColor('#ffffff');
+
+      const dynPalette: Material3Palette = {
+        id: 'dynamic_wallpaper',
+        nameRu: 'Адаптивная (Живые обои)',
+        nameEn: 'Adaptive (Live Wallpaper)',
+        primary: match.dom,
+        secondary: match.p2,
+        tertiary: match.p3,
+        lightBg: '#121212',
+        darkBg: '#121212'
+      };
+
+      setDynamicPalette(dynPalette);
+
+      const existingIdx = materialPalettes.findIndex(p => p.id === 'dynamic_wallpaper');
+      if (existingIdx >= 0) {
+        materialPalettes[existingIdx] = dynPalette;
+      } else {
+        materialPalettes.push(dynPalette);
+      }
+
+      const useDyn = localStorage.getItem('linkerru_dynamic_theme') !== 'false';
+      if (useDyn) {
+        setActivePaletteId('dynamic_wallpaper');
+        localStorage.setItem('linkerru_accent', 'dynamic_wallpaper');
+      }
     } else {
       setWallpaperLuminance(theme === 'dark' ? 30 : 200);
       setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
@@ -1646,7 +1692,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const settingsMinimized = isMinimized('settings');
   const calculatorMinimized = isMinimized('calculator');
   const keepsMinimized = isMinimized('keeps');
-  const extensionsMinimized = isMinimized('extensions');
+  const wallpapersMinimized = isMinimized('wallpapers');
   const proxyMinimized = isMinimized('proxy');
 
   const openAgnoWindow = () => {
@@ -1738,6 +1784,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             onTimeFormatChange={handleTimeFormatChange}
             tempUnit={tempUnit}
             onTempUnitChange={handleTempUnitChange}
+            onOpenWallpaperManager={handleOpenWallpaperManager}
           />
         </div>
       ),
@@ -1809,18 +1856,50 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
-  const handleOpenExtensions = () => {
+  const handleOpenWallpaperManager = () => {
     playChime('click');
     wm.open({
-      id: 'extensions',
-      title: lang === 'ru' ? 'Расширения' : 'Extensions',
-      icon: <Blocks size={14} className="text-[var(--on-surface)]" />,
+      id: 'wallpapers',
+      title: lang === 'ru' ? 'Менеджер обоев' : lang === 'uk' ? 'Менеджер шпалер' : 'Wallpaper Manager',
+      icon: <ImageIcon size={14} className="text-[var(--on-surface)]" />,
       singleton: true,
-      initialWidth: 700,
-      initialHeight: 520,
+      initialWidth: 840,
+      initialHeight: 600,
       minWidth: 420,
       minHeight: 360,
-      render: () => <ExtensionsManager lang={lang} wm={wm} playChime={playChime} triggerToast={triggerToast} />
+      render: () => (
+        <WallpaperManagerApp
+          lang={lang}
+          theme={theme}
+          activePalette={activePalette}
+          activePaletteId={activePaletteId}
+          wm={wm}
+          playChime={playChime}
+          triggerToast={triggerToast}
+          currentHomeWallpaper={mainWallpaper}
+          currentClockWallpaper={standbyBg}
+          onApplyToHome={(wpUrl) => {
+            setMainWallpaper(wpUrl);
+            localStorage.setItem('linkerru_wallpaper', wpUrl);
+            setWallpaperApplyNonce(prev => prev + 1);
+          }}
+          onApplyToClock={(wpUrl) => {
+            setStandbyBg(wpUrl);
+            localStorage.setItem('linkerru_standby_bg', wpUrl);
+          }}
+          onApplyToBoth={(wpUrl) => {
+            setMainWallpaper(wpUrl);
+            localStorage.setItem('linkerru_wallpaper', wpUrl);
+            setWallpaperApplyNonce(prev => prev + 1);
+            setStandbyBg(wpUrl);
+            localStorage.setItem('linkerru_standby_bg', wpUrl);
+          }}
+          onEnableDynamicTheme={() => {
+            localStorage.setItem('linkerru_dynamic_theme', 'true');
+            handlePaletteChange('dynamic_wallpaper');
+          }}
+        />
+      ),
     });
   };
 
@@ -1881,6 +1960,61 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       minHeight: 420,
       disableLoader: true,
       render: () => <KeepsApp lang={lang} theme={theme} activePalette={activePalette} />,
+    });
+  };
+
+  const openLockscreenManagerWindow = () => {
+    wm.open({
+      id: 'lockm',
+      title: lang === 'ru' ? 'LockM — Экраны блокировки' : 'LockM — Lockscreen Manager',
+      icon: <Lock size={14} className="text-[var(--accent)]" />,
+      singleton: true,
+      disableLoader: true,
+      initialWidth: 980,
+      initialHeight: 640,
+      minWidth: 640,
+      minHeight: 480,
+      render: () => (
+        <LockScreenManagerApp
+          lang={lang}
+          activePalette={activePalette}
+          currentWallpaper={mainWallpaper}
+          currentStandbyBg={standbyBg}
+          onApplyToStandby={(bgUrl, designId, customConfig) => {
+            setStandbyBg(bgUrl);
+            localStorage.setItem('linkerru_standby_bg', bgUrl);
+            if (designId) {
+              localStorage.setItem('linkerru_standby_lock_design', String(designId));
+            }
+            if (customConfig) {
+              localStorage.setItem('linkerru_custom_builder_lock', JSON.stringify(customConfig));
+            }
+          }}
+          onApplyToHome={(bgUrl) => {
+            setMainWallpaper(bgUrl);
+            localStorage.setItem('linkerru_wallpaper', bgUrl);
+            setWallpaperApplyNonce((prev) => prev + 1);
+          }}
+          onApplyToBoth={(bgUrl, designId, customConfig) => {
+            setMainWallpaper(bgUrl);
+            localStorage.setItem('linkerru_wallpaper', bgUrl);
+            setWallpaperApplyNonce((prev) => prev + 1);
+            setStandbyBg(bgUrl);
+            localStorage.setItem('linkerru_standby_bg', bgUrl);
+            if (designId) {
+              localStorage.setItem('linkerru_standby_lock_design', String(designId));
+            }
+            if (customConfig) {
+              localStorage.setItem('linkerru_custom_builder_lock', JSON.stringify(customConfig));
+            }
+          }}
+          onApplyThemePalette={(paletteId) => {
+            handlePaletteChange(paletteId);
+          }}
+          triggerToast={triggerToast}
+          playChime={(t) => playChime(t || 'click')}
+        />
+      ),
     });
   };
 
@@ -2328,11 +2462,25 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     const p2 = activePalette.secondary;
     const p3 = activePalette.tertiary;
 
-    if (theme === 'dark') {
-      if (!mainWallpaper || mainWallpaper === 'none') {
-        return `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)`;
-      }
+    if (mainWallpaper === 'theme' || !mainWallpaper || mainWallpaper === 'none') {
+      return theme === 'dark'
+        ? `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)`
+        : 'var(--bg)';
+    }
 
+    if (mainWallpaper === 'animated-1' || mainWallpaper === 'animated-2' || mainWallpaper === 'animated-3') {
+      return theme === 'dark' ? '#08080a' : '#fafafa';
+    }
+
+    if (mainWallpaper === 'animated-4') {
+      return '#0a0a1a';
+    }
+
+    if (mainWallpaper === 'blurred-wallpaper') {
+      return 'var(--bg)';
+    }
+
+    if (theme === 'dark') {
       switch (mainWallpaper) {
         case 'gradient-1':
           return `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 60%), linear-gradient(135deg, color-mix(in srgb, ${p1} 35%, #000 65%), color-mix(in srgb, ${p2} 25%, #000 75%), #060608)`;
@@ -2358,8 +2506,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         }
       }
     } else {
-      if (!mainWallpaper || mainWallpaper === 'none') return 'var(--bg)';
-
       switch (mainWallpaper) {
         case 'gradient-1': return `linear-gradient(135deg, ${p1}, ${p2}, ${p3})`;
         case 'gradient-2': return `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))`;
@@ -2436,10 +2582,121 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
       {/* Fixed fullscreen wallpaper layer */}
       <div
-        className="fixed inset-0 -z-10 pointer-events-none"
-        style={{ background: getWallpaperStyle(), backgroundAttachment: 'fixed' }}
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden"
+        style={{ background: getWallpaperStyle() }}
         aria-hidden
-      />
+      >
+        {/* Live Wallpaper Shaders & Animations from Clock Setup */}
+        {mainWallpaper === 'animated-1' && (
+          <div
+            data-aifx="silk-waves"
+            data-aifx-colors={`${activePalette.primary},${activePalette.secondary},${activePalette.tertiary}`}
+            data-aifx-bg={activePalette.tertiary}
+            className="absolute inset-0 pointer-events-none"
+            aria-hidden="true"
+          />
+        )}
+
+        {mainWallpaper === 'animated-2' && (
+          <div
+            data-aifx="fluted-glass"
+            data-aifx-colors={`${activePalette.primary},${activePalette.secondary},${activePalette.tertiary},${activePalette.primary}`}
+            data-aifx-bg={activePalette.tertiary}
+            className="absolute inset-0 pointer-events-none"
+            aria-hidden="true"
+          />
+        )}
+
+        {mainWallpaper === 'animated-3' && (
+          <div
+            data-aifx="dither"
+            data-aifx-colors={`${activePalette.primary},${activePalette.tertiary},${activePalette.secondary},${activePalette.primary}`}
+            data-aifx-bg={activePalette.tertiary}
+            className="absolute inset-0 pointer-events-none"
+            aria-hidden="true"
+          />
+        )}
+
+        {mainWallpaper === 'animated-4' && (
+          <div className="absolute inset-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a1a, #111128)' }}>
+            <div
+              data-aifx="starfield"
+              className="absolute inset-0 pointer-events-none"
+              aria-hidden="true"
+            />
+            {/* Cosmic Nebula Glow */}
+            <motion.div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: '75vw',
+                height: '75vh',
+                left: '10%',
+                top: '5%',
+                background: `radial-gradient(circle, ${activePalette.primary}30 0%, transparent 65%)`,
+                filter: 'blur(50px)',
+              }}
+              animate={{ opacity: [0.35, 0.65, 0.35], scale: [0.95, 1.08, 0.95] }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <motion.div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: '55vw',
+                height: '55vh',
+                right: '5%',
+                bottom: '5%',
+                background: `radial-gradient(circle, ${activePalette.tertiary}25 0%, transparent 60%)`,
+                filter: 'blur(45px)',
+              }}
+              animate={{ opacity: [0.25, 0.55, 0.25], scale: [1, 1.18, 1] }}
+              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            {/* Twinkling Accent Stars */}
+            {Array.from({ length: 65 }).map((_, si) => {
+              const size = 1 + (si % 4);
+              const isAccent = si % 5 === 0;
+              return (
+                <motion.div
+                  key={si}
+                  className="absolute rounded-full pointer-events-none"
+                  style={{
+                    width: `${size}px`,
+                    height: `${size}px`,
+                    left: `${(si * 61) % 100}%`,
+                    top: `${(si * 37) % 100}%`,
+                    background: isAccent ? activePalette.primary : si % 8 === 0 ? activePalette.tertiary : '#ffffff',
+                    boxShadow: `0 0 ${size * 3}px currentColor`,
+                  }}
+                  animate={{ opacity: [0.2, 1, 0.2], scale: [0.6, 1.35, 0.6] }}
+                  transition={{ duration: 1.8 + (si % 4), repeat: Infinity, ease: 'easeInOut', delay: (si * 0.1) % 3 }}
+                />
+              );
+            })}
+            {/* Shooting Star */}
+            <motion.div
+              className="absolute rounded-full pointer-events-none"
+              style={{ width: '2.5px', height: '2.5px', background: '#fff', boxShadow: `0 0 8px #fff, -25px 0 12px ${activePalette.primary}80` }}
+              animate={{ left: ['-10%', '115%'], top: ['15%', '45%'], opacity: [0, 1, 0] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: 'easeOut', repeatDelay: 5 }}
+            />
+          </div>
+        )}
+
+        {/* Blurred wallpaper mode */}
+        {mainWallpaper === 'blurred-wallpaper' && (
+          <div
+            className="absolute inset-0 scale-125 pointer-events-none"
+            style={{
+              backgroundImage: standbyBg && standbyBg !== 'blurred-wallpaper' && (standbyBg.startsWith('http') || standbyBg.startsWith('data'))
+                ? `url(${standbyBg})`
+                : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(60px) brightness(0.6) saturate(1.3)',
+            }}
+          />
+        )}
+      </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
@@ -3124,11 +3381,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               <Gamepad2 size={16} />
               <span>{lang === 'ru' ? 'Приложения' : 'Quick Apps'}</span>
             </div>
-            <span className="text-[10px] tabular-nums text-[var(--outline)] font-bold">4/4</span>
+            <span className="text-[10px] tabular-nums text-[var(--outline)] font-bold">5/5</span>
           </div>
           
           <div className="flex-1 flex flex-col justify-between mt-2">
-            <div className="grid grid-cols-4 gap-2" id="app-grid">
+            <div className="grid grid-cols-5 gap-1.5" id="app-grid">
               {/* Weather App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
                 playChime('click');
@@ -3145,7 +3402,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     title={lang === 'ru' ? 'Развернуть Погоду' : 'Restore Weather'}
                   />
                 )}
-                <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                <div className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <motion.div
                     whileHover={{ rotate: 18, scale: 1.15 }}
                     whileTap={{ scale: 0.9, rotate: -10 }}
@@ -3160,26 +3417,54 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
               </div>
 
-              {/* Extensions App Shortcut */}
+              {/* Wallpapers App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
                 playChime('click');
-                handleOpenExtensions();
+                handleOpenWallpaperManager();
               }}>
-                {extensionsMinimized && (
+                {wallpapersMinimized && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       playChime('click');
-                      handleOpenExtensions();
+                      handleOpenWallpaperManager();
                     }}
                     className="running-pill-mini"
-                    title={lang === 'ru' ? 'Развернуть Расширения' : 'Restore Extensions'}
+                    title={lang === 'ru' ? 'Развернуть Обои' : 'Restore Wallpapers'}
                   />
                 )}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
-                  <Blocks size={18} className="text-[var(--on-surface)]" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                  <ImageIcon size={18} className="text-[var(--on-surface)]" />
                 </div>
-                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Расширения' : 'Extensions'}</span>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Обои' : 'Wallpapers'}</span>
+              </div>
+
+              {/* LockM App Shortcut */}
+              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
+                playChime('click');
+                openLockscreenManagerWindow();
+              }}>
+                {isMinimized('lockm') && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playChime('click');
+                      openLockscreenManagerWindow();
+                    }}
+                    className="running-pill-mini"
+                    title={lang === 'ru' ? 'Развернуть LockM' : 'Restore LockM'}
+                  />
+                )}
+                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                  <motion.div
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  >
+                    <Lock size={18} className="text-[var(--accent)]" />
+                  </motion.div>
+                </div>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">LockM</span>
               </div>
 
               {/* Calculator App Shortcut */}
@@ -3198,7 +3483,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     title={lang === 'ru' ? 'Развернуть Калькулятор' : 'Restore Calculator'}
                   />
                 )}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <Calculator size={18} className="text-[var(--on-surface)]" />
                 </div>
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Калькулятор' : 'Calc'}</span>
@@ -3220,18 +3505,18 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     title={lang === 'ru' ? 'Развернуть Заметки' : 'Restore Keeps'}
                   />
                 )}
-                <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
                   <StickyNote size={18} className="text-[var(--on-surface)]" />
                 </div>
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Заметки' : 'Keeps'}</span>
               </div>
             </div>
 
-            {/* Pill under 4 apps */}
+            {/* Pill under apps */}
             <div className="mt-2 flex items-center justify-center">
               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] text-[8.5px] font-extrabold text-[var(--on-surface-var)] shadow-xs select-none">
                 <Sparkles size={10} className="text-[var(--accent)] shrink-0" />
-                <span className="truncate">{lang === 'ru' ? 'Скоро больше приложений...' : 'More apps coming soon...'}</span>
+                <span className="truncate">{lang === 'ru' ? 'M3 Expressive Lockscreens' : 'M3 Expressive Lockscreens'}</span>
               </div>
             </div>
           </div>
@@ -3656,6 +3941,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           setIsStandbyOpen(false);
           setIsStandbySetupOpen(true);
         }}
+        onOpenLockManager={openLockscreenManagerWindow}
         clockType={clockType}
         clockVariation={clockVariation}
       />
@@ -3831,11 +4117,46 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     onTimeFormatChange={handleTimeFormatChange}
                     tempUnit={tempUnit}
                     onTempUnitChange={handleTempUnitChange}
+                    onOpenWallpaperManager={handleOpenWallpaperManager}
                   />
                 </div>
               );
             case 'changelog':
               return <ChangelogModal lang={lang} embeddedInWindow={true} />;
+            case 'wallpapers':
+              return (
+                <WallpaperManagerApp
+                  lang={lang}
+                  theme={theme}
+                  activePalette={activePalette}
+                  activePaletteId={activePaletteId}
+                  wm={wm}
+                  playChime={playChime}
+                  triggerToast={triggerToast}
+                  currentHomeWallpaper={mainWallpaper}
+                  currentClockWallpaper={standbyBg}
+                  onApplyToHome={(wpUrl) => {
+                    setMainWallpaper(wpUrl);
+                    localStorage.setItem('linkerru_wallpaper', wpUrl);
+                    setWallpaperApplyNonce(prev => prev + 1);
+                  }}
+                  onApplyToClock={(wpUrl) => {
+                    setStandbyBg(wpUrl);
+                    localStorage.setItem('linkerru_standby_bg', wpUrl);
+                  }}
+                  onApplyToBoth={(wpUrl) => {
+                    setMainWallpaper(wpUrl);
+                    localStorage.setItem('linkerru_wallpaper', wpUrl);
+                    setWallpaperApplyNonce(prev => prev + 1);
+                    setStandbyBg(wpUrl);
+                    localStorage.setItem('linkerru_standby_bg', wpUrl);
+                  }}
+                  onEnableDynamicTheme={() => {
+                    localStorage.setItem('linkerru_dynamic_theme', 'true');
+                    handlePaletteChange('dynamic_wallpaper');
+                  }}
+                />
+              );
             case 'lisyan':
               return (
                 <div className="wm-embedded h-full w-full">

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Maximize, Settings } from 'lucide-react';
+import { X, Maximize, Settings, Lock } from 'lucide-react';
 import { Language } from '../types';
 import { translations } from '../data/translations';
+import { LOCK_DESIGNS, buildLockCtx, CustomLockscreenConfig } from './LockScreenManagerApp';
 
 interface StandbyClockProps {
   isOpen: boolean;
@@ -14,12 +15,51 @@ interface StandbyClockProps {
   clockType: 'digital' | 'analog';
   clockVariation: 1 | 2 | 3;
   wallpaper?: string;
+  onOpenLockManager?: () => void;
 }
 
-export default function StandbyClock({ isOpen, onClose, lang, activePalette, background, onOpenSetup, clockType, clockVariation, wallpaper }: StandbyClockProps) {
+export default function StandbyClock({
+  isOpen,
+  onClose,
+  lang,
+  activePalette,
+  background,
+  onOpenSetup,
+  clockType,
+  clockVariation,
+  wallpaper,
+  onOpenLockManager,
+}: StandbyClockProps) {
   const primaryColor = activePalette.primary;
   const [time, setTime] = useState<Date>(new Date());
   const [showControls, setShowControls] = useState(true);
+
+  // M3 Lockscreen Design integration
+  const [m3DesignId, setM3DesignId] = useState<string | null>(() => {
+    return localStorage.getItem('linkerru_standby_lock_design');
+  });
+
+  const [customLockConfig, setCustomLockConfig] = useState<CustomLockscreenConfig | null>(() => {
+    const raw = localStorage.getItem('linkerru_custom_builder_lock');
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      setM3DesignId(localStorage.getItem('linkerru_standby_lock_design'));
+      const raw = localStorage.getItem('linkerru_custom_builder_lock');
+      if (raw) {
+        try {
+          setCustomLockConfig(JSON.parse(raw));
+        } catch (e) {}
+      }
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -27,6 +67,8 @@ export default function StandbyClock({ isOpen, onClose, lang, activePalette, bac
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const lockCtx = useMemo(() => buildLockCtx(time, lang), [time, lang]);
 
   // Hide controls after a few seconds of no interaction.
   // Dismiss standby on click anywhere or Escape key.
@@ -94,11 +136,26 @@ export default function StandbyClock({ isOpen, onClose, lang, activePalette, bac
       case 'animated-2': return 'var(--bg)';
       case 'animated-3': return 'var(--bg)';
       case 'animated-4': return 'var(--bg)';
-      default: return background;
+      default:
+        if (background && (background.startsWith('/') || background.startsWith('http') || background.startsWith('data:'))) {
+          return `url("${background}") center / cover no-repeat`;
+        }
+        return background;
     }
   };
 
   const backgroundStyle = getBackgroundStyle();
+
+  // Active M3 lock design
+  const selectedM3Design = useMemo(() => {
+    if (!m3DesignId || m3DesignId === 'none') return null;
+    if (m3DesignId === 'custom' && customLockConfig) {
+      const base = LOCK_DESIGNS.find((d) => d.id === customLockConfig.layoutStyle) || LOCK_DESIGNS[0];
+      return base;
+    }
+    const num = parseInt(m3DesignId, 10);
+    return LOCK_DESIGNS.find((d) => d.id === num) || null;
+  }, [m3DesignId, customLockConfig]);
 
   return (
     <AnimatePresence>
@@ -186,8 +243,28 @@ export default function StandbyClock({ isOpen, onClose, lang, activePalette, bac
           />
 
           {/* Clock Display Area */}
-          <div className="relative z-10 w-full flex items-center justify-center">
-            {clockType === 'digital' ? (
+          <div className="relative z-10 w-full h-full flex items-center justify-center pointer-events-none select-none">
+            {selectedM3Design ? (
+              /* M3 Expressive Lockscreen Renderer Scaled to Window */
+              <div
+                className="absolute origin-center flex items-center justify-center pointer-events-none"
+                style={{
+                  width: '1280px',
+                  height: '720px',
+                  transform: `scale(${Math.min(window.innerWidth / 1280, window.innerHeight / 720)})`,
+                }}
+              >
+                {(() => {
+                  const customColor =
+                    m3DesignId === 'custom' && customLockConfig?.ink === 'custom'
+                      ? customLockConfig.customTextColor
+                      : m3DesignId === 'custom' && customLockConfig?.ink === 'accent'
+                      ? primaryColor
+                      : undefined;
+                  return selectedM3Design.render(lockCtx, m3DesignId === 'custom', customColor);
+                })()}
+              </div>
+            ) : clockType === 'digital' ? (
               <div 
                 className={`text-[18vw] font-black tracking-tighter tabular-nums select-none ${isTheme ? 'text-[var(--on-surface)] drop-shadow-sm' : 'text-white mix-blend-screen drop-shadow-2xl'} ${
                     clockVariation === 1
@@ -271,8 +348,18 @@ export default function StandbyClock({ isOpen, onClose, lang, activePalette, bac
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="absolute top-6 right-6 flex items-center gap-4 z-20"
+                className="absolute top-6 right-6 flex items-center gap-3 z-20"
               >
+                {onOpenLockManager && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onClose(); onOpenLockManager(); }}
+                    className={`flex h-12 px-4 items-center gap-2 rounded-full backdrop-blur-md transition-all border text-xs font-bold ${isTheme ? 'bg-[var(--surface-dim)] text-[var(--on-surface)] border-[var(--outline)] hover:bg-[var(--container)]' : 'bg-black/40 text-white border-white/15 hover:bg-black/60'}`}
+                    title="Lockscreen Manager"
+                  >
+                    <Lock size={16} />
+                    <span>LockM</span>
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onOpenSetup(); }}
                   className={`flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md transition-all border ${isTheme ? 'bg-[var(--surface-dim)] text-[var(--on-surface)] border-[var(--outline)] hover:bg-[var(--container)]' : 'bg-black/30 text-white border-white/10 hover:bg-black/50'}`}
@@ -295,3 +382,4 @@ export default function StandbyClock({ isOpen, onClose, lang, activePalette, bac
     </AnimatePresence>
   );
 }
+

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 import { Language } from '../types';
 
@@ -27,6 +27,7 @@ interface LoginScreenProps {
 }
 
 type ScreenFlow = 
+  | 'language_prompt'
   | 'welcome' 
   | 'login_email' 
   | 'login_password' 
@@ -37,7 +38,7 @@ type ScreenFlow =
   | 'finalizing';
 
 export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
-  const [flow, setFlow] = useState<ScreenFlow>('welcome');
+  const [flow, setFlow] = useState<ScreenFlow>('language_prompt');
   const [isSpinningFast, setIsSpinningFast] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
@@ -176,9 +177,9 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
   const handleSignupPasswordNext = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 7) {
+    if (password.length < 6) {
       triggerErr('signup-pass');
-      showToast(lang === 'ru' ? 'Пароль должен содержать минимум 7 символов' : 'Password must be at least 7 characters');
+      showToast(lang === 'ru' ? 'Пароль должен содержать не менее 6 символов' : 'Password must be at least 6 characters');
       return;
     }
     transitionTo('signup_username');
@@ -186,10 +187,15 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const userRegex = /^[a-zA-Z0-9_-]{3,}$/;
-    if (!userRegex.test(username.trim())) {
+    const cleanNick = username.trim();
+    const userRegex = /^[a-zA-Z0-9_-]{4,}$/;
+    if (!userRegex.test(cleanNick)) {
       triggerErr('signup-user');
-      showToast(lang === 'ru' ? 'Имя пользователя: мин. 3 символа (буквы, цифры)' : 'Username: min 3 characters (letters, numbers)');
+      showToast(
+        lang === 'ru'
+          ? 'Имя пользователя: мин. 4 символа (латиница, цифры, _ или -)'
+          : 'Username: at least 4 characters (letters, numbers, _ or -)'
+      );
       return;
     }
     if (!acceptedTerms) {
@@ -200,6 +206,22 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
     try {
       setIsSpinningFast(true);
+
+      // Check unique username across existing users
+      const usersRef = collection(userDb, 'users');
+      const q = query(usersRef, where('nickname', '==', cleanNick));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        triggerErr('signup-user');
+        showToast(
+          lang === 'ru'
+            ? 'Это имя пользователя уже занято. Придумайте другое.'
+            : 'This username is already taken. Please choose another.'
+        );
+        setIsSpinningFast(false);
+        return;
+      }
+
       // Mark signup in progress so App.tsx onAuthStateChanged does not unmount before onboarding
       sessionStorage.setItem('linkerru_signup_in_progress', 'true');
       const userCredential = await createUserWithEmailAndPassword(userAuth, email.trim(), password);
@@ -208,13 +230,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       const userDocRef = doc(userDb, 'users', user.uid);
       await setDoc(userDocRef, {
         uid: user.uid,
-        nickname: username.trim(),
+        nickname: cleanNick,
         email: user.email || email.trim(),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
 
-      setRegisteredNick(username.trim());
+      setRegisteredNick(cleanNick);
       showToast(lang === 'ru' ? 'Аккаунт создан!' : 'Account created!');
       
       // Start onboarding sequence right on the loading widget
@@ -229,7 +251,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       if (err.code === 'auth/email-already-in-use') {
         errMsg = lang === 'ru' ? 'Этот адрес почты уже зарегистрирован' : 'This email is already registered';
       } else if (err.code === 'auth/weak-password') {
-        errMsg = lang === 'ru' ? 'Слишком слабый пароль' : 'Weak password';
+        errMsg = lang === 'ru' ? 'Слишком слабый пароль (минимум 6 символов)' : 'Weak password (min 6 characters)';
       }
       showToast(errMsg);
     }
@@ -329,6 +351,62 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
           {/* Dynamic Content Stages Inside/Under the Loader */}
           <div className="w-full flex flex-col items-center drop-shadow-sm">
             <AnimatePresence mode="wait">
+              {/* 0. INITIAL LANGUAGE SELECTION PROMPT */}
+              {flow === 'language_prompt' && (
+                <motion.div
+                  key="language_prompt"
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full flex flex-col items-center text-center gap-5"
+                >
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black tracking-widest uppercase opacity-70">
+                      LinkerRu :Re
+                    </span>
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--on-accent)]">
+                      Language / Язык
+                    </h1>
+                    <p className="text-xs sm:text-sm font-medium text-[var(--on-accent)] opacity-80 max-w-[280px]">
+                      Would you like to continue in English or Russian? / Продолжить на русском или на английском?
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-xs pt-1">
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        onLangChange('ru');
+                        setSelectedLang('ru');
+                        localStorage.setItem('linkerru_lang', 'ru');
+                        transitionTo('welcome');
+                      }}
+                      className="w-full py-3.5 px-5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] font-black text-xs uppercase tracking-wider shadow-lg hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <span className="text-sm">🇷🇺</span>
+                      <span>Русский</span>
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        onLangChange('en');
+                        setSelectedLang('en');
+                        localStorage.setItem('linkerru_lang', 'en');
+                        transitionTo('welcome');
+                      }}
+                      className="w-full py-3.5 px-5 rounded-2xl bg-transparent border border-[var(--on-accent)]/50 text-[var(--on-accent)] font-black text-xs uppercase tracking-wider hover:bg-[var(--on-accent)]/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <span className="text-sm">🇬🇧</span>
+                      <span>English</span>
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+
               {/* 1. WELCOME GREETING STAGE */}
               {flow === 'welcome' && (
                 <motion.div

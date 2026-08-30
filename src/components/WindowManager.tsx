@@ -293,7 +293,7 @@ export function WindowManagerLayer({
   }, [ctxMenu]);
 
   const ctxWin = ctxMenu ? wm.windows.find((w) => w.id === ctxMenu.id) : null;
-  const isCtxSystemApp = ctxWin ? (ctxWin.disableLoader ?? (ctxWin.id === 'settings' || ctxWin.id === 'account' || ctxWin.id === 'changelog' || ctxWin.id === 'extensions' || ctxWin.id === 'calculator' || ctxWin.id === 'keeps' || ctxWin.id === 'weather' || ctxWin.id === 'clock' || ctxWin.id === 'calendar' || ctxWin.id === 'notifications' || ctxWin.id === 'server' || ctxWin.disableReload)) : false;
+  const isCtxSystemApp = ctxWin ? (ctxWin.disableLoader ?? (ctxWin.id === 'settings' || ctxWin.id === 'account' || ctxWin.id === 'changelog' || ctxWin.id === 'wallpapers' || ctxWin.id === 'calculator' || ctxWin.id === 'keeps' || ctxWin.id === 'weather' || ctxWin.id === 'clock' || ctxWin.id === 'calendar' || ctxWin.id === 'notifications' || ctxWin.id === 'server' || ctxWin.disableReload)) : false;
 
   // Auto-hide taskbar capsule after 5s, pop back up when mouse comes near bottom (< 100px)
   const [isTaskbarVisible, setIsTaskbarVisible] = useState(true);
@@ -663,7 +663,7 @@ function WindowFrame({
 }: WindowFrameProps) {
   const isRu = lang === 'ru';
   const isUk = lang === 'uk';
-  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'extensions' || win.id === 'calculator' || win.id === 'keeps' || win.id === 'weather' || win.id === 'clock' || win.id === 'calendar' || win.id === 'notifications' || win.id === 'server' || win.disableReload);
+  const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'wallpapers' || win.id === 'calculator' || win.id === 'keeps' || win.id === 'weather' || win.id === 'clock' || win.id === 'calendar' || win.id === 'notifications' || win.id === 'server' || win.disableReload);
   const defaultDuration = win.id === 'telegramroute' ? 20000 : win.id === 'weather' ? 350 : 600;
   const duration = win.loadingDuration ?? defaultDuration;
 

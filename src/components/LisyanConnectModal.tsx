@@ -5,11 +5,12 @@ import { useContainerSize } from '../hooks/useContainerSize';
 import QRCode from 'react-qr-code';
 import { AnimatePresence, motion } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { Language } from '../types';
 
 interface LisyanConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  lang: 'ru' | 'en';
+  lang: Language;
   theme?: 'light' | 'dark';
   isMobileLayout?: boolean;
 }
