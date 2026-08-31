@@ -85,11 +85,12 @@ import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 import { LanguageSelector } from './components/LanguageSelector';
-import { LockScreenManagerApp } from './components/LockScreenManagerApp';
+import { BookmarkGuideModal } from './components/BookmarkGuideModal';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isBookmarkGuideOpen, setIsBookmarkGuideOpen] = useState(false);
 
   // OS-style window manager for popup apps (Agno, Settings, Lisyan, Weather, Calculator)
   const wm = useWindows();
@@ -234,6 +235,17 @@ export default function App() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, [tabletChoice]);
+
+  useEffect(() => {
+    // Show Desmos stealth bookmark guide modal on startup if not dismissed
+    const dismissed = localStorage.getItem('linkerru_bookmark_popup_dismissed');
+    if (!dismissed) {
+      const timer = setTimeout(() => {
+        setIsBookmarkGuideOpen(true);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Auto-reload Telegram Route on tab switch, window focus, Chromebook/system resume
   const lastTelegramAutoReloadRef = useRef<number>(Date.now());
@@ -1963,61 +1975,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
-  const openLockscreenManagerWindow = () => {
-    wm.open({
-      id: 'lockm',
-      title: lang === 'ru' ? 'LockM — Экраны блокировки' : 'LockM — Lockscreen Manager',
-      icon: <Lock size={14} className="text-[var(--accent)]" />,
-      singleton: true,
-      disableLoader: true,
-      initialWidth: 980,
-      initialHeight: 640,
-      minWidth: 640,
-      minHeight: 480,
-      render: () => (
-        <LockScreenManagerApp
-          lang={lang}
-          activePalette={activePalette}
-          currentWallpaper={mainWallpaper}
-          currentStandbyBg={standbyBg}
-          onApplyToStandby={(bgUrl, designId, customConfig) => {
-            setStandbyBg(bgUrl);
-            localStorage.setItem('linkerru_standby_bg', bgUrl);
-            if (designId) {
-              localStorage.setItem('linkerru_standby_lock_design', String(designId));
-            }
-            if (customConfig) {
-              localStorage.setItem('linkerru_custom_builder_lock', JSON.stringify(customConfig));
-            }
-          }}
-          onApplyToHome={(bgUrl) => {
-            setMainWallpaper(bgUrl);
-            localStorage.setItem('linkerru_wallpaper', bgUrl);
-            setWallpaperApplyNonce((prev) => prev + 1);
-          }}
-          onApplyToBoth={(bgUrl, designId, customConfig) => {
-            setMainWallpaper(bgUrl);
-            localStorage.setItem('linkerru_wallpaper', bgUrl);
-            setWallpaperApplyNonce((prev) => prev + 1);
-            setStandbyBg(bgUrl);
-            localStorage.setItem('linkerru_standby_bg', bgUrl);
-            if (designId) {
-              localStorage.setItem('linkerru_standby_lock_design', String(designId));
-            }
-            if (customConfig) {
-              localStorage.setItem('linkerru_custom_builder_lock', JSON.stringify(customConfig));
-            }
-          }}
-          onApplyThemePalette={(paletteId) => {
-            handlePaletteChange(paletteId);
-          }}
-          triggerToast={triggerToast}
-          playChime={(t) => playChime(t || 'click')}
-        />
-      ),
-    });
-  };
-
   const openLinkerRoute = (url?: string) => {
     if (url) setProxyInitialUrl(url);
     const activeUrl = url || proxyInitialUrl;
@@ -3381,11 +3338,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               <Gamepad2 size={16} />
               <span>{lang === 'ru' ? 'Приложения' : 'Quick Apps'}</span>
             </div>
-            <span className="text-[10px] tabular-nums text-[var(--outline)] font-bold">5/5</span>
+            <span className="text-[10px] tabular-nums text-[var(--outline)] font-bold">4/4</span>
           </div>
           
           <div className="flex-1 flex flex-col justify-between mt-2">
-            <div className="grid grid-cols-5 gap-1.5" id="app-grid">
+            <div className="grid grid-cols-4 gap-2" id="app-grid">
               {/* Weather App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
                 playChime('click');
@@ -3439,34 +3396,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Обои' : 'Wallpapers'}</span>
               </div>
 
-              {/* LockM App Shortcut */}
-              <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
-                playChime('click');
-                openLockscreenManagerWindow();
-              }}>
-                {isMinimized('lockm') && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      playChime('click');
-                      openLockscreenManagerWindow();
-                    }}
-                    className="running-pill-mini"
-                    title={lang === 'ru' ? 'Развернуть LockM' : 'Restore LockM'}
-                  />
-                )}
-                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
-                  <motion.div
-                    whileHover={{ scale: 1.15 }}
-                    whileTap={{ scale: 0.9 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                  >
-                    <Lock size={18} className="text-[var(--accent)]" />
-                  </motion.div>
-                </div>
-                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">LockM</span>
-              </div>
-
               {/* Calculator App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
                 playChime('click');
@@ -3516,7 +3445,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <div className="mt-2 flex items-center justify-center">
               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--btn-bg)] border border-[var(--btn-border)] text-[8.5px] font-extrabold text-[var(--on-surface-var)] shadow-xs select-none">
                 <Sparkles size={10} className="text-[var(--accent)] shrink-0" />
-                <span className="truncate">{lang === 'ru' ? 'M3 Expressive Lockscreens' : 'M3 Expressive Lockscreens'}</span>
+                <span className="truncate">{lang === 'ru' ? '4 системные утилиты' : '4 System Utilities'}</span>
               </div>
             </div>
           </div>
@@ -3941,7 +3870,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           setIsStandbyOpen(false);
           setIsStandbySetupOpen(true);
         }}
-        onOpenLockManager={openLockscreenManagerWindow}
         clockType={clockType}
         clockVariation={clockVariation}
       />
@@ -4286,6 +4214,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         onSelectServer={handleServerSelection}
         primaryColor={activePalette.primary}
         onOpenHub={(url) => openLinkerRoute(url)}
+      />
+
+      {/* Stealth Bookmarklet / Desmos Guide Modal */}
+      <BookmarkGuideModal
+        isOpen={isBookmarkGuideOpen}
+        onClose={() => setIsBookmarkGuideOpen(false)}
+        lang={lang}
+        triggerToast={triggerToast}
+        playChime={playChime}
       />
 
       {/* Background Preloader for Telegram Route App */}

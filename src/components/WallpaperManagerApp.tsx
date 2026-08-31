@@ -1023,7 +1023,7 @@ export function WallpaperManagerApp({
   const isRu = lang === 'ru';
   const isUk = lang === 'uk';
 
-  const [activeCategory, setActiveCategory] = useState<string>('match_theme');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWallpaper, setSelectedWallpaper] = useState<WallpaperItem | null>(null);
 
@@ -1040,65 +1040,93 @@ export function WallpaperManagerApp({
   }, [activePaletteId]);
 
   const categories = useMemo(() => {
-    const liveClockCount = WALLPAPER_CATALOG.filter(
-      (w) => w.category === 'live_clock' || w.isLive || w.gradientId?.startsWith('animated-')
+    const liveCount = WALLPAPER_CATALOG.filter(
+      (w) =>
+        w.category === 'live_clock' ||
+        w.isLive ||
+        w.gradientId?.startsWith('animated-') ||
+        w.gradientId === 'theme' ||
+        w.gradientId === 'blurred-wallpaper'
+    ).length;
+
+    const simpleGradientCount = WALLPAPER_CATALOG.filter(
+      (w) =>
+        (w.category === 'gradient' || w.isGradient) &&
+        !w.isLive &&
+        !w.gradientId?.startsWith('animated-') &&
+        w.gradientId !== 'theme' &&
+        w.gradientId !== 'blurred-wallpaper'
+    ).length;
+
+    const cityCount = WALLPAPER_CATALOG.filter((w) => w.category === 'city').length;
+    const natureCount = WALLPAPER_CATALOG.filter((w) => w.category === 'nature' || w.category === 'water').length;
+    const minimalCount = WALLPAPER_CATALOG.filter(
+      (w) => w.category === 'abstract' || w.category === 'dark' || (w.category as any) === 'minimal'
     ).length;
 
     return [
       {
-        id: 'match_theme',
-        label: isRu ? 'Под вашу тему' : isUk ? 'Під вашу тему' : 'Match Your Theme',
-        icon: Sparkles,
-        count: matchingWallpapers.length,
-        isSpecial: true,
-      },
-      {
-        id: 'live_clock',
-        label: isRu ? 'Живые и Часы' : isUk ? 'Живі та Годинник' : 'Live & Standby',
-        icon: Layers,
-        count: liveClockCount,
-      },
-      {
         id: 'all',
-        label: isRu ? 'Все' : isUk ? 'Усі' : 'All',
+        label: isRu ? 'Все обои' : isUk ? 'Усі шпалери' : 'All Wallpapers',
         count: WALLPAPER_CATALOG.length,
       },
       {
-        id: 'nature',
-        label: isRu ? 'Природа' : isUk ? 'Природа' : 'Nature',
-        count: WALLPAPER_CATALOG.filter((w) => w.category === 'nature').length,
+        id: 'live',
+        label: isRu ? 'Живые обои' : isUk ? 'Живі шпалери' : 'Live Wallpapers',
+        icon: Sparkles,
+        count: liveCount,
+      },
+      {
+        id: 'gradient',
+        label: isRu ? 'Простые градиенты' : isUk ? 'Прості градієнти' : 'Simple Gradients',
+        count: simpleGradientCount,
       },
       {
         id: 'city',
         label: isRu ? 'Города' : isUk ? 'Міста' : 'Cities',
-        count: WALLPAPER_CATALOG.filter((w) => w.category === 'city').length,
+        count: cityCount,
       },
       {
-        id: 'dark',
-        label: isRu ? 'Тёмные' : isUk ? 'Темні' : 'Dark',
-        count: WALLPAPER_CATALOG.filter((w) => w.category === 'dark').length,
+        id: 'nature',
+        label: isRu ? 'Природа' : isUk ? 'Природа' : 'Nature',
+        count: natureCount,
       },
       {
-        id: 'abstract',
-        label: isRu ? 'Минимализм' : isUk ? 'Мінімалізм' : 'Minimal',
-        count: WALLPAPER_CATALOG.filter((w) => w.category === 'abstract').length,
-      },
-      {
-        id: 'gradient',
-        label: isRu ? 'Градиенты' : isUk ? 'Градієнти' : 'Gradients',
-        count: WALLPAPER_CATALOG.filter((w) => w.category === 'gradient').length,
+        id: 'minimal',
+        label: isRu ? 'Минималистичные' : isUk ? 'Мінімалістичні' : 'Minimalist',
+        count: minimalCount,
       },
     ];
-  }, [isRu, isUk, matchingWallpapers.length]);
+  }, [isRu, isUk]);
 
   const filteredWallpapers = useMemo(() => {
     let list = WALLPAPER_CATALOG;
 
-    if (activeCategory === 'match_theme') {
-      list = matchingWallpapers.length > 0 ? matchingWallpapers : WALLPAPER_CATALOG;
-    } else if (activeCategory === 'live_clock') {
+    if (activeCategory === 'live') {
       list = WALLPAPER_CATALOG.filter(
-        (w) => w.category === 'live_clock' || w.isLive || w.gradientId?.startsWith('animated-')
+        (w) =>
+          w.category === 'live_clock' ||
+          w.isLive ||
+          w.gradientId?.startsWith('animated-') ||
+          w.gradientId === 'theme' ||
+          w.gradientId === 'blurred-wallpaper'
+      );
+    } else if (activeCategory === 'gradient') {
+      list = WALLPAPER_CATALOG.filter(
+        (w) =>
+          (w.category === 'gradient' || w.isGradient) &&
+          !w.isLive &&
+          !w.gradientId?.startsWith('animated-') &&
+          w.gradientId !== 'theme' &&
+          w.gradientId !== 'blurred-wallpaper'
+      );
+    } else if (activeCategory === 'city') {
+      list = WALLPAPER_CATALOG.filter((w) => w.category === 'city');
+    } else if (activeCategory === 'nature') {
+      list = WALLPAPER_CATALOG.filter((w) => w.category === 'nature' || w.category === 'water');
+    } else if (activeCategory === 'minimal') {
+      list = WALLPAPER_CATALOG.filter(
+        (w) => w.category === 'abstract' || w.category === 'dark' || (w.category as any) === 'minimal'
       );
     } else if (activeCategory !== 'all') {
       list = WALLPAPER_CATALOG.filter((w) => w.category === activeCategory);
@@ -1117,7 +1145,7 @@ export function WallpaperManagerApp({
     }
 
     return list;
-  }, [activeCategory, matchingWallpapers, searchQuery]);
+  }, [activeCategory, searchQuery]);
 
   const handleSelect = (wp: WallpaperItem) => {
     playChime?.('click');
@@ -1131,11 +1159,9 @@ export function WallpaperManagerApp({
     triggerToast?.(isRu ? 'Обои применены на главный экран!' : isUk ? 'Шпалери застосовано на головний екран!' : 'Wallpaper applied to Home Screen!');
     setSelectedWallpaper(null);
 
-    // Show prompt to adapt accent colors if not already dynamic
-    if (!wp.isGradient && !wp.isLive) {
-      setPendingWallpaper(wp);
-      setShowAdaptivePrompt(true);
-    }
+    // Prompt user whether to adapt the theme, instead of adapting automatically
+    setPendingWallpaper(wp);
+    setShowAdaptivePrompt(true);
   };
 
   const handleApplyClock = (wp: WallpaperItem) => {
@@ -1144,6 +1170,10 @@ export function WallpaperManagerApp({
     onApplyToClock(targetVal);
     triggerToast?.(isRu ? 'Обои применены для часов!' : isUk ? 'Шпалери застосовано для годинника!' : 'Wallpaper applied to Standby Clock!');
     setSelectedWallpaper(null);
+
+    // Prompt user whether to adapt the theme, instead of adapting automatically
+    setPendingWallpaper(wp);
+    setShowAdaptivePrompt(true);
   };
 
   const handleApplyBoth = (wp: WallpaperItem) => {
@@ -1153,10 +1183,9 @@ export function WallpaperManagerApp({
     triggerToast?.(isRu ? 'Обои применены везде!' : isUk ? 'Шпалери застосовано всюди!' : 'Wallpaper applied everywhere!');
     setSelectedWallpaper(null);
 
-    if (!wp.isGradient && !wp.isLive) {
-      setPendingWallpaper(wp);
-      setShowAdaptivePrompt(true);
-    }
+    // Prompt user whether to adapt the theme, instead of adapting automatically
+    setPendingWallpaper(wp);
+    setShowAdaptivePrompt(true);
   };
 
   const handleConfirmAdaptive = () => {
