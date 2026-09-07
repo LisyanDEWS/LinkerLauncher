@@ -40,6 +40,8 @@ import {
   History,
   Blocks,
   RotateCw,
+  Clock,
+  Maximize,
 } from 'lucide-react';
 import { useWindows } from './WindowManager';
 
@@ -101,6 +103,11 @@ interface FullSettingsModalProps {
   onFontChange: (font: string) => void;
   mainWallpaper: string;
   onMainWallpaperChange: (w: string) => void;
+  clockType?: 'digital' | 'analog';
+  onClockTypeChange?: (type: 'digital' | 'analog') => void;
+  clockVariation?: 1 | 2 | 3;
+  onClockVariationChange?: (v: 1 | 2 | 3) => void;
+  onLaunchStandby?: () => void;
   isAuthenticated: boolean;
   nickname: string;
   onNicknameChange: (newNick: string) => void;
@@ -119,7 +126,6 @@ interface FullSettingsModalProps {
   onAppNotifPermissionToggle?: (appId: string, allowed: boolean) => void;
   isWeatherDisabled?: boolean;
   onWeatherDisabledToggle?: (disabled: boolean) => void;
-  onOpenWallpaperManager?: () => void;
 }
 
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account';
@@ -163,6 +169,11 @@ export default function FullSettingsModal({
   onFontChange,
   mainWallpaper,
   onMainWallpaperChange,
+  clockType = 'digital',
+  onClockTypeChange,
+  clockVariation = 1,
+  onClockVariationChange,
+  onLaunchStandby,
   isAuthenticated,
   nickname,
   onNicknameChange,
@@ -181,7 +192,6 @@ export default function FullSettingsModal({
   onAppNotifPermissionToggle,
   isWeatherDisabled = false,
   onWeatherDisabledToggle,
-  onOpenWallpaperManager,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(isMobileLayout && initialTab === 'account' ? 'appearance' : (initialTab || 'appearance'));
   const [searchQuery, setSearchQuery] = useState('');
@@ -275,29 +285,134 @@ export default function FullSettingsModal({
     return materialPalettes.find((p) => p.id === activePaletteId) || materialPalettes.find((p) => p.id === 'monochrome') || materialPalettes[0];
   }, [activePaletteId]);
 
-  const backgrounds = useMemo(() => {
+  const [previewTime, setPreviewTime] = useState<Date>(new Date());
+  useEffect(() => {
+    const tId = setInterval(() => setPreviewTime(new Date()), 1000);
+    return () => clearInterval(tId);
+  }, []);
+
+  const wallpaperItems = useMemo(() => {
     const p1 = activePalette.primary;
     const p2 = activePalette.secondary;
     const p3 = activePalette.tertiary;
 
-    if (theme === 'dark') {
-      return [
-        { id: 'none', name: 'None', style: `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)` },
-        { id: 'gradient-1', name: 'Gradient 1', style: `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 60%), linear-gradient(135deg, color-mix(in srgb, ${p1} 35%, #000 65%), color-mix(in srgb, ${p2} 25%, #000 75%), #060608)` },
-        { id: 'gradient-2', name: 'Gradient 2', style: `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, transparent 55%), radial-gradient(circle at 10% 20%, ${p2}40 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3}30 0%, transparent 50%), linear-gradient(135deg, ${p1}35, var(--bg))` },
-        { id: 'gradient-3', name: 'Gradient 3', style: `radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.18) 0%, transparent 60%), linear-gradient(to bottom right, ${p1}40 0%, transparent 100%), linear-gradient(to top right, ${p3}30 0%, transparent 100%), var(--bg)` },
-        { id: 'gradient-4', name: 'Gradient 4', style: `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%), conic-gradient(from 180deg at 50% 50%, ${p1}35 0deg, ${p2}25 120deg, ${p3}25 240deg, ${p1}35 360deg)` },
-      ];
-    }
-
     return [
-      { id: 'none', name: 'None', style: 'var(--bg)' },
-      { id: 'gradient-1', name: 'Gradient 1', style: `linear-gradient(135deg, ${p1}, ${p2}, ${p3})` },
-      { id: 'gradient-2', name: 'Gradient 2', style: `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))` },
-      { id: 'gradient-3', name: 'Gradient 3', style: `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)` },
-      { id: 'gradient-4', name: 'Gradient 4', style: `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)` },
+      {
+        id: 'theme',
+        nameRu: 'Тема по умолчанию',
+        nameEn: 'Adaptive Theme',
+        descRu: 'Чистый адаптивный фон системы',
+        descEn: 'Clean adaptive system background',
+        preview: theme === 'dark'
+          ? `radial-gradient(ellipse at 50% -20%, color-mix(in srgb, ${p1} 22%, rgba(255, 255, 255, 0.12) 78%) 0%, transparent 65%), var(--bg)`
+          : 'var(--bg)',
+        isLive: false,
+      },
+      {
+        id: 'gradient-1',
+        nameRu: 'Градиент 1',
+        nameEn: 'Gradient 1',
+        descRu: 'Линейный горизонт палитры',
+        descEn: 'Linear diagonal horizon',
+        preview: theme === 'dark'
+          ? `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 60%), linear-gradient(135deg, color-mix(in srgb, ${p1} 35%, #000 65%), color-mix(in srgb, ${p2} 25%, #000 75%), #060608)`
+          : `linear-gradient(135deg, ${p1}, ${p2}, ${p3})`,
+        isLive: false,
+      },
+      {
+        id: 'gradient-2',
+        nameRu: 'Градиент 2',
+        nameEn: 'Gradient 2',
+        descRu: 'Радиальное свечение',
+        descEn: 'Radial theme glow spheres',
+        preview: theme === 'dark'
+          ? `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.16) 0%, transparent 55%), radial-gradient(circle at 10% 20%, ${p2}40 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3}30 0%, transparent 50%), linear-gradient(135deg, ${p1}35, var(--bg))`
+          : `radial-gradient(circle at 10% 20%, ${p2} 0%, transparent 50%), radial-gradient(circle at 90% 80%, ${p3} 0%, transparent 50%), linear-gradient(135deg, ${p1}, var(--bg))`,
+        isLive: false,
+      },
+      {
+        id: 'gradient-3',
+        nameRu: 'Градиент 3',
+        nameEn: 'Gradient 3',
+        descRu: 'Диагональные лучи',
+        descEn: 'Crossed diagonal accent beams',
+        preview: theme === 'dark'
+          ? `radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.18) 0%, transparent 60%), linear-gradient(to bottom right, ${p1}40 0%, transparent 100%), linear-gradient(to top right, ${p3}30 0%, transparent 100%), var(--bg)`
+          : `linear-gradient(to bottom right, ${p1} 0%, transparent 100%), linear-gradient(to top right, ${p3} 0%, transparent 100%), var(--bg)`,
+        isLive: false,
+      },
+      {
+        id: 'gradient-4',
+        nameRu: 'Градиент 4',
+        nameEn: 'Gradient 4',
+        descRu: 'Коническая аура',
+        descEn: 'Rotational 360 conic aura',
+        preview: theme === 'dark'
+          ? `radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.14) 0%, transparent 55%), conic-gradient(from 180deg at 50% 50%, ${p1}35 0deg, ${p2}25 120deg, ${p3}25 240deg, ${p1}35 360deg)`
+          : `conic-gradient(from 180deg at 50% 50%, ${p1} 0deg, ${p2} 120deg, ${p3} 240deg, ${p1} 360deg)`,
+        isLive: false,
+      },
+      {
+        id: 'animated-1',
+        nameRu: 'Шелковые волны',
+        nameEn: 'Silk Waves',
+        descRu: 'Плавный шейдер шелковой ряби',
+        descEn: 'Fluid real-time mesh shader',
+        preview: `radial-gradient(circle at 30% 30%, ${p1}90, transparent 60%), radial-gradient(circle at 70% 70%, ${p2}80, ${p3}60)`,
+        isLive: true,
+      },
+      {
+        id: 'animated-2',
+        nameRu: 'Рифленое стекло',
+        nameEn: 'Fluted Glass',
+        descRu: 'Вертикальная дисперсия призмы',
+        descEn: 'Vertical fluted glass refraction',
+        preview: `linear-gradient(90deg, ${p1}80 0%, ${p2}80 50%, ${p3}80 100%)`,
+        isLive: true,
+      },
+      {
+        id: 'animated-3',
+        nameRu: 'Ризограф Halftone',
+        nameEn: 'Riso Dither',
+        descRu: 'Ретро полутоновый дизеринг',
+        descEn: 'Halftone dot dither effect',
+        preview: `radial-gradient(circle at 50% 50%, ${p1}95 0%, ${p3}80 50%, ${p2}50 100%)`,
+        isLive: true,
+      },
+      {
+        id: 'animated-4',
+        nameRu: 'Звездный космос',
+        nameEn: 'Starfield Cosmos',
+        descRu: 'Туманности и мерцающие звезды',
+        descEn: 'Cosmic nebulas with starfield',
+        preview: `radial-gradient(circle at 50% 30%, ${p1}50 0%, #0a0a1a 80%)`,
+        isLive: true,
+      },
     ];
   }, [activePalette, theme]);
+
+  const lockscreenWallpapers = useMemo(() => {
+    return [
+      ...wallpaperItems,
+      {
+        id: 'blurred-wallpaper',
+        nameRu: 'Размытые обои стола',
+        nameEn: 'Blurred Desktop',
+        descRu: 'Фон текущего рабочего стола с матовым размытием',
+        descEn: 'Current desktop background with glass blur',
+        preview: 'radial-gradient(circle, var(--accent) 0%, var(--surface-dim) 100%)',
+        isLive: false,
+      },
+    ];
+  }, [wallpaperItems]);
+
+  const backgrounds = useMemo(() => {
+    return wallpaperItems.map(item => ({
+      id: item.id,
+      name: item.nameRu,
+      style: item.preview
+    }));
+  }, [wallpaperItems]);
 
   // List of all items for search indexing
   const searchableSettings = useMemo(() => {
@@ -804,59 +919,294 @@ export default function FullSettingsModal({
                             />
                           </div>
 
-                          {/* Main Wallpaper Row */}
-                          {!isMobileLayout && (
-                          <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-3">
-                            <div className="flex items-center gap-4">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
-                                <Image size={18} />
-                              </div>
-                              <div>
-                                <div className="text-sm font-bold text-[var(--on-surface)]">
-                                  {lang === 'ru' ? 'Обои' : 'Wallpapers'}
+                          {/* Main Desktop Wallpaper Section */}
+                          <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-3.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                                  <Image size={18} />
                                 </div>
-                                <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
-                                  {lang === 'ru' ? 'Установите фоновый градиент или цвет' : 'Set a background gradient or color'}
+                                <div>
+                                  <div className="text-sm font-bold text-[var(--on-surface)]">
+                                    {lang === 'ru' ? 'Обои рабочего стола' : 'Desktop Wallpapers'}
+                                  </div>
+                                  <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                    {lang === 'ru' ? 'Все обои адаптируются под активную палитру темы' : 'All wallpapers dynamically adapt to active theme palette'}
+                                  </div>
                                 </div>
                               </div>
                             </div>
 
-                            {/* Standard Gradients Grid */}
-                            <div className="grid grid-cols-5 gap-2 mt-1">
-                              {backgrounds.map((bg) => (
-                                <button
-                                  key={bg.id}
-                                  onClick={() => onMainWallpaperChange(bg.id)}
-                                  className={`h-12 rounded-xl border-2 transition-all cursor-pointer ${mainWallpaper === bg.id ? 'border-[var(--accent)] scale-95 ring-2 ring-[var(--accent)]/20' : 'border-[var(--outline-var)] hover:border-[var(--outline)]'}`}
-                                  style={{ background: bg.style }}
-                                  title={bg.name}
-                                />
-                              ))}
-                            </div>
-
-                            {/* More Wallpapers in Wallpaper Manager Button */}
-                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--outline-var)]">
-                              <div className="flex flex-col">
-                                <span className="text-xs font-extrabold text-[var(--on-surface)]">
-                                  {lang === 'ru' ? 'Галерея 4K обоев' : '4K Wallpaper Library'}
-                                </span>
-                                <span className="text-[11px] text-[var(--on-surface-var)]">
-                                  {lang === 'ru' ? 'Коллекции природы, мегаполисов, текстур и часов' : 'Curated collections of nature, cities, and minimal wallpapers'}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  playChime?.('click');
-                                  onOpenWallpaperManager?.();
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-bold shadow-sm hover:opacity-90 transition-all cursor-pointer shrink-0 ml-3"
-                              >
-                                <Image size={14} />
-                                <span>{lang === 'ru' ? 'Больше обоев в Менеджере обоев' : 'More in Wallpaper Manager'}</span>
-                              </button>
+                            {/* Wallpapers Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-1">
+                              {wallpaperItems.map((item) => {
+                                const isSelected = (mainWallpaper || 'theme') === item.id || (item.id === 'theme' && (!mainWallpaper || mainWallpaper === 'none'));
+                                return (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => {
+                                      playChime?.('click');
+                                      onMainWallpaperChange(item.id);
+                                    }}
+                                    className={`relative flex flex-col p-2.5 rounded-xl border text-left transition-all cursor-pointer overflow-hidden group ${
+                                      isSelected
+                                        ? 'border-[var(--on-surface)] shadow-md ring-2 ring-[var(--accent)]/30'
+                                        : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'
+                                    }`}
+                                  >
+                                    {/* Preview container */}
+                                    <div
+                                      className="w-full h-16 rounded-lg mb-2 border border-black/10 overflow-hidden relative shadow-inner"
+                                      style={{ background: item.preview }}
+                                    >
+                                      {item.isLive && (
+                                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+                                          <Sparkles size={9} className="text-amber-300" />
+                                          <span>Live</span>
+                                        </div>
+                                      )}
+                                      {isSelected && (
+                                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[var(--surface)] text-[var(--on-surface)] flex items-center justify-center shadow-md">
+                                          <Check size={12} className="text-[var(--accent)]" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-xs font-bold text-[var(--on-surface)] truncate">
+                                      {lang === 'ru' ? item.nameRu : item.nameEn}
+                                    </span>
+                                    <span className="text-[10px] text-[var(--on-surface-var)] truncate mt-0.5">
+                                      {lang === 'ru' ? item.descRu : item.descEn}
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
-                          )}
+
+                          {/* Lockscreen & Standby Settings Section */}
+                          <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)]">
+                                  <Lock size={18} />
+                                </div>
+                                <div>
+                                  <div className="text-sm font-bold text-[var(--on-surface)]">
+                                    {lang === 'ru' ? 'Экран блокировки и ожидания (Standby)' : 'Lockscreen & Standby Mode'}
+                                  </div>
+                                  <div className="text-xs text-[var(--on-surface-var)] mt-0.5">
+                                    {lang === 'ru' ? 'Выбор обоев и стиля часов для экрана ожидания' : 'Customize standby wallpaper and clock style'}
+                                  </div>
+                                </div>
+                              </div>
+                              {onLaunchStandby && (
+                                <button
+                                  onClick={() => {
+                                    playChime?.('click');
+                                    onLaunchStandby();
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline)] text-xs font-bold hover:bg-[var(--surface-dim)] transition-all cursor-pointer shrink-0"
+                                >
+                                  <Maximize size={13} />
+                                  <span>{lang === 'ru' ? 'Запустить' : 'Launch'}</span>
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Clock Style & Variation Chooser */}
+                            <div className="p-3.5 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline-var)] space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-[var(--on-surface)] uppercase tracking-wider">
+                                  {lang === 'ru' ? 'Стиль часов локскрина' : 'Lockscreen Clock Style'}
+                                </span>
+                                {/* Type switch (digital / analog) */}
+                                <div className="flex bg-[var(--container)] p-0.5 rounded-lg border border-[var(--outline-var)]">
+                                  <button
+                                    onClick={() => {
+                                      playChime?.('click');
+                                      onClockTypeChange?.('digital');
+                                    }}
+                                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                      clockType === 'digital'
+                                        ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs'
+                                        : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+                                    }`}
+                                  >
+                                    {lang === 'ru' ? 'Цифровые' : 'Digital'}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      playChime?.('click');
+                                      onClockTypeChange?.('analog');
+                                    }}
+                                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                      clockType === 'analog'
+                                        ? 'bg-[var(--on-surface)] text-[var(--surface)] shadow-xs'
+                                        : 'text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+                                    }`}
+                                  >
+                                    {lang === 'ru' ? 'Стрелочные' : 'Analog'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Variation selector */}
+                              <div className="grid grid-cols-3 gap-2">
+                                {[1, 2, 3].map((styleNum) => {
+                                  const isCur = clockVariation === styleNum;
+                                  return (
+                                    <button
+                                      key={styleNum}
+                                      onClick={() => {
+                                        playChime?.('click');
+                                        onClockVariationChange?.(styleNum as 1 | 2 | 3);
+                                      }}
+                                      className={`py-2 px-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                                        isCur
+                                          ? 'border-[var(--on-surface)] bg-[var(--surface)] shadow-xs font-bold text-[var(--on-surface)]'
+                                          : 'border-[var(--outline-var)] bg-[var(--container)] text-[var(--on-surface-var)] hover:text-[var(--on-surface)]'
+                                      }`}
+                                    >
+                                      <span className="text-xs">
+                                        {lang === 'ru'
+                                          ? styleNum === 1 ? 'Стиль 1 (Bold)' : styleNum === 2 ? 'Стиль 2 (Mono)' : 'Стиль 3 (Aura)'
+                                          : styleNum === 1 ? 'Style 1 (Bold)' : styleNum === 2 ? 'Style 2 (Mono)' : 'Style 3 (Aura)'}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Live Clock Mini-Preview Box */}
+                              <div
+                                className="w-full h-28 rounded-xl border border-[var(--outline-var)] overflow-hidden relative flex flex-col items-center justify-center shadow-inner"
+                                style={{
+                                  background: (lockscreenWallpapers.find(w => w.id === standbyBg)?.preview) || 'var(--bg)',
+                                }}
+                              >
+                                <div className="absolute top-2 left-2.5 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[9px] font-bold text-white/90">
+                                  {lang === 'ru' ? 'Превью экрана' : 'Live Preview'}
+                                </div>
+
+                                {clockType === 'digital' ? (
+                                  <div
+                                    className={`text-3xl font-extrabold tracking-tight tabular-nums select-none ${
+                                      clockVariation === 1
+                                        ? 'text-[var(--on-surface)]'
+                                        : clockVariation === 2
+                                        ? 'font-mono text-2xl font-medium tracking-wide text-[var(--on-surface-var)]'
+                                        : 'font-light tracking-widest text-4xl'
+                                    }`}
+                                    style={{ color: clockVariation === 3 ? activePalette.primary : undefined }}
+                                  >
+                                    {String(previewTime.getHours()).padStart(2, '0')}:
+                                    {String(previewTime.getMinutes()).padStart(2, '0')}:
+                                    {String(previewTime.getSeconds()).padStart(2, '0')}
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`relative w-20 h-20 rounded-full border-2 border-[var(--outline)] bg-[var(--container)] flex items-center justify-center ${
+                                      clockVariation === 2
+                                        ? 'border-none bg-[var(--surface-dim)]'
+                                        : clockVariation === 3
+                                        ? 'border-2 bg-transparent'
+                                        : ''
+                                    }`}
+                                    style={{ borderColor: clockVariation === 3 ? activePalette.primary : undefined }}
+                                  >
+                                    {/* Center dot */}
+                                    <div
+                                      className="absolute w-1.5 h-1.5 rounded-full z-10"
+                                      style={{ backgroundColor: activePalette.primary }}
+                                    />
+                                    {/* Hour hand */}
+                                    <div
+                                      className="absolute bottom-1/2 left-1/2 origin-bottom rounded-full"
+                                      style={{
+                                        width: '2px',
+                                        height: '18px',
+                                        marginLeft: '-1px',
+                                        transform: `rotate(${(previewTime.getHours() % 12) * 30 + previewTime.getMinutes() * 0.5}deg)`,
+                                        backgroundColor: clockVariation === 2 ? 'var(--on-surface-var)' : 'var(--on-surface)',
+                                      }}
+                                    />
+                                    {/* Minute hand */}
+                                    <div
+                                      className="absolute bottom-1/2 left-1/2 origin-bottom rounded-full"
+                                      style={{
+                                        width: '1.5px',
+                                        height: '26px',
+                                        marginLeft: '-0.75px',
+                                        transform: `rotate(${previewTime.getMinutes() * 6 + previewTime.getSeconds() * 0.1}deg)`,
+                                        backgroundColor: clockVariation === 2 ? 'var(--outline)' : 'var(--on-surface)',
+                                      }}
+                                    />
+                                    {/* Second hand */}
+                                    <div
+                                      className="absolute bottom-1/2 left-1/2 origin-bottom rounded-full"
+                                      style={{
+                                        width: '1px',
+                                        height: '30px',
+                                        marginLeft: '-0.5px',
+                                        transform: `rotate(${previewTime.getSeconds() * 6}deg)`,
+                                        backgroundColor: clockVariation === 3 ? activePalette.primary : 'var(--accent-tertiary)',
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Lockscreen Wallpapers Grid */}
+                            <div className="space-y-2">
+                              <span className="text-xs font-extrabold text-[var(--on-surface)] uppercase tracking-wider">
+                                {lang === 'ru' ? 'Обои экрана ожидания' : 'Standby Wallpaper'}
+                              </span>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                {lockscreenWallpapers.map((item) => {
+                                  const isSelected = (standbyBg || 'theme') === item.id;
+                                  return (
+                                    <button
+                                      key={item.id}
+                                      onClick={() => {
+                                        playChime?.('click');
+                                        onStandbyBgChange(item.id);
+                                      }}
+                                      className={`relative flex flex-col p-2.5 rounded-xl border text-left transition-all cursor-pointer overflow-hidden group ${
+                                        isSelected
+                                          ? 'border-[var(--on-surface)] shadow-md ring-2 ring-[var(--accent)]/30'
+                                          : 'border-[var(--outline-var)] hover:border-[var(--outline)] bg-[var(--surface-dim)]'
+                                      }`}
+                                    >
+                                      {/* Preview box */}
+                                      <div
+                                        className="w-full h-14 rounded-lg mb-2 border border-black/10 overflow-hidden relative shadow-inner"
+                                        style={{ background: item.preview }}
+                                      >
+                                        {item.isLive && (
+                                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+                                            <Sparkles size={9} className="text-amber-300" />
+                                            <span>Live</span>
+                                          </div>
+                                        )}
+                                        {isSelected && (
+                                          <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[var(--surface)] text-[var(--on-surface)] flex items-center justify-center shadow-md">
+                                            <Check size={12} className="text-[var(--accent)]" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <span className="text-xs font-bold text-[var(--on-surface)] truncate">
+                                        {lang === 'ru' ? item.nameRu : item.nameEn}
+                                      </span>
+                                      <span className="text-[10px] text-[var(--on-surface-var)] truncate mt-0.5">
+                                        {lang === 'ru' ? item.descRu : item.descEn}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Theme Color Swatches Section */}

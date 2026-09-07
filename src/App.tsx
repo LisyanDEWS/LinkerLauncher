@@ -1,4 +1,3 @@
-import { WallpaperManagerApp } from './components/WallpaperManagerApp';
 import { SubConvertApp } from './components/SubConvertApp';
 import { LisyanConnectModal } from './components/LisyanConnectModal';
 import { CLICK_SOUNDS, NOTIFICATION_SOUNDS } from './data/sounds';
@@ -74,7 +73,6 @@ import { CalculatorApp } from './components/CalculatorApp';
 import { KeepsApp } from './components/KeepsApp';
 import ChangelogModal from './components/ChangelogModal';
 import StandbyClock from './components/StandbyClock';
-import StandbySetupModal from './components/StandbySetupModal';
 import NotificationsModal from './components/NotificationsModal';
 import OnboardingModal from './components/OnboardingModal';
 import { SupportQRModal, CONTACTS } from './components/SupportApp';
@@ -85,12 +83,10 @@ import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 import { LanguageSelector } from './components/LanguageSelector';
-import { BookmarkGuideModal } from './components/BookmarkGuideModal';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isBookmarkGuideOpen, setIsBookmarkGuideOpen] = useState(false);
 
   // OS-style window manager for popup apps (Agno, Settings, Lisyan, Weather, Calculator)
   const wm = useWindows();
@@ -236,17 +232,6 @@ export default function App() {
     return () => window.removeEventListener('resize', checkMobile);
   }, [tabletChoice]);
 
-  useEffect(() => {
-    // Show Desmos stealth bookmark guide modal on startup if not dismissed
-    const dismissed = localStorage.getItem('linkerru_bookmark_popup_dismissed');
-    if (!dismissed) {
-      const timer = setTimeout(() => {
-        setIsBookmarkGuideOpen(true);
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
   // Auto-reload Telegram Route on tab switch, window focus, Chromebook/system resume
   const lastTelegramAutoReloadRef = useRef<number>(Date.now());
   useEffect(() => {
@@ -388,7 +373,6 @@ export default function App() {
   // Login screen preview overlay (dev tool — does NOT log out)
   const [isLoginPreviewOpen, setIsLoginPreviewOpen] = useState(false);
   const [isStandbyOpen, setIsStandbyOpen] = useState(false);
-  const [isStandbySetupOpen, setIsStandbySetupOpen] = useState(false);
   const [clockType, setClockType] = useState<'digital' | 'analog'>(() => {
     return (localStorage.getItem('linkerru_clock_type') as 'digital' | 'analog') || 'digital';
   });
@@ -1796,7 +1780,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             onTimeFormatChange={handleTimeFormatChange}
             tempUnit={tempUnit}
             onTempUnitChange={handleTempUnitChange}
-            onOpenWallpaperManager={handleOpenWallpaperManager}
+            clockType={clockType}
+            onClockTypeChange={(type) => {
+              setClockType(type);
+              localStorage.setItem('linkerru_clock_type', type);
+            }}
+            clockVariation={clockVariation}
+            onClockVariationChange={(v) => {
+              setClockVariation(v);
+              localStorage.setItem('linkerru_clock_variation', String(v));
+            }}
+            onLaunchStandby={() => setIsStandbyOpen(true)}
           />
         </div>
       ),
@@ -1868,52 +1862,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
-  const handleOpenWallpaperManager = () => {
-    playChime('click');
-    wm.open({
-      id: 'wallpapers',
-      title: lang === 'ru' ? 'Менеджер обоев' : lang === 'uk' ? 'Менеджер шпалер' : 'Wallpaper Manager',
-      icon: <ImageIcon size={14} className="text-[var(--on-surface)]" />,
-      singleton: true,
-      initialWidth: 840,
-      initialHeight: 600,
-      minWidth: 420,
-      minHeight: 360,
-      render: () => (
-        <WallpaperManagerApp
-          lang={lang}
-          theme={theme}
-          activePalette={activePalette}
-          activePaletteId={activePaletteId}
-          wm={wm}
-          playChime={playChime}
-          triggerToast={triggerToast}
-          currentHomeWallpaper={mainWallpaper}
-          currentClockWallpaper={standbyBg}
-          onApplyToHome={(wpUrl) => {
-            setMainWallpaper(wpUrl);
-            localStorage.setItem('linkerru_wallpaper', wpUrl);
-            setWallpaperApplyNonce(prev => prev + 1);
-          }}
-          onApplyToClock={(wpUrl) => {
-            setStandbyBg(wpUrl);
-            localStorage.setItem('linkerru_standby_bg', wpUrl);
-          }}
-          onApplyToBoth={(wpUrl) => {
-            setMainWallpaper(wpUrl);
-            localStorage.setItem('linkerru_wallpaper', wpUrl);
-            setWallpaperApplyNonce(prev => prev + 1);
-            setStandbyBg(wpUrl);
-            localStorage.setItem('linkerru_standby_bg', wpUrl);
-          }}
-          onEnableDynamicTheme={() => {
-            localStorage.setItem('linkerru_dynamic_theme', 'true');
-            handlePaletteChange('dynamic_wallpaper');
-          }}
-        />
-      ),
-    });
-  };
 
   const openLisyanWindow = () => {
     wm.open({
@@ -3374,26 +3322,26 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Погода' : 'Weather'}</span>
               </div>
 
-              {/* Wallpapers App Shortcut */}
+              {/* Settings App Shortcut */}
               <div className="relative flex flex-col items-center gap-1 cursor-pointer group" onClick={() => {
                 playChime('click');
-                handleOpenWallpaperManager();
+                handleOpenSettings();
               }}>
-                {wallpapersMinimized && (
+                {isMinimized('settings') && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       playChime('click');
-                      handleOpenWallpaperManager();
+                      handleOpenSettings();
                     }}
                     className="running-pill-mini"
-                    title={lang === 'ru' ? 'Развернуть Обои' : 'Restore Wallpapers'}
+                    title={lang === 'ru' ? 'Развернуть Настройки' : 'Restore Settings'}
                   />
                 )}
                 <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform border border-[var(--btn-border)] bg-[var(--btn-bg)] group-hover:bg-[var(--btn-hover)]">
-                  <ImageIcon size={18} className="text-[var(--on-surface)]" />
+                  <Settings size={18} className="text-[var(--on-surface)]" />
                 </div>
-                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Обои' : 'Wallpapers'}</span>
+                <span className="text-[9px] font-bold text-[var(--on-surface)] truncate w-full text-center">{lang === 'ru' ? 'Настройки' : 'Settings'}</span>
               </div>
 
               {/* Calculator App Shortcut */}
@@ -3771,7 +3719,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         }}
         lang={lang}
         activePalette={activePalette}
-        onOpenStandbySetup={() => setIsStandbySetupOpen(true)}
+        onOpenStandby={() => setIsStandbyOpen(true)}
         clockType={clockType}
         setClockType={setClockType}
         clockVariation={clockVariation}
@@ -3837,24 +3785,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         />
       )}
 
-      <StandbySetupModal
-        isOpen={isStandbySetupOpen}
-        onClose={() => {
-          playChime('click');
-          setIsStandbySetupOpen(false);
-        }}
-        lang={lang}
-        activePalette={activePalette}
-        background={standbyBg}
-        setBackground={handleStandbyBgSave}
-        wallpaper={mainWallpaper}
-        onLaunch={() => {
-          playChime('click');
-          setIsStandbySetupOpen(false);
-          setIsStandbyOpen(true);
-        }}
-      />
-
       <StandbyClock
         isOpen={isStandbyOpen}
         onClose={() => {
@@ -3865,11 +3795,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         activePalette={activePalette}
         background={standbyBg}
         wallpaper={mainWallpaper}
-        onOpenSetup={() => {
-          playChime('click');
-          setIsStandbyOpen(false);
-          setIsStandbySetupOpen(true);
-        }}
         clockType={clockType}
         clockVariation={clockVariation}
       />
@@ -4045,46 +3970,22 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     onTimeFormatChange={handleTimeFormatChange}
                     tempUnit={tempUnit}
                     onTempUnitChange={handleTempUnitChange}
-                    onOpenWallpaperManager={handleOpenWallpaperManager}
+                    clockType={clockType}
+                    onClockTypeChange={(type) => {
+                      setClockType(type);
+                      localStorage.setItem('linkerru_clock_type', type);
+                    }}
+                    clockVariation={clockVariation}
+                    onClockVariationChange={(v) => {
+                      setClockVariation(v);
+                      localStorage.setItem('linkerru_clock_variation', String(v));
+                    }}
+                    onLaunchStandby={() => setIsStandbyOpen(true)}
                   />
                 </div>
               );
             case 'changelog':
               return <ChangelogModal lang={lang} embeddedInWindow={true} />;
-            case 'wallpapers':
-              return (
-                <WallpaperManagerApp
-                  lang={lang}
-                  theme={theme}
-                  activePalette={activePalette}
-                  activePaletteId={activePaletteId}
-                  wm={wm}
-                  playChime={playChime}
-                  triggerToast={triggerToast}
-                  currentHomeWallpaper={mainWallpaper}
-                  currentClockWallpaper={standbyBg}
-                  onApplyToHome={(wpUrl) => {
-                    setMainWallpaper(wpUrl);
-                    localStorage.setItem('linkerru_wallpaper', wpUrl);
-                    setWallpaperApplyNonce(prev => prev + 1);
-                  }}
-                  onApplyToClock={(wpUrl) => {
-                    setStandbyBg(wpUrl);
-                    localStorage.setItem('linkerru_standby_bg', wpUrl);
-                  }}
-                  onApplyToBoth={(wpUrl) => {
-                    setMainWallpaper(wpUrl);
-                    localStorage.setItem('linkerru_wallpaper', wpUrl);
-                    setWallpaperApplyNonce(prev => prev + 1);
-                    setStandbyBg(wpUrl);
-                    localStorage.setItem('linkerru_standby_bg', wpUrl);
-                  }}
-                  onEnableDynamicTheme={() => {
-                    localStorage.setItem('linkerru_dynamic_theme', 'true');
-                    handlePaletteChange('dynamic_wallpaper');
-                  }}
-                />
-              );
             case 'lisyan':
               return (
                 <div className="wm-embedded h-full w-full">
@@ -4214,15 +4115,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         onSelectServer={handleServerSelection}
         primaryColor={activePalette.primary}
         onOpenHub={(url) => openLinkerRoute(url)}
-      />
-
-      {/* Stealth Bookmarklet / Desmos Guide Modal */}
-      <BookmarkGuideModal
-        isOpen={isBookmarkGuideOpen}
-        onClose={() => setIsBookmarkGuideOpen(false)}
-        lang={lang}
-        triggerToast={triggerToast}
-        playChime={playChime}
       />
 
       {/* Background Preloader for Telegram Route App */}

@@ -9,14 +9,14 @@ interface ClockModalProps {
   onClose: () => void;
   lang: Language;
   activePalette: any;
-  onOpenStandbySetup: () => void;
+  onOpenStandby: () => void;
   clockType: 'digital' | 'analog';
   setClockType: (type: 'digital' | 'analog') => void;
   clockVariation: 1 | 2 | 3;
   setClockVariation: (val: 1 | 2 | 3) => void;
 }
 
-export default function ClockModal({ isOpen, onClose, lang, activePalette, onOpenStandbySetup, clockType, setClockType, clockVariation: variation, setClockVariation: setVariation }: ClockModalProps) {
+export default function ClockModal({ isOpen, onClose, lang, activePalette, onOpenStandby, clockType, setClockType, clockVariation: variation, setClockVariation: setVariation }: ClockModalProps) {
 
   const [time, setTime] = useState<Date>(new Date());
 
@@ -214,9 +214,9 @@ export default function ClockModal({ isOpen, onClose, lang, activePalette, onOpe
             <button
               onClick={() => {
                 onClose();
-                onOpenStandbySetup();
+                onOpenStandby();
               }}
-              className="mt-2 w-full py-2.5 rounded-2xl text-xs font-bold bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline)] hover:bg-[var(--surface-dim)] hover:border-[var(--on-surface-var)] transition-all flex items-center justify-center gap-2"
+              className="mt-2 w-full py-2.5 rounded-2xl text-xs font-bold bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline)] hover:bg-[var(--surface-dim)] hover:border-[var(--on-surface-var)] transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Maximize size={14} />
               <span>{lang === 'ru' ? 'Режим ожидания (Standby)' : lang === 'uk' ? 'Режим очікування (Standby)' : 'Standby Mode'}</span>

@@ -9,7 +9,7 @@ interface StandbyClockProps {
   lang: Language;
   activePalette: any;
   background: string;
-  onOpenSetup: () => void;
+  onOpenSetup?: () => void;
   clockType: 'digital' | 'analog';
   clockVariation: 1 | 2 | 3;
   wallpaper?: string;
@@ -18,10 +18,9 @@ interface StandbyClockProps {
 export default function StandbyClock({
   isOpen,
   onClose,
-  lang,
+  lang: _lang,
   activePalette,
   background,
-  onOpenSetup,
   clockType,
   clockVariation,
   wallpaper,
@@ -286,15 +285,8 @@ export default function StandbyClock({
                 className="absolute top-6 right-6 flex items-center gap-3 z-20"
               >
                 <button
-                  onClick={(e) => { e.stopPropagation(); onOpenSetup(); }}
-                  className={`flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md transition-all border ${isTheme ? 'bg-[var(--surface-dim)] text-[var(--on-surface)] border-[var(--outline)] hover:bg-[var(--container)]' : 'bg-black/30 text-white border-white/10 hover:bg-black/50'}`}
-                  title="Standby Settings"
-                >
-                  <Settings size={24} />
-                </button>
-                <button
                   onClick={(e) => { e.stopPropagation(); onClose(); }}
-                  className={`flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md transition-all border ${isTheme ? 'bg-[var(--surface-dim)] text-[var(--on-surface)] border-[var(--outline)] hover:bg-[var(--container)]' : 'bg-black/30 text-white border-white/10 hover:bg-black/50'}`}
+                  className={`flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md transition-all border cursor-pointer ${isTheme ? 'bg-[var(--surface-dim)] text-[var(--on-surface)] border-[var(--outline)] hover:bg-[var(--container)]' : 'bg-black/30 text-white border-white/10 hover:bg-black/50'}`}
                   title="Exit Standby"
                 >
                   <X size={24} />
