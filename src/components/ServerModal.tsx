@@ -17,8 +17,8 @@ export const PROXY_SERVERS: ProxyServerNode[] = [
   {
     id: 'server-1',
     name: 'Space Server 1',
-    url: 'https://english.neeb.wtf/',
-    region: 'Server 1 • English',
+    url: 'https://math.soyescalahumana.cl/',
+    region: 'Server 1 • Math Mirror',
     flag: '🚀',
     basePing: 18,
     tags: ['Ultra-Fast', 'Node 1'],

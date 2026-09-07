@@ -56,6 +56,7 @@ import { updatePassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { LanguageSelector } from './LanguageSelector';
 import { LiveWallpaper } from './LiveWallpaper';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string; uk: string }> = {
   theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)', uk: 'Тема (Світла/Темна)' },
@@ -197,6 +198,7 @@ export default function FullSettingsModal({
   const [activeTab, setActiveTab] = useState<Tab>(isMobileLayout && initialTab === 'account' ? 'appearance' : (initialTab || 'appearance'));
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileContent, setShowMobileContent] = useState(false);
+  const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
 
   // Track the container (window manager) width to switch between
   // wide (iPadOS split-view) and narrow (iOS stack navigation) layouts.
@@ -1793,16 +1795,26 @@ export default function FullSettingsModal({
                     
                     {activeTab === 'security' && (
                       <div className="space-y-6" id="page-security-view">
-                        <div className="p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl flex flex-col items-center justify-center text-center gap-4 py-12">
-                          <div className="w-16 h-16 rounded-full bg-[var(--container)] text-[var(--accent)] flex items-center justify-center mb-2">
+                        <div className="p-5 sm:p-6 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl flex flex-col items-center justify-center text-center gap-3 py-10">
+                          <div className="w-16 h-16 rounded-full bg-[var(--container)] text-[var(--accent)] flex items-center justify-center mb-1 shadow-sm">
                             <Shield size={32} />
                           </div>
-                          <h3 className="text-lg font-bold text-[var(--on-surface)]">
-                            {lang === 'ru' ? 'Ваши данные в безопасности' : 'Your data is secure'}
+                          <h3 className="text-base sm:text-lg font-black text-[var(--on-surface)]">
+                            {lang === 'ru' ? 'Безопасность и синхронизация данных' : 'Data Security & Synchronization'}
                           </h3>
-                          <p className="text-sm text-[var(--on-surface-var)] max-w-sm">
-                            {lang === 'ru' ? 'Linker OS использует локальное хранилище для всех настроек. Ваши данные не отправляются на сторонние серверы.' : 'Linker OS uses local storage for all preferences. Your data is not sent to third-party servers.'}
+                          <p className="text-xs font-semibold text-[var(--on-surface-var)] max-w-md leading-relaxed">
+                            {lang === 'ru' 
+                              ? 'Linker OS синхронизирует ваши персонализированные настройки, темы, профиль и ссылки с защищённым сервером LinkerRu. Для быстродействия параметры кэшируются на вашем устройстве, а все учетные данные и пароли надежно зашифрованы.' 
+                              : 'Linker OS synchronizes your personalized settings, themes, profile, and links with the secure LinkerRu server. Preferences are cached locally for speed, and all credentials are encrypted.'}
                           </p>
+                          <button
+                            type="button"
+                            onClick={() => setIsPrivacyPolicyOpen(true)}
+                            className="mt-2 px-4 py-2 rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
+                          >
+                            <ShieldCheck size={16} />
+                            <span>{lang === 'ru' ? 'Открыть Политику конфиденциальности' : 'Open Privacy Policy'}</span>
+                          </button>
                         </div>
                         
                         <div className="flex flex-col p-4 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl gap-3">
@@ -2221,6 +2233,12 @@ export default function FullSettingsModal({
                 )}
               </div>
             </main>
+
+        <PrivacyPolicyModal
+          isOpen={isPrivacyPolicyOpen}
+          onClose={() => setIsPrivacyPolicyOpen(false)}
+          lang={lang}
+        />
       </div>
     );
   }

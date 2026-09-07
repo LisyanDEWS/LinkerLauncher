@@ -21,7 +21,7 @@ const DEFAULT_SERVERS: { id: string; nameRu: string; nameEn: string; url: string
     id: 'server-1',
     nameRu: 'Сервер 1',
     nameEn: 'Server 1',
-    url: 'https://english.neeb.wtf/',
+    url: 'https://math.soyescalahumana.cl/',
   },
   {
     id: 'server-2',
@@ -48,7 +48,11 @@ export function SpaceProxyCard({
   const isRu = lang === 'ru';
   const [isSelectingServer, setIsSelectingServer] = useState(false);
   const [lastSelectedUrl, setLastSelectedUrl] = useState<string>(() => {
-    return localStorage.getItem('linkerru_server_url') || 'https://english.neeb.wtf/';
+    const saved = localStorage.getItem('linkerru_server_url');
+    if (!saved || saved === 'https://english.neeb.wtf/') {
+      return 'https://math.soyescalahumana.cl/';
+    }
+    return saved;
   });
   const [clickCounts, setClickCounts] = useState<Record<string, number>>(() => {
     try {

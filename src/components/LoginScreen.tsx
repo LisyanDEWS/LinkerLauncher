@@ -16,6 +16,7 @@ import { userAuth, userDb } from '../lib/userFirebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import { Language } from '../types';
 
 type LoginThemeMode = 'light' | 'dark' | 'system';
@@ -41,6 +42,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
   const [flow, setFlow] = useState<ScreenFlow>('language_prompt');
   const [isSpinningFast, setIsSpinningFast] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   // Form input fields
   const [email, setEmail] = useState('');
@@ -456,6 +458,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                       {lang === 'ru' ? 'Регистрация' : 'Sign Up'}
                     </motion.button>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsPrivacyModalOpen(true)}
+                    className="text-[11px] font-semibold text-[var(--on-accent)] opacity-70 hover:opacity-100 underline transition-opacity cursor-pointer pt-2"
+                  >
+                    {lang === 'ru' ? 'Политика конфиденциальности' : 'Privacy Policy'}
+                  </button>
                 </motion.div>
               )}
 
@@ -725,21 +735,35 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
                   {/* Terms Checkbox */}
                   <div 
-                    onClick={() => setAcceptedTerms(!acceptedTerms)}
-                    className={`flex items-start gap-2.5 text-left w-full p-2.5 rounded-xl border transition-colors cursor-pointer select-none ${
+                    className={`flex items-start gap-2.5 text-left w-full p-2.5 rounded-xl border transition-colors select-none ${
                       acceptedTerms 
                         ? 'bg-[var(--on-accent)]/10 border-[var(--on-accent)]' 
                         : 'border-[var(--outline)] bg-[var(--surface-dim)]'
                     } ${errorField === 'signup-terms' ? 'animate-shake border-red-500' : ''}`}
                   >
-                    <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 mt-0.5 border transition-colors ${
-                      acceptedTerms ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]' : 'border-[var(--on-accent)]/40 bg-transparent'
-                    }`}>
+                    <div 
+                      onClick={() => setAcceptedTerms(!acceptedTerms)}
+                      className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 mt-0.5 border transition-colors cursor-pointer ${
+                        acceptedTerms ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]' : 'border-[var(--on-accent)]/40 bg-transparent'
+                      }`}
+                    >
                       {acceptedTerms && <Check size={11} />}
                     </div>
-                    <span className="text-[11px] font-medium text-[var(--on-accent)] opacity-80 leading-tight">
-                      {lang === 'ru' ? 'Я согласен с правилами и конфиденциальностью' : 'I agree with terms and privacy policy'}
-                    </span>
+                    <div className="text-[11px] font-medium text-[var(--on-accent)] opacity-90 leading-tight">
+                      <span onClick={() => setAcceptedTerms(!acceptedTerms)} className="cursor-pointer">
+                        {lang === 'ru' ? 'Я согласен с правилами и ' : 'I agree with terms and '}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsPrivacyModalOpen(true);
+                        }}
+                        className="underline font-bold hover:opacity-100 cursor-pointer text-[var(--on-accent)] inline"
+                      >
+                        {lang === 'ru' ? 'политикой конфиденциальности' : 'privacy policy'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 w-full pt-1">
@@ -922,10 +946,25 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
         )}
       </AnimatePresence>
 
-      {/* Floating copyright pill */}
-      <span className="fixed bottom-5 left-1/2 -translate-x-1/2 z-20 text-[10px] font-semibold text-[var(--on-surface-var)] opacity-70 px-3 py-1 rounded-full border border-[var(--outline-var)] bg-[var(--surface)]/60 backdrop-blur-md">
-        Linker Studio &copy; {new Date().getFullYear()}
-      </span>
+      {/* Floating copyright & privacy policy pill */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 text-[10px] font-semibold text-[var(--on-surface-var)] opacity-80 px-3 py-1 rounded-full border border-[var(--outline-var)] bg-[var(--surface)]/70 backdrop-blur-md">
+        <span>Linker Studio &copy; {new Date().getFullYear()}</span>
+        <span>•</span>
+        <button
+          type="button"
+          onClick={() => setIsPrivacyModalOpen(true)}
+          className="hover:text-[var(--on-surface)] underline cursor-pointer"
+        >
+          {lang === 'ru' ? 'Конфиденциальность' : 'Privacy'}
+        </button>
+      </div>
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+        lang={lang}
+      />
     </div>
   );
 }

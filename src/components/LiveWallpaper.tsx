@@ -25,13 +25,29 @@ export function LiveWallpaper({
     if (!ctx) return;
 
     let animId: number;
-    let width = (canvas.width = canvas.offsetWidth || (preview ? 240 : window.innerWidth));
-    let height = (canvas.height = canvas.offsetHeight || (preview ? 160 : window.innerHeight));
+
+    const getDims = () => {
+      if (!canvas) return { w: preview ? 240 : window.innerWidth, h: preview ? 160 : window.innerHeight };
+      const rect = canvas.getBoundingClientRect();
+      const parentRect = canvas.parentElement?.getBoundingClientRect();
+      const rawW = rect.width || parentRect?.width || canvas.offsetWidth || (preview ? 240 : window.innerWidth);
+      const rawH = rect.height || parentRect?.height || canvas.offsetHeight || (preview ? 160 : window.innerHeight);
+      const w = Math.max(preview ? 120 : 320, Math.round(rawW));
+      const h = Math.max(preview ? 80 : 200, Math.round(rawH));
+      return { w, h };
+    };
+
+    let { w: width, h: height } = getDims();
+    canvas.width = width;
+    canvas.height = height;
 
     const handleResize = () => {
       if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth || (preview ? 240 : window.innerWidth);
-      height = canvas.height = canvas.offsetHeight || (preview ? 160 : window.innerHeight);
+      const dims = getDims();
+      if (Math.abs(canvas.width - dims.w) > 2 || Math.abs(canvas.height - dims.h) > 2) {
+        width = canvas.width = dims.w;
+        height = canvas.height = dims.h;
+      }
     };
 
     let resizeObserver: ResizeObserver | null = null;
@@ -138,10 +154,10 @@ export function LiveWallpaper({
         ctx.fillStyle = barGrad;
         ctx.fillRect(x, 0, barWidth - 1, height);
 
-        // Glass highlight reflection
+        // Glass highlight reflection (subtle, non-blinding)
         ctx.fillStyle = isDark
-          ? `rgba(255, 255, 255, ${0.04 + Math.max(0, wave) * 0.08})`
-          : `rgba(255, 255, 255, ${0.2 + Math.max(0, wave) * 0.25})`;
+          ? `rgba(255, 255, 255, ${0.03 + Math.max(0, wave) * 0.05})`
+          : `rgba(255, 255, 255, ${0.06 + Math.max(0, wave) * 0.08})`;
         ctx.fillRect(x + barWidth - 2, 0, 1.5, height);
       }
     };
@@ -177,13 +193,13 @@ export function LiveWallpaper({
       }
     };
 
-    // 4. STARFIELD COSMOS RENDERER
-    const stars: { x: number; y: number; s: number; alpha: number; speed: number }[] = [];
+    // 4. STARFIELD COSMOS RENDERER (Normalized star coordinates)
     const starCount = preview ? 25 : 85;
+    const stars: { nx: number; ny: number; s: number; alpha: number; speed: number }[] = [];
     for (let i = 0; i < starCount; i++) {
       stars.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
+        nx: Math.random(),
+        ny: Math.random(),
         s: 0.8 + Math.random() * (preview ? 1.5 : 2.5),
         alpha: 0.3 + Math.random() * 0.7,
         speed: 0.001 + Math.random() * 0.002,
@@ -223,11 +239,13 @@ export function LiveWallpaper({
       ctx.fillStyle = neb2Grad;
       ctx.fillRect(0, 0, width, height);
 
-      // Stars
+      // Stars positioned with relative coordinates
       for (const st of stars) {
-        const pulse = 0.5 + 0.5 * Math.sin(t * st.speed + st.x);
+        const sx = st.nx * width;
+        const sy = st.ny * height;
+        const pulse = 0.5 + 0.5 * Math.sin(t * st.speed + sx);
         ctx.beginPath();
-        ctx.arc(st.x, st.y, st.s, 0, Math.PI * 2);
+        ctx.arc(sx, sy, st.s, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${st.alpha * pulse})`;
         ctx.fill();
       }
@@ -259,22 +277,7 @@ export function LiveWallpaper({
   }, [type, palette, theme, preview]);
 
   return (
-    <div
-      className={`relative w-full h-full overflow-hidden ${className}`}
-      data-aifx={
-        type === 'animated-1'
-          ? 'silk-waves'
-          : type === 'animated-2'
-          ? 'fluted-glass'
-          : type === 'animated-3'
-          ? 'dither'
-          : type === 'animated-4'
-          ? 'starfield'
-          : undefined
-      }
-      data-aifx-colors={`${palette.primary},${palette.secondary},${palette.tertiary}`}
-      data-aifx-bg={palette.tertiary}
-    >
+    <div className={`relative w-full h-full overflow-hidden ${className}`}>
       <canvas
         ref={canvasRef}
         className="w-full h-full block"

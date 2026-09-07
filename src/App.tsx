@@ -1140,7 +1140,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         'animated-1': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: theme === 'dark' ? 50 : 180 },
         'animated-2': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: theme === 'dark' ? 55 : 185 },
         'animated-3': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: theme === 'dark' ? 45 : 175 },
-        'animated-4': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 35 },
+        'animated-4': { dom: '#0a0a1a', p2: activePalette.primary, p3: activePalette.secondary, lum: 25 },
         'gradient-1': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 110 },
         'gradient-2': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 120 },
         'gradient-3': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 115 },
@@ -1150,7 +1150,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       const match = LIVE_COLOR_MAP[mainWallpaper] || { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 50 };
       setWallpaperLuminance(match.lum);
       setWallpaperHeaderAvgHex(match.dom);
-      setWallpaperTitleColor(theme === 'dark' ? '#ffffff' : '#09090b');
+
+      // Contrast determination for live wallpapers:
+      // Starfield (animated-4) has dark space canvas -> white text.
+      // Other live wallpapers adapt according to theme and luminance.
+      if (mainWallpaper === 'animated-4' || theme === 'dark' || match.lum < 140) {
+        setWallpaperTitleColor('#ffffff');
+      } else {
+        setWallpaperTitleColor('#09090b');
+      }
     } else {
       setWallpaperLuminance(theme === 'dark' ? 30 : 200);
       setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
@@ -1432,19 +1440,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           let msg = '';
           
           if (type === 'charging') {
-            msg = battery.charging ? (lang === 'ru' ? 'Устройство заряжается.' : 'Device is charging.') : (lang === 'ru' ? 'Зарядка отключена.' : 'Charger disconnected.');
-            if (battery.charging !== lastChargingState) {
+            // Only notify when plugged into charger
+            if (battery.charging && battery.charging !== lastChargingState) {
               shouldNotify = true;
+              msg = lang === 'ru' ? 'Устройство подключено к зарядке.' : 'Device is connected to charger.';
             }
             lastChargingState = battery.charging;
           } else if (type === 'level') {
-            msg = battery.level <= 0.2 ? (lang === 'ru' ? 'Низкий заряд батареи!' : 'Low battery!') : (lang === 'ru' ? `Уровень заряда: ${Math.round(battery.level * 100)}%` : `Battery level: ${Math.round(battery.level * 100)}%`);
+            // Only notify on low battery (<= 20%)
             if (battery.level <= 0.2 && (lastLevelState === null || lastLevelState > 0.2)) {
               shouldNotify = true;
-            }
-            if (battery.level === 1 && lastLevelState !== 1) {
-              shouldNotify = true;
-              msg = lang === 'ru' ? 'Батарея полностью заряжена.' : 'Battery fully charged.';
+              msg = lang === 'ru' ? 'Низкий заряд батареи!' : 'Low battery!';
             }
             lastLevelState = battery.level;
           }
@@ -2074,7 +2080,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     playChime('click');
     setSelectedServer(srv);
     localStorage.setItem('linkerru_server', srv);
-    triggerToast(`${t.selected_label}: ${srv}`);
   };
 
   // --- Reset All Settings (Destroy Session) ---
@@ -2412,6 +2417,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           setNickname(nick);
           localStorage.setItem('linkerru_nickname', nick);
           playChime('click');
+          triggerToast(lang === 'ru' ? `Добро пожаловать, ${nick || 'пользователь'}!` : `Welcome, ${nick || 'User'}!`);
           // Onboarding now only fires after a fresh signup, not on every login
           if (isSignup && localStorage.getItem('linkerru_onboarded') !== 'true') {
             setIsOnboardingOpen(true);
