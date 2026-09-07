@@ -340,7 +340,16 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8 z-10 relative overflow-hidden">
         {/* Background Large Loader */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
+          <div
+            className="absolute inset-0 pointer-events-none flex items-center justify-center"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <M3LoadingIndicator 
               size={1040} 
               color="var(--accent)" 

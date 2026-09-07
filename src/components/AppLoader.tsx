@@ -93,25 +93,55 @@ export function AppLoader({
     <div
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center pointer-events-none select-none"
       style={{
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        // Semi-transparent tint over the wallpaper for a clean matte glass layer
-        background: background
-          ? `color-mix(in srgb, ${background} 75%, transparent)`
-          : 'color-mix(in srgb, var(--bg) 75%, transparent)',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backdropFilter: phase === 'fading' ? 'blur(0px)' : 'blur(20px)',
+        WebkitBackdropFilter: phase === 'fading' ? 'blur(0px)' : 'blur(20px)',
+        backgroundColor: 'color-mix(in srgb, var(--surface, #121212) 80%, transparent)',
         opacity: phase === 'fading' ? 0 : 1,
-        transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.6s cubic-bezier(0.16, 1, 0.3, 1), -webkit-backdrop-filter 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+        pointerEvents: 'none',
       }}
     >
+      {/* Optional wallpaper background preview under glass without broken CSS color-mix */}
+      {background && (
+        <div
+          className="absolute inset-0 -z-10 pointer-events-none"
+          style={{
+            background,
+            opacity: phase === 'fading' ? 0 : 0.6,
+            transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        />
+      )}
+
       {/* Brightness dim overlay — matches the app's brightness setting so
           there's no brightness flash when the loader fades out. */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 -z-10 pointer-events-none"
         style={{
           backgroundColor: `rgba(0, 0, 0, ${1 - brightness / 100})`,
         }}
       />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center z-10 pointer-events-none">
+
+      {/* Perfectly centered content container using absolute inset-0 flex */}
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+        }}
+      >
         <div
           style={{
             width: isUpdating ? 80 : 56,
@@ -120,6 +150,7 @@ export function AppLoader({
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
+            margin: '0 auto',
           }}
         >
           <M3LoadingIndicator size={isUpdating ? 76 : 54} color={color} speed={isUpdating ? 1.15 : 1} />

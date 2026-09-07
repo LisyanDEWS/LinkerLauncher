@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronRight, Sun, Volume2, Languages, Check, ChevronDown } from 'lucide-react';
 import { Language, ThemeMode } from '../types';
@@ -21,6 +21,34 @@ interface SettingsModalProps {
   onSoundToggle: () => void;
 }
 
+const calculatePopoverPos = () => {
+  const pw = 320;
+  if (typeof window === 'undefined') {
+    return { top: 80, left: 16 };
+  }
+  // Anchor to avatar or settings button on topbar
+  const anchor = document.getElementById('topbar-avatar') || document.getElementById('topbar-settings-pill');
+  const rect = anchor?.getBoundingClientRect();
+
+  if (rect && rect.width > 0 && rect.height > 0) {
+    let left = rect.right - pw;
+    if (left < 16) left = 16;
+    if (left + pw > window.innerWidth - 16) {
+      left = Math.max(16, window.innerWidth - pw - 16);
+    }
+    return {
+      top: rect.bottom + 8,
+      left,
+    };
+  }
+
+  // Fallback: place towards the top-right corner, never at left: 24
+  return {
+    top: 80,
+    left: Math.max(16, window.innerWidth - pw - 24),
+  };
+};
+
 export default function SettingsModal({
   isOpen,
   onClose,
@@ -38,10 +66,7 @@ export default function SettingsModal({
   onSoundToggle
 }: SettingsModalProps) {
   const t = translations[lang] || translations.ru;
-  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({
-    top: 80,
-    left: 24,
-  });
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>(calculatePopoverPos);
   const [backdropClickable, setBackdropClickable] = useState(true);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
@@ -61,7 +86,7 @@ export default function SettingsModal({
     },
   ];
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) {
       setIsLangMenuOpen(false);
       return;
@@ -69,29 +94,7 @@ export default function SettingsModal({
     setBackdropClickable(true);
 
     const updatePosition = () => {
-      // Anchor the popup's right edge to the right edge of the account
-      // manager button. Using `left` (not `right`) so both the measurement
-      // and the positioning share the same left-origin coordinate space —
-      // this stays consistent across Chrome zoom levels.
-      const anchor = document.getElementById('topbar-avatar');
-      const rect = anchor?.getBoundingClientRect();
-
-      if (rect && rect.width > 0 && rect.height > 0) {
-        // Place the panel so its right edge = anchor's right edge.
-        // max-w-xs = 20rem = 320px; use that as the panel width.
-        const pw = 320;
-        let left = rect.right - pw;
-        if (left < 16) left = 16;
-
-        setPopoverPos({
-          top: rect.bottom + 8,
-          left,
-        });
-        return;
-      }
-
-      // Fallback
-      setPopoverPos({ top: 80, left: window.innerWidth - 320 - 24 });
+      setPopoverPos(calculatePopoverPos());
     };
 
     updatePosition();
