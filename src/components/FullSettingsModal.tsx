@@ -55,6 +55,7 @@ import { userAuth, userDb } from '../lib/userFirebase';
 import { updatePassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { LanguageSelector } from './LanguageSelector';
+import { LiveWallpaper } from './LiveWallpaper';
 
 const TOGGLE_LABELS: Record<ToggleId, { ru: string; en: string; uk: string }> = {
   theme: { ru: 'Тема (Светлая/Темная)', en: 'Theme (Light/Dark)', uk: 'Тема (Світла/Темна)' },
@@ -955,18 +956,26 @@ export default function FullSettingsModal({
                                     }`}
                                   >
                                     {/* Preview container */}
-                                    <div
-                                      className="w-full h-16 rounded-lg mb-2 border border-black/10 overflow-hidden relative shadow-inner"
-                                      style={{ background: item.preview }}
-                                    >
+                                    <div className="w-full h-16 rounded-lg mb-2 border border-black/10 overflow-hidden relative shadow-inner">
+                                      {item.isLive ? (
+                                        <LiveWallpaper
+                                          type={item.id}
+                                          palette={activePalette}
+                                          theme={theme}
+                                          preview
+                                          className="absolute inset-0"
+                                        />
+                                      ) : (
+                                        <div className="absolute inset-0" style={{ background: item.preview }} />
+                                      )}
                                       {item.isLive && (
-                                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                                          <Sparkles size={9} className="text-amber-300" />
+                                        <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md bg-[var(--surface)]/90 text-[var(--on-surface)] border border-[var(--outline)]/70 backdrop-blur-md text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-xs z-10">
+                                          <Sparkles size={9} className="text-[var(--accent)]" />
                                           <span>Live</span>
                                         </div>
                                       )}
                                       {isSelected && (
-                                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[var(--surface)] text-[var(--on-surface)] flex items-center justify-center shadow-md">
+                                        <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[var(--surface)] text-[var(--on-surface)] flex items-center justify-center shadow-md z-10">
                                           <Check size={12} className="text-[var(--accent)]" />
                                         </div>
                                       )}
@@ -1179,18 +1188,26 @@ export default function FullSettingsModal({
                                       }`}
                                     >
                                       {/* Preview box */}
-                                      <div
-                                        className="w-full h-14 rounded-lg mb-2 border border-black/10 overflow-hidden relative shadow-inner"
-                                        style={{ background: item.preview }}
-                                      >
+                                      <div className="w-full h-14 rounded-lg mb-2 border border-black/10 overflow-hidden relative shadow-inner">
+                                        {item.isLive ? (
+                                          <LiveWallpaper
+                                            type={item.id}
+                                            palette={activePalette}
+                                            theme={theme}
+                                            preview
+                                            className="absolute inset-0"
+                                          />
+                                        ) : (
+                                          <div className="absolute inset-0" style={{ background: item.preview }} />
+                                        )}
                                         {item.isLive && (
-                                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                                            <Sparkles size={9} className="text-amber-300" />
+                                          <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md bg-[var(--surface)]/90 text-[var(--on-surface)] border border-[var(--outline)]/70 backdrop-blur-md text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-xs z-10">
+                                            <Sparkles size={9} className="text-[var(--accent)]" />
                                             <span>Live</span>
                                           </div>
                                         )}
                                         {isSelected && (
-                                          <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[var(--surface)] text-[var(--on-surface)] flex items-center justify-center shadow-md">
+                                          <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[var(--surface)] text-[var(--on-surface)] flex items-center justify-center shadow-md z-10">
                                             <Check size={12} className="text-[var(--accent)]" />
                                           </div>
                                         )}

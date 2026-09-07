@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Settings } from 'lucide-react';
 import { Language } from '../types';
+import { LiveWallpaper } from './LiveWallpaper';
 
 interface StandbyClockProps {
   isOpen: boolean;
@@ -136,51 +137,14 @@ export default function StandbyClock({
             />
           )}
 
-          {/* Animated backgrounds — AI Designer effects with accent colors */}
-          {background === 'animated-1' && (
-            /* Silk Waves */
-            <div
-              data-aifx="silk-waves"
-              data-aifx-colors={`${activePalette.primary},${activePalette.secondary},${activePalette.tertiary}`}
-              data-aifx-bg={activePalette.tertiary}
+          {/* Animated backgrounds */}
+          {(background === 'animated-1' || background === 'animated-2' || background === 'animated-3' || background === 'animated-4') && (
+            <LiveWallpaper
+              type={background}
+              palette={activePalette}
+              theme="dark"
               className="absolute inset-0 -z-10 pointer-events-none"
-              aria-hidden="true"
             />
-          )}
-
-          {background === 'animated-2' && (
-            /* Fluted Glass */
-            <div
-              data-aifx="fluted-glass"
-              data-aifx-colors={`${activePalette.primary},${activePalette.secondary},${activePalette.tertiary},${activePalette.primary}`}
-              data-aifx-bg={activePalette.tertiary}
-              className="absolute inset-0 -z-10 pointer-events-none"
-              aria-hidden="true"
-            />
-          )}
-
-          {background === 'animated-3' && (
-            /* Riso Dither */
-            <div
-              data-aifx="dither"
-              data-aifx-colors={`${activePalette.primary},${activePalette.tertiary},${activePalette.secondary},${activePalette.primary}`}
-              data-aifx-bg={activePalette.tertiary}
-              className="absolute inset-0 -z-10 pointer-events-none"
-              aria-hidden="true"
-            />
-          )}
-
-          {background === 'animated-4' && (
-            /* Starfield — AI Designer effect */
-            <>
-              <div
-                data-aifx="starfield"
-                className="absolute inset-0 -z-10 pointer-events-none"
-                aria-hidden="true"
-              />
-              {/* Remove AI Designer watermark badge if injected */}
-              <style>{`[data-aifx-wm] { display: none !important; }`}</style>
-            </>
           )}
 
           {/* Animated overlay gradient to simulate slow changing */}

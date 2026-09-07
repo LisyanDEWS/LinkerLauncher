@@ -111,7 +111,7 @@ export function AppLoader({
           backgroundColor: `rgba(0, 0, 0, ${1 - brightness / 100})`,
         }}
       />
-      <div className="flex flex-col items-center justify-center relative z-10">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center z-10 pointer-events-none">
         <div
           style={{
             width: isUpdating ? 80 : 56,

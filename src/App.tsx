@@ -83,6 +83,7 @@ import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 import { LanguageSelector } from './components/LanguageSelector';
+import { LiveWallpaper } from './components/LiveWallpaper';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -1125,12 +1126,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         } else {
           materialPalettes.push(dynPalette);
         }
-
-        const useDyn = localStorage.getItem('linkerru_dynamic_theme') !== 'false';
-        if (useDyn) {
-          setActivePaletteId('dynamic_wallpaper');
-          localStorage.setItem('linkerru_accent', 'dynamic_wallpaper');
-        }
       }).catch((err) => {
         console.warn('Failed to calculate wallpaper luminance:', err);
         if (isMounted) {
@@ -1142,46 +1137,20 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     } else if (typeof mainWallpaper === 'string' && (mainWallpaper.startsWith('animated-') || mainWallpaper.startsWith('gradient-'))) {
       // Live Shaders and Animated Wallpapers direct adaptation
       const LIVE_COLOR_MAP: Record<string, { dom: string; p2: string; p3: string; lum: number }> = {
-        'animated-1': { dom: '#22c55e', p2: '#16a34a', p3: '#15803d', lum: 65 }, // Silk Waves
-        'animated-2': { dom: '#0d9488', p2: '#14b8a6', p3: '#0f766e', lum: 70 }, // Fluted Glass
-        'animated-3': { dom: '#9333ea', p2: '#a855f7', p3: '#7e22ce', lum: 55 }, // Riso Dither
-        'animated-4': { dom: '#6366f1', p2: '#818cf8', p3: '#4f46e5', lum: 45 }, // Starfield
-        'gradient-1': { dom: '#8fa882', p2: '#6b8a5d', p3: '#adbfa4', lum: 110 },
-        'gradient-2': { dom: '#80cbc4', p2: '#4db6ac', p3: '#b2dfdb', lum: 120 },
-        'gradient-3': { dom: '#b39ddb', p2: '#9575cd', p3: '#d1c4e9', lum: 115 },
-        'gradient-4': { dom: '#d4a373', p2: '#bc8a5f', p3: '#e0b589', lum: 110 },
+        'animated-1': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: theme === 'dark' ? 50 : 180 },
+        'animated-2': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: theme === 'dark' ? 55 : 185 },
+        'animated-3': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: theme === 'dark' ? 45 : 175 },
+        'animated-4': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 35 },
+        'gradient-1': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 110 },
+        'gradient-2': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 120 },
+        'gradient-3': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 115 },
+        'gradient-4': { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 110 },
       };
 
-      const match = LIVE_COLOR_MAP[mainWallpaper] || { dom: '#6366f1', p2: '#818cf8', p3: '#4f46e5', lum: 50 };
+      const match = LIVE_COLOR_MAP[mainWallpaper] || { dom: activePalette.primary, p2: activePalette.secondary, p3: activePalette.tertiary, lum: 50 };
       setWallpaperLuminance(match.lum);
       setWallpaperHeaderAvgHex(match.dom);
-      setWallpaperTitleColor('#ffffff');
-
-      const dynPalette: Material3Palette = {
-        id: 'dynamic_wallpaper',
-        nameRu: 'Адаптивная (Живые обои)',
-        nameEn: 'Adaptive (Live Wallpaper)',
-        primary: match.dom,
-        secondary: match.p2,
-        tertiary: match.p3,
-        lightBg: '#121212',
-        darkBg: '#121212'
-      };
-
-      setDynamicPalette(dynPalette);
-
-      const existingIdx = materialPalettes.findIndex(p => p.id === 'dynamic_wallpaper');
-      if (existingIdx >= 0) {
-        materialPalettes[existingIdx] = dynPalette;
-      } else {
-        materialPalettes.push(dynPalette);
-      }
-
-      const useDyn = localStorage.getItem('linkerru_dynamic_theme') !== 'false';
-      if (useDyn) {
-        setActivePaletteId('dynamic_wallpaper');
-        localStorage.setItem('linkerru_accent', 'dynamic_wallpaper');
-      }
+      setWallpaperTitleColor(theme === 'dark' ? '#ffffff' : '#09090b');
     } else {
       setWallpaperLuminance(theme === 'dark' ? 30 : 200);
       setWallpaperHeaderAvgHex(theme === 'dark' ? '#121212' : '#f0f0f0');
@@ -2492,99 +2461,13 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         aria-hidden
       >
         {/* Live Wallpaper Shaders & Animations from Clock Setup */}
-        {mainWallpaper === 'animated-1' && (
-          <div
-            data-aifx="silk-waves"
-            data-aifx-colors={`${activePalette.primary},${activePalette.secondary},${activePalette.tertiary}`}
-            data-aifx-bg={activePalette.tertiary}
+        {(mainWallpaper === 'animated-1' || mainWallpaper === 'animated-2' || mainWallpaper === 'animated-3' || mainWallpaper === 'animated-4') && (
+          <LiveWallpaper
+            type={mainWallpaper}
+            palette={activePalette}
+            theme={theme}
             className="absolute inset-0 pointer-events-none"
-            aria-hidden="true"
           />
-        )}
-
-        {mainWallpaper === 'animated-2' && (
-          <div
-            data-aifx="fluted-glass"
-            data-aifx-colors={`${activePalette.primary},${activePalette.secondary},${activePalette.tertiary},${activePalette.primary}`}
-            data-aifx-bg={activePalette.tertiary}
-            className="absolute inset-0 pointer-events-none"
-            aria-hidden="true"
-          />
-        )}
-
-        {mainWallpaper === 'animated-3' && (
-          <div
-            data-aifx="dither"
-            data-aifx-colors={`${activePalette.primary},${activePalette.tertiary},${activePalette.secondary},${activePalette.primary}`}
-            data-aifx-bg={activePalette.tertiary}
-            className="absolute inset-0 pointer-events-none"
-            aria-hidden="true"
-          />
-        )}
-
-        {mainWallpaper === 'animated-4' && (
-          <div className="absolute inset-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a1a, #111128)' }}>
-            <div
-              data-aifx="starfield"
-              className="absolute inset-0 pointer-events-none"
-              aria-hidden="true"
-            />
-            {/* Cosmic Nebula Glow */}
-            <motion.div
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                width: '75vw',
-                height: '75vh',
-                left: '10%',
-                top: '5%',
-                background: `radial-gradient(circle, ${activePalette.primary}30 0%, transparent 65%)`,
-                filter: 'blur(50px)',
-              }}
-              animate={{ opacity: [0.35, 0.65, 0.35], scale: [0.95, 1.08, 0.95] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <motion.div
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                width: '55vw',
-                height: '55vh',
-                right: '5%',
-                bottom: '5%',
-                background: `radial-gradient(circle, ${activePalette.tertiary}25 0%, transparent 60%)`,
-                filter: 'blur(45px)',
-              }}
-              animate={{ opacity: [0.25, 0.55, 0.25], scale: [1, 1.18, 1] }}
-              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            {/* Twinkling Accent Stars */}
-            {Array.from({ length: 65 }).map((_, si) => {
-              const size = 1 + (si % 4);
-              const isAccent = si % 5 === 0;
-              return (
-                <motion.div
-                  key={si}
-                  className="absolute rounded-full pointer-events-none"
-                  style={{
-                    width: `${size}px`,
-                    height: `${size}px`,
-                    left: `${(si * 61) % 100}%`,
-                    top: `${(si * 37) % 100}%`,
-                    background: isAccent ? activePalette.primary : si % 8 === 0 ? activePalette.tertiary : '#ffffff',
-                    boxShadow: `0 0 ${size * 3}px currentColor`,
-                  }}
-                  animate={{ opacity: [0.2, 1, 0.2], scale: [0.6, 1.35, 0.6] }}
-                  transition={{ duration: 1.8 + (si % 4), repeat: Infinity, ease: 'easeInOut', delay: (si * 0.1) % 3 }}
-                />
-              );
-            })}
-            {/* Shooting Star */}
-            <motion.div
-              className="absolute rounded-full pointer-events-none"
-              style={{ width: '2.5px', height: '2.5px', background: '#fff', boxShadow: `0 0 8px #fff, -25px 0 12px ${activePalette.primary}80` }}
-              animate={{ left: ['-10%', '115%'], top: ['15%', '45%'], opacity: [0, 1, 0] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: 'easeOut', repeatDelay: 5 }}
-            />
-          </div>
         )}
 
         {/* Blurred wallpaper mode */}

@@ -339,12 +339,14 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       {/* Main Centered Hub: The Big M3 Loading Element Hero */}
       <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-8 z-10 relative overflow-hidden">
         {/* Background Large Loader */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <M3LoadingIndicator 
-            size={1040} 
-            color="var(--accent)" 
-            speed={isSpinningFast ? 0.2 : 0.08} 
-          />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
+            <M3LoadingIndicator 
+              size={1040} 
+              color="var(--accent)" 
+              speed={isSpinningFast ? 0.2 : 0.08} 
+            />
+          </div>
         </div>
 
         <div className="w-full max-w-md flex flex-col items-center justify-center relative z-10 text-[var(--on-accent)]">
@@ -383,9 +385,9 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                         localStorage.setItem('linkerru_lang', 'ru');
                         transitionTo('welcome');
                       }}
-                      className="w-full py-3.5 px-5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] font-black text-xs uppercase tracking-wider shadow-lg hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-5 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] font-black text-xs uppercase tracking-wider shadow-lg hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2.5"
                     >
-                      <span className="text-sm">🇷🇺</span>
+                      <span className="text-[11px] font-black px-1.5 py-0.5 rounded-md bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/25">RU</span>
                       <span>Русский</span>
                     </motion.button>
 
@@ -398,9 +400,9 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                         localStorage.setItem('linkerru_lang', 'en');
                         transitionTo('welcome');
                       }}
-                      className="w-full py-3.5 px-5 rounded-2xl bg-transparent border border-[var(--on-accent)]/50 text-[var(--on-accent)] font-black text-xs uppercase tracking-wider hover:bg-[var(--on-accent)]/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-5 rounded-2xl bg-transparent border border-[var(--on-accent)]/50 text-[var(--on-accent)] font-black text-xs uppercase tracking-wider hover:bg-[var(--on-accent)]/10 transition-all cursor-pointer flex items-center justify-center gap-2.5"
                     >
-                      <span className="text-sm">🇬🇧</span>
+                      <span className="text-[11px] font-black px-1.5 py-0.5 rounded-md bg-[var(--on-accent)]/15 text-[var(--on-accent)] border border-[var(--on-accent)]/30">EN</span>
                       <span>English</span>
                     </motion.button>
                   </div>

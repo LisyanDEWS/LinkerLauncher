@@ -435,7 +435,7 @@ export function WindowManagerLayer({
                       const timer = (e.currentTarget as any).__lpTimer;
                       if (timer) clearTimeout(timer);
                     }}
-                    className="relative flex items-center gap-2 rounded-[1rem] px-3 py-2 text-xs font-bold transition-colors cursor-pointer overflow-hidden select-none"
+                    className="relative flex items-center gap-2 rounded-[0.85rem] px-2.5 py-1.5 text-[11px] font-bold transition-colors cursor-pointer overflow-hidden select-none"
                     style={{
                       background: isActive
                         ? 'var(--container-high)'
