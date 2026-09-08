@@ -35,6 +35,7 @@ type ScreenFlow =
   | 'signup_email' 
   | 'signup_password' 
   | 'signup_username'
+  | 'creating_account'
   | 'onboarding_setup'
   | 'finalizing';
 
@@ -208,20 +209,26 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
     try {
       setIsSpinningFast(true);
+      transitionTo('creating_account');
 
       // Check unique username across existing users
-      const usersRef = collection(userDb, 'users');
-      const q = query(usersRef, where('nickname', '==', cleanNick));
-      const querySnap = await getDocs(q);
-      if (!querySnap.empty) {
-        triggerErr('signup-user');
-        showToast(
-          lang === 'ru'
-            ? 'Это имя пользователя уже занято. Придумайте другое.'
-            : 'This username is already taken. Please choose another.'
-        );
-        setIsSpinningFast(false);
-        return;
+      try {
+        const usersRef = collection(userDb, 'users');
+        const q = query(usersRef, where('nickname', '==', cleanNick));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          transitionTo('signup_username');
+          triggerErr('signup-user');
+          showToast(
+            lang === 'ru'
+              ? 'Это имя пользователя уже занято. Придумайте другое.'
+              : 'This username is already taken. Please choose another.'
+          );
+          setIsSpinningFast(false);
+          return;
+        }
+      } catch (checkErr) {
+        console.warn('Could not verify username uniqueness ahead of time:', checkErr);
       }
 
       // Mark signup in progress so App.tsx onAuthStateChanged does not unmount before onboarding
@@ -239,15 +246,17 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
       });
 
       setRegisteredNick(cleanNick);
-      showToast(lang === 'ru' ? 'Аккаунт создан!' : 'Account created!');
       
-      // Start onboarding sequence right on the loading widget
+      // Allow Firebase and cloud state to propagate smoothly with nice visual loader
       setTimeout(() => {
+        setIsSpinningFast(false);
+        showToast(lang === 'ru' ? 'Профиль готов!' : 'Profile ready!');
         transitionTo('onboarding_setup');
-      }, 500);
+      }, 1600);
     } catch (err: any) {
       sessionStorage.removeItem('linkerru_signup_in_progress');
       setIsSpinningFast(false);
+      transitionTo('signup_username');
       console.error(err);
       let errMsg = lang === 'ru' ? 'Ошибка регистрации' : 'Registration failed';
       if (err.code === 'auth/email-already-in-use') {
@@ -783,6 +792,51 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     </button>
                   </div>
                 </motion.form>
+              )}
+
+              {/* 7. ACCOUNT CREATION IN PROGRESS ANIMATION */}
+              {flow === 'creating_account' && (
+                <motion.div
+                  key="creating_account"
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full max-w-xs flex flex-col items-center gap-4 text-center py-4"
+                >
+                  <div className="relative flex items-center justify-center">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                      className="w-14 h-14 rounded-full border-3 border-[var(--on-accent)]/20 border-t-[var(--on-accent)]"
+                    />
+                    <motion.div
+                      animate={{ scale: [0.85, 1.1, 0.85] }}
+                      transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                      className="absolute w-3 h-3 rounded-full bg-[var(--on-accent)]"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h2 className="text-lg font-black text-[var(--on-accent)] tracking-tight">
+                      {lang === 'ru' ? 'Создание профиля...' : 'Creating your profile...'}
+                    </h2>
+                    <p className="text-xs text-[var(--on-accent)] opacity-80 max-w-[240px] leading-relaxed">
+                      {lang === 'ru' 
+                        ? 'Инициализация персонального пространства и облачной базы' 
+                        : 'Setting up your private cloud workspace & settings'}
+                    </p>
+                  </div>
+
+                  <div className="w-48 h-1.5 bg-[var(--on-accent)]/20 rounded-full overflow-hidden mt-1">
+                    <motion.div
+                      initial={{ width: "10%" }}
+                      animate={{ width: ["10%", "65%", "95%"] }}
+                      transition={{ duration: 1.6, ease: "easeInOut" }}
+                      className="h-full bg-[var(--on-accent)] rounded-full"
+                    />
+                  </div>
+                </motion.div>
               )}
 
               {/* --- ONBOARDING SETUP (POST-REGISTRATION: LANGUAGE & THEME) --- */}
