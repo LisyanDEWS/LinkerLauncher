@@ -1534,40 +1534,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     return () => window.removeEventListener('linkerru_window_opened', handleWinOpen);
   }, []);
 
-  // --- Idle Timer (5 minutes) ---
-  useEffect(() => {
-    let idleTimeout: NodeJS.Timeout;
-    
-    const resetIdleTimer = () => {
-      clearTimeout(idleTimeout);
-      if (isMobileLayout) return; // Disable standby on mobile
-      // 5 minutes = 300,000 ms
-      idleTimeout = setTimeout(() => {
-        if (!isStandbyOpen) {
-          setIsStandbyOpen(true);
-        }
-      }, 300000);
-    };
-
-    // Initialize
-    resetIdleTimer();
-
-    // Event listeners
-    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
-    const handleActivity = () => resetIdleTimer();
-    
-    events.forEach(event => {
-      window.addEventListener(event, handleActivity);
-    });
-
-    return () => {
-      clearTimeout(idleTimeout);
-      events.forEach(event => {
-        window.removeEventListener(event, handleActivity);
-      });
-    };
-  }, [isStandbyOpen, isMobileLayout]);
-
   // --- Real-time clock update loops ---
   useEffect(() => {
     const tick = () => {
