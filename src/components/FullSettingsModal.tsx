@@ -42,11 +42,13 @@ import {
   RotateCw,
   Clock,
   Maximize,
+  AppWindow,
+  Layers,
 } from 'lucide-react';
 import { useWindows } from './WindowManager';
 
 import { Shield, Wind, AlertTriangle, LogOut, Cpu } from 'lucide-react';
-import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES } from '../types';
+import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, AppMode } from '../types';
 import { translations } from '../data/translations';
 import { materialPalettes } from '../data/themes';
 import SquashToggle from './SquashToggle';
@@ -128,6 +130,8 @@ interface FullSettingsModalProps {
   onAppNotifPermissionToggle?: (appId: string, allowed: boolean) => void;
   isWeatherDisabled?: boolean;
   onWeatherDisabledToggle?: (disabled: boolean) => void;
+  appMode?: AppMode;
+  onAppModeChange?: (mode: AppMode) => void;
 }
 
 type Tab = 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account';
@@ -194,6 +198,8 @@ export default function FullSettingsModal({
   onAppNotifPermissionToggle,
   isWeatherDisabled = false,
   onWeatherDisabledToggle,
+  appMode = 'window_manager',
+  onAppModeChange,
 }: FullSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>(isMobileLayout && initialTab === 'account' ? 'appearance' : (initialTab || 'appearance'));
   const [searchQuery, setSearchQuery] = useState('');
@@ -1449,6 +1455,92 @@ export default function FullSettingsModal({
                             </div>
                           </div>
                         </div>
+                        )}
+
+                        {/* App Mode & Window System Section */}
+                        {!isMobileLayout && (
+                          <div className="space-y-3 mt-4" id="app-mode-settings">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-[var(--on-surface-var)] pl-1.5">
+                              {lang === 'ru' ? 'Режим запуска приложений' : 'App Launch Mode'}
+                            </h4>
+
+                            <div className="p-5 bg-[var(--surface)] border border-[var(--outline-var)] rounded-2xl space-y-4">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--on-surface-var)]">
+                                <Info size={16} />
+                                <span>
+                                  {lang === 'ru'
+                                    ? 'Выберите стиль взаимодействия: оконный интерфейс (ОС) или классические поп-апы и about:blank'
+                                    : 'Choose interaction style: window manager (OS) or classic popups with about:blank'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {/* Option 1: Window Manager */}
+                                <button
+                                  type="button"
+                                  onClick={() => onAppModeChange?.('window_manager')}
+                                  className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col justify-between gap-2.5 cursor-pointer ${
+                                    appMode === 'window_manager'
+                                      ? 'border-[var(--on-surface)] bg-[var(--container)] shadow-md'
+                                      : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:bg-[var(--container)]'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-7 h-7 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface)]">
+                                        <AppWindow size={15} />
+                                      </div>
+                                      <span className="text-xs font-black text-[var(--on-surface)]">
+                                        {lang === 'ru' ? 'Веб-ОС (Окна)' : 'Web OS (Windows)'}
+                                      </span>
+                                    </div>
+                                    {appMode === 'window_manager' && (
+                                      <div className="w-4 h-4 rounded-full bg-[var(--on-surface)] text-[var(--surface)] flex items-center justify-center">
+                                        <Check size={11} strokeWidth={3} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-[var(--on-surface-var)] leading-relaxed">
+                                    {lang === 'ru' 
+                                      ? 'Окна можно двигать, масштабировать, разворачивать и сворачивать в док.'
+                                      : 'Multi-window desktop: movable, resizable, minimizable to dock.'}
+                                  </span>
+                                </button>
+
+                                {/* Option 2: Classic */}
+                                <button
+                                  type="button"
+                                  onClick={() => onAppModeChange?.('classic')}
+                                  className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col justify-between gap-2.5 cursor-pointer ${
+                                    appMode === 'classic'
+                                      ? 'border-[var(--on-surface)] bg-[var(--container)] shadow-md'
+                                      : 'border-[var(--outline-var)] bg-[var(--surface-dim)] hover:bg-[var(--container)]'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-7 h-7 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-[var(--on-surface)]">
+                                        <Layers size={15} />
+                                      </div>
+                                      <span className="text-xs font-black text-[var(--on-surface)]">
+                                        {lang === 'ru' ? 'Классический режим' : 'Classic Mode'}
+                                      </span>
+                                    </div>
+                                    {appMode === 'classic' && (
+                                      <div className="w-4 h-4 rounded-full bg-[var(--on-surface)] text-[var(--surface)] flex items-center justify-center">
+                                        <Check size={11} strokeWidth={3} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-[var(--on-surface-var)] leading-relaxed">
+                                    {lang === 'ru'
+                                      ? 'Сервисы в about:blank, а утилиты в аккуратных поп-апах по центру с размытием.'
+                                      : 'Apps in cloaked about:blank tabs; tools open in centered modal popups.'}
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}

@@ -52,10 +52,11 @@ import {
   RotateCw,
 } from 'lucide-react';
 
-import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette } from './types';
+import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette, AppMode } from './types';
 import { materialPalettes } from './data/themes';
 import { translations } from './data/translations';
 import { getGreeting } from './data/greetings';
+import { openAboutBlank } from './lib/aboutBlank';
 
 // Components
 import ClockModal from './components/ClockModal';
@@ -66,6 +67,8 @@ import SettingsModal from './components/SettingsModal';
 import FullSettingsModal from './components/FullSettingsModal';
 import { WeatherLocationErrorModal } from './components/WeatherLocationErrorModal';
 import { AppNotifPromptModal } from './components/AppNotifPromptModal';
+import { AppModePromptModal } from './components/AppModePromptModal';
+import { ClassicPopupModal } from './components/ClassicPopupModal';
 import { LoginScreen } from './components/LoginScreen';
 import AppLoader from './components/AppLoader';
 import { useWindows, WindowManagerLayer } from './components/WindowManager';
@@ -137,6 +140,29 @@ export default function App() {
   const [isGlassBlur, setIsGlassBlur] = useState<boolean>(() => {
     return localStorage.getItem('linkerru_glass_blur') !== 'false';
   });
+
+  const [appMode, setAppMode] = useState<AppMode>(() => {
+    const saved = localStorage.getItem('linkerru_app_mode') as AppMode;
+    return saved === 'classic' || saved === 'window_manager' ? saved : 'window_manager';
+  });
+
+  const [showAppModePrompt, setShowAppModePrompt] = useState<boolean>(() => {
+    const saved = localStorage.getItem('linkerru_app_mode');
+    return !saved;
+  });
+
+  const [classicModalState, setClassicModalState] = useState<{
+    id: string;
+    title: string;
+    icon?: React.ReactNode;
+    content: React.ReactNode;
+    maxWidth?: string;
+  } | null>(null);
+
+  const handleAppModeChange = (mode: AppMode) => {
+    setAppMode(mode);
+    localStorage.setItem('linkerru_app_mode', mode);
+  };
 
   const [isOptimizedEngine, setIsOptimizedEngine] = useState<boolean>(() => {
     return localStorage.getItem('linkerru_optimized_engine') === 'true';
@@ -1653,6 +1679,29 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   // --- Window manager helpers (popup apps) ---
+  const rawWmOpen = wm.open;
+  const openAppWithMode = (opts: Parameters<typeof wm.open>[0]) => {
+    if (appMode === 'classic') {
+      if (opts.id === 'agno') {
+        openAboutBlank('https://agno-agent-ui.vercel.app/');
+        return;
+      }
+      setClassicModalState({
+        id: opts.id,
+        title: opts.title,
+        icon: opts.icon,
+        content: opts.render(),
+        maxWidth: opts.id === 'calculator' ? 'max-w-sm' : opts.id === 'keeps' || opts.id === 'changelog' ? 'max-w-lg' : opts.id === 'nexusgamebox' ? 'max-w-5xl' : 'max-w-3xl',
+      });
+      return;
+    }
+    rawWmOpen(opts);
+  };
+  const activeWm = {
+    ...wm,
+    open: openAppWithMode,
+  };
+
   // Check if a window app is minimized (running in background)
   const isMinimized = (id: string) => {
     const w = wm.windows.find((win) => win.id === id);
@@ -1667,7 +1716,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const proxyMinimized = isMinimized('proxy');
 
   const openAgnoWindow = () => {
-    wm.open({
+    activeWm.open({
       id: 'agno',
       title: 'Agno GPT',
       icon: <Bot size={14} className="text-[var(--on-surface)]" />,
@@ -1688,7 +1737,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const openSettingsWindow = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account' = 'appearance') => {
     setSettingsInitialTab(tab);
-    wm.open({
+    activeWm.open({
       id: 'settings',
       title: lang === 'ru' ? 'Настройки' : 'Settings',
       icon: <Settings size={14} className="text-[var(--on-surface)]" />,
@@ -1700,7 +1749,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       render: () => (
         <div className="h-full w-full">
           <FullSettingsModal
-            wm={wm}
+            wm={activeWm}
             playChime={playChime}
             triggerToast={triggerToast}
             isOpen={true}
@@ -1766,6 +1815,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               localStorage.setItem('linkerru_clock_variation', String(v));
             }}
             onLaunchStandby={() => setIsStandbyOpen(true)}
+            appMode={appMode}
+            onAppModeChange={handleAppModeChange}
           />
         </div>
       ),
@@ -1774,7 +1825,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const openAccountWindow = () => {
     playChime('click');
-    wm.open({
+    activeWm.open({
       id: 'account',
       title: lang === 'ru' ? 'Менеджер аккаунта' : 'Account Manager',
       icon: <User size={14} className="text-[var(--on-surface)]" />,
@@ -1792,14 +1843,14 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             localStorage.setItem('linkerru_nickname', n);
           }}
           isAuthenticated={isAuthenticated}
-          onClose={() => wm.close('account')}
+          onClose={() => { wm.close('account'); setClassicModalState(null); }}
         />
       ),
     });
   };
 
   const openChangelogWindow = () => {
-    wm.open({
+    activeWm.open({
       id: 'changelog',
       title: lang === 'ru' ? 'Журнал изменений' : 'Changelog',
       icon: <History size={14} className="text-[var(--on-surface)]" />,
@@ -1815,7 +1866,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const handleOpenSubConvert = () => {
     playChime('click');
-    wm.open({
+    activeWm.open({
       id: 'subconvert',
       title: 'SubConvert',
       icon: <Subtitles size={14} className="text-[var(--on-surface)]" />,
@@ -1839,7 +1890,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
 
   const openLisyanWindow = () => {
-    wm.open({
+    activeWm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
       icon: (
@@ -1856,7 +1907,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         <div className="wm-embedded h-full w-full">
           <LisyanConnectModal
             isOpen={true}
-            onClose={() => wm.close('lisyan')}
+            onClose={() => { wm.close('lisyan'); setClassicModalState(null); }}
             lang={lang}
             theme={theme}
             isMobileLayout={isMobileLayout}
@@ -1869,7 +1920,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const [activeSupportContactId, setActiveSupportContactId] = useState<string | null>(null);
 
   const openCalculatorWindow = () => {
-    wm.open({
+    activeWm.open({
       id: 'calculator',
       title: lang === 'ru' ? 'Калькулятор' : 'Calculator',
       icon: <Calculator size={14} className="text-[var(--on-surface)]" />,
@@ -1884,7 +1935,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openKeepsWindow = () => {
-    wm.open({
+    activeWm.open({
       id: 'keeps',
       title: lang === 'ru' ? 'Заметки' : 'Keeps',
       icon: <StickyNote size={14} className="text-[var(--on-surface)]" />,
@@ -1901,7 +1952,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const openLinkerRoute = (url?: string) => {
     if (url) setProxyInitialUrl(url);
     const activeUrl = url || proxyInitialUrl;
-    wm.open({
+    activeWm.open({
       id: 'proxy',
       title: 'Space Proxy Hub',
       icon: <Globe size={14} className="text-[var(--on-surface)]" />,
@@ -1920,7 +1971,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
   const openTelegramRouteWindow = () => {
     playChime('click');
-    wm.open({
+    activeWm.open({
       id: 'telegramroute',
       title: 'Telegram Route',
       icon: <Send size={14} className="text-[var(--on-surface)]" />,
@@ -1939,7 +1990,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       setIsWeatherOptionsOpen(true);
       return;
     }
-    wm.open({
+    activeWm.open({
       id: 'weather',
       title: lang === 'ru' ? 'Погода' : 'Weather',
       icon: <CloudSun size={14} className="text-[var(--on-surface)]" />,
@@ -1952,7 +2003,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       render: () => (
         <WeatherModal
           isOpen={true}
-          onClose={() => wm.close('weather')}
+          onClose={() => { wm.close('weather'); setClassicModalState(null); }}
           lang={lang}
           primaryColor={activePalette.primary}
           embeddedInWindow={true}
@@ -1962,7 +2013,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
   const openNexusGameBox = () => {
-    wm.open({
+    activeWm.open({
       id: 'nexusgamebox',
       title: 'Nexus Game Box',
       icon: (
@@ -3872,6 +3923,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                       localStorage.setItem('linkerru_clock_variation', String(v));
                     }}
                     onLaunchStandby={() => setIsStandbyOpen(true)}
+                    appMode={appMode}
+                    onAppModeChange={handleAppModeChange}
                   />
                 </div>
               );
@@ -4006,6 +4059,30 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         onSelectServer={handleServerSelection}
         primaryColor={activePalette.primary}
         onOpenHub={(url) => openLinkerRoute(url)}
+      />
+
+      {/* Classic Mode Popup Modal (Centered, non-resizable, background blurred & interactive lock) */}
+      <ClassicPopupModal
+        isOpen={!!classicModalState}
+        onClose={() => setClassicModalState(null)}
+        title={classicModalState?.title || ''}
+        icon={classicModalState?.icon}
+        maxWidth={classicModalState?.maxWidth || 'max-w-2xl'}
+      >
+        {classicModalState?.content}
+      </ClassicPopupModal>
+
+      {/* App Mode First-Launch Prompt Modal */}
+      <AppModePromptModal
+        isOpen={showAppModePrompt}
+        onClose={() => setShowAppModePrompt(false)}
+        onSelectMode={(mode) => {
+          handleAppModeChange(mode);
+          setShowAppModePrompt(false);
+        }}
+        currentMode={appMode}
+        lang={lang}
+        activePalette={activePalette}
       />
 
       {/* Background Preloader for Telegram Route App */}
