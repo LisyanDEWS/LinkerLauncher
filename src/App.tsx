@@ -1683,7 +1683,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const openAppWithMode = (opts: Parameters<typeof wm.open>[0]) => {
     if (appMode === 'classic') {
       if (opts.id === 'agno') {
-        openAboutBlank('https://agno-agent-ui.vercel.app/');
+        openAboutBlank('https://agno-agent-ui.vercel.app/', 'Agno GPT');
+        return;
+      }
+      if (opts.id === 'proxy') {
+        const proxyUrl = proxyInitialUrl || localStorage.getItem('linkerru_server_url') || 'https://english.neeb.wtf/';
+        openAboutBlank(proxyUrl, 'Space Proxy Hub');
+        return;
+      }
+      if (opts.id === 'subconvert') {
+        const subconvertUrl = `${window.location.origin}${window.location.pathname}?standalone=subconvert`;
+        openAboutBlank(subconvertUrl, 'SubConvert');
         return;
       }
       setClassicModalState({
@@ -2458,6 +2468,40 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       }
     }
   };
+
+  // Standalone app view when launched via about:blank or direct URL
+  const standaloneParam = useMemo(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('standalone');
+    } catch {
+      return null;
+    }
+  }, []);
+
+  if (standaloneParam === 'subconvert') {
+    return (
+      <div className="h-screen w-screen bg-[var(--surface)] text-[var(--on-surface)] overflow-hidden font-sans select-none">
+        <SubConvertApp
+          lang={lang}
+          theme={theme}
+          activePalette={activePalette}
+          playChime={playChime}
+          triggerToast={triggerToast}
+          openAgnoGPT={openAgnoWindow}
+        />
+      </div>
+    );
+  }
+
+  if (standaloneParam === 'proxy') {
+    const proxyUrl = localStorage.getItem('linkerru_server_url') || 'https://english.neeb.wtf/';
+    return (
+      <div className="h-screen w-screen bg-black overflow-hidden select-none">
+        <LinkerRouteApp initialUrl={proxyUrl} />
+      </div>
+    );
+  }
 
   if (!isAuthenticated && !isMobileLayout) {
     return (
