@@ -325,8 +325,8 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
     '--outline-var': '#22242F',
     '--container': '#1A1C26',
     '--container-high': '#22242F',
-    '--accent': '#C7CBD9',
-    '--on-accent': '#14151C',
+    '--accent': '#4F46E5',
+    '--on-accent': '#FFFFFF',
   } as React.CSSProperties;
 
   const themeVars = effectiveTheme === 'dark' ? darkMonoThemeVars : lightMonoThemeVars;
@@ -744,22 +744,22 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
 
                   {/* Terms Checkbox */}
                   <div 
-                    className={`flex items-start gap-2.5 text-left w-full p-2.5 rounded-xl border transition-colors select-none ${
+                    className={`flex items-start gap-2.5 text-left w-full p-3 rounded-2xl border transition-all select-none ${
                       acceptedTerms 
-                        ? 'bg-[var(--on-accent)]/10 border-[var(--on-accent)]' 
-                        : 'border-[var(--outline)] bg-[var(--surface-dim)]'
+                        ? 'bg-white/10 border-white/60 shadow-sm' 
+                        : 'border-white/20 bg-white/5 hover:border-white/40'
                     } ${errorField === 'signup-terms' ? 'animate-shake border-red-500' : ''}`}
                   >
                     <div 
                       onClick={() => setAcceptedTerms(!acceptedTerms)}
-                      className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 mt-0.5 border transition-colors cursor-pointer ${
-                        acceptedTerms ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--on-accent)]' : 'border-[var(--on-accent)]/40 bg-transparent'
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border transition-all cursor-pointer ${
+                        acceptedTerms ? 'bg-white border-white text-black' : 'border-white/50 bg-white/10 hover:border-white'
                       }`}
                     >
-                      {acceptedTerms && <Check size={11} />}
+                      {acceptedTerms && <Check size={12} className="text-black stroke-[3]" />}
                     </div>
-                    <div className="text-[11px] font-medium text-[var(--on-accent)] opacity-90 leading-tight">
-                      <span onClick={() => setAcceptedTerms(!acceptedTerms)} className="cursor-pointer">
+                    <div className="text-xs font-semibold text-white leading-snug">
+                      <span onClick={() => setAcceptedTerms(!acceptedTerms)} className="cursor-pointer text-white">
                         {lang === 'ru' ? 'Я согласен с правилами и ' : 'I agree with terms and '}
                       </span>
                       <button
@@ -768,7 +768,7 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                           e.stopPropagation();
                           setIsPrivacyModalOpen(true);
                         }}
-                        className="underline font-bold hover:opacity-100 cursor-pointer text-[var(--on-accent)] inline"
+                        className="underline font-black text-white hover:text-white/80 cursor-pointer inline transition-opacity ml-1"
                       >
                         {lang === 'ru' ? 'политикой конфиденциальности' : 'privacy policy'}
                       </button>
@@ -779,13 +779,13 @@ export function LoginScreen({ onLogin, lang, onLangChange }: LoginScreenProps) {
                     <button
                       type="button"
                       onClick={() => transitionTo('signup_password')}
-                      className="flex-1 py-3 rounded-2xl border border-[var(--on-accent)]/40 text-xs font-bold text-[var(--on-accent)] hover:bg-[var(--on-accent)]/10 transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-2xl border border-white/40 text-xs font-bold text-white hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       {lang === 'ru' ? 'Назад' : 'Back'}
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 rounded-2xl bg-[var(--on-accent)] text-[var(--accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-wider hover:bg-white/90 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
                     >
                       <span>{lang === 'ru' ? 'Создать' : 'Sign Up'}</span>
                       <Check size={13} />

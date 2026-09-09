@@ -137,7 +137,7 @@ export function PrivacyPolicyModal({ isOpen, onClose, lang }: PrivacyPolicyModal
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--on-accent)] text-xs font-black uppercase tracking-wider hover:opacity-90 transition-opacity cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white font-black text-xs uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all cursor-pointer shadow-sm"
               >
                 {isRu ? 'Понятно' : 'Understood'}
               </button>
