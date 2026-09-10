@@ -47,61 +47,6 @@ export function TelegramRouteApp({ lang = 'ru', onReloadTrigger }: TelegramRoute
     onReloadTrigger?.();
   }, [onReloadTrigger]);
 
-  // 1. Tab visibility change & focus listener
-  useEffect(() => {
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        // Throttle auto-reload to avoid rapid multiple refreshes (minimum 2.5s)
-        if (now - lastReloadTimeRef.current > 2500) {
-          triggerReload();
-        }
-      }
-    };
-
-    const handleWindowFocus = () => {
-      const now = Date.now();
-      if (now - lastReloadTimeRef.current > 2500) {
-        triggerReload();
-      }
-    };
-
-    const handleOnline = () => {
-      triggerReload();
-    };
-
-    const handlePageShow = () => {
-      const now = Date.now();
-      if (now - lastReloadTimeRef.current > 2500) {
-        triggerReload();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-    window.addEventListener('focus', handleWindowFocus);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('pageshow', handlePageShow);
-
-    // 2. Chromebook & Laptop sleep/suspend resume detector
-    let lastTick = Date.now();
-    const sleepInterval = setInterval(() => {
-      const current = Date.now();
-      // If tick gap > 3500ms, the OS / Chromebook went to sleep and just resumed
-      if (current - lastTick > 3500) {
-        triggerReload();
-      }
-      lastTick = current;
-    }, 1000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
-      window.removeEventListener('focus', handleWindowFocus);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('pageshow', handlePageShow);
-      clearInterval(sleepInterval);
-    };
-  }, [triggerReload]);
-
   return (
     <div className="relative flex h-full w-full flex-col bg-[var(--surface)] select-none overflow-hidden font-sans">
       {/* Main Iframe container */}
@@ -131,7 +76,7 @@ export function TelegramRouteApp({ lang = 'ru', onReloadTrigger }: TelegramRoute
                 <div className="flex items-center gap-2">
                   <Send size={13} className="text-[var(--accent)] shrink-0 opacity-80" />
                   <span className="text-xs font-bold tracking-tight text-[var(--on-surface)]">
-                    {isRu ? 'Обновление сессии Telegram...' : isUk ? 'Оновлення сесії Telegram...' : 'Refreshing Telegram session...'}
+                    {isRu ? 'Запуск Telegram Route...' : isUk ? 'Запуск Telegram Route...' : 'Starting Telegram Route...'}
                     <span className="text-[var(--on-surface-var)] ml-1">{Math.round(progress)}%</span>
                   </span>
                 </div>

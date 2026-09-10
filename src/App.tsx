@@ -265,7 +265,7 @@ export default function App() {
     const handleWakeOrFocus = () => {
       if (document.visibilityState === 'visible' && wm.isOpen('telegramroute')) {
         const now = Date.now();
-        if (now - lastTelegramAutoReloadRef.current > 2500) {
+        if (now - lastTelegramAutoReloadRef.current > 900000) { // 15 minutes
           lastTelegramAutoReloadRef.current = now;
           wm.reload('telegramroute');
         }
@@ -275,7 +275,7 @@ export default function App() {
     const handleFocus = () => {
       if (wm.isOpen('telegramroute')) {
         const now = Date.now();
-        if (now - lastTelegramAutoReloadRef.current > 2500) {
+        if (now - lastTelegramAutoReloadRef.current > 900000) { // 15 minutes
           lastTelegramAutoReloadRef.current = now;
           wm.reload('telegramroute');
         }
@@ -284,8 +284,11 @@ export default function App() {
 
     const handleOnline = () => {
       if (wm.isOpen('telegramroute')) {
-        lastTelegramAutoReloadRef.current = Date.now();
-        wm.reload('telegramroute');
+        const now = Date.now();
+        if (now - lastTelegramAutoReloadRef.current > 900000) {
+          lastTelegramAutoReloadRef.current = now;
+          wm.reload('telegramroute');
+        }
       }
     };
 
@@ -298,8 +301,10 @@ export default function App() {
     const interval = setInterval(() => {
       const current = Date.now();
       if (current - lastTick > 3500 && wm.isOpen('telegramroute')) {
-        lastTelegramAutoReloadRef.current = current;
-        wm.reload('telegramroute');
+        if (current - lastTelegramAutoReloadRef.current > 900000) { // 15 minutes
+          lastTelegramAutoReloadRef.current = current;
+          wm.reload('telegramroute');
+        }
       }
       lastTick = current;
     }, 1000);
@@ -1660,6 +1665,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       if (opts.id === 'subconvert') {
         const subconvertUrl = `${window.location.origin}${window.location.pathname}?standalone=subconvert`;
         openAboutBlank(subconvertUrl, 'SubConvert');
+        return;
+      }
+      if (opts.id === 'telegramroute') {
+        openAboutBlank('https://linkerroutetraffic.sonytvrepair.com/', 'Telegram Route');
         return;
       }
       setClassicModalState({
