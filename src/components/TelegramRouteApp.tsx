@@ -22,7 +22,7 @@ export function TelegramRouteApp({ lang = 'ru', onReloadTrigger }: TelegramRoute
     setIsLoading(true);
     setProgress(0);
     const startTime = Date.now();
-    const duration = 20000; // 20 seconds loading as requested
+    const duration = 18000; // 18 seconds loading as requested
 
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;

@@ -664,7 +664,7 @@ function WindowFrame({
   const isRu = lang === 'ru';
   const isUk = lang === 'uk';
   const isSystemApp = win.disableLoader ?? (win.id === 'settings' || win.id === 'account' || win.id === 'changelog' || win.id === 'wallpapers' || win.id === 'calculator' || win.id === 'keeps' || win.id === 'weather' || win.id === 'clock' || win.id === 'calendar' || win.id === 'notifications' || win.id === 'server' || win.disableReload);
-  const defaultDuration = win.id === 'telegramroute' ? 20000 : win.id === 'weather' ? 350 : 600;
+  const defaultDuration = win.id === 'telegramroute' ? 18000 : win.id === 'weather' ? 350 : 600;
   const duration = win.loadingDuration ?? defaultDuration;
 
   const [loaderPhase, setLoaderPhase] = useState<'visible' | 'fading' | 'hidden'>(() => (isSystemApp ? 'hidden' : 'visible'));

@@ -31,6 +31,7 @@ export function openAboutBlank(url: string, title: string = 'New Tab') {
     // Inject iframe pointing to the destination
     const iframe = doc.createElement('iframe');
     iframe.src = url;
+    iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-modals';
     iframe.allow = 'fullscreen; clipboard-read; clipboard-write; autoplay';
     doc.body.appendChild(iframe);
   } catch (e) {

@@ -3180,8 +3180,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </div>
         </div>
 
-        {/* TELEGRAM ROUTE CARD (In Development - Gray state, non-interactive) */}
-        <div className="card rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative bg-[var(--surface-dim)]/80 border border-[var(--outline)]/70 shadow-xs select-none cursor-default opacity-85" id="card-telegram-route">
+        {/* TELEGRAM ROUTE CARD (Restored active state) */}
+        <div 
+          onClick={() => {
+            playChime('click');
+            openTelegramRouteWindow();
+          }}
+          className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer relative" 
+          id="card-telegram-route"
+        >
           {isMinimized('telegramroute') && (
             <button
               onClick={(e) => {
@@ -3197,16 +3204,12 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div
-              className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-1.5 shadow-inner"
+              className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-0 shadow-inner"
               style={{
                 backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
               }}
             >
-              <M3LoadingIndicator
-                size={26}
-                color={theme === 'dark' ? '#ffffff' : '#ffffff'}
-                speed={0.4}
-              />
+              <Send size={22} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
@@ -3222,10 +3225,19 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           <div className="flex items-center justify-between mt-4">
             <div className="flex gap-2 flex-1">
               <button
-                disabled
-                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all text-center shadow-xs bg-[var(--container)]/80 border-[var(--outline)] text-[var(--on-surface-var)] opacity-60 cursor-not-allowed select-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openTelegramRouteWindow();
+                }}
+                className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                  borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                  color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                  boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+                }}
               >
-                {lang === 'ru' ? 'В разработке' : 'In Development'}
+                {lang === 'ru' ? 'Открыть' : 'Open'}
               </button>
             </div>
           </div>
