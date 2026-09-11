@@ -5,7 +5,7 @@ interface LinkerRouteAppProps {
 }
 
 export function LinkerRouteApp({ initialUrl }: LinkerRouteAppProps) {
-  const defaultUrl = localStorage.getItem('linkerru_server_url') || 'https://english.neeb.wtf/';
+  const defaultUrl = localStorage.getItem('linkerru_server_url') || 'https://math.soyescalahumana.cl/';
   const currentUrl = initialUrl || defaultUrl;
 
   return (
