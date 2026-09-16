@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, Sun, Volume2, Languages, Check, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence, type Variants } from 'motion/react';
+import {
+  X,
+  ChevronRight,
+  Sun,
+  Moon,
+  Volume2,
+  VolumeX,
+  Bell,
+  BellOff,
+  Languages,
+  Check,
+  ChevronDown,
+  Sliders,
+} from 'lucide-react';
 import { Language, ThemeMode } from '../types';
 import { translations } from '../data/translations';
 
@@ -22,12 +35,15 @@ interface SettingsModalProps {
 }
 
 const calculatePopoverPos = () => {
-  const pw = 320;
+  const pw = 340;
   if (typeof window === 'undefined') {
     return { top: 80, left: 16 };
   }
-  // Anchor to avatar or settings button on topbar
-  const anchor = document.getElementById('topbar-avatar') || document.getElementById('topbar-settings-pill');
+  // Anchor to settings pill or avatar on topbar
+  const anchor =
+    document.getElementById('topbar-settings-pill') ||
+    document.getElementById('topbar-avatar') ||
+    document.getElementById('topbar-clock-pill');
   const rect = anchor?.getBoundingClientRect();
 
   if (rect && rect.width > 0 && rect.height > 0) {
@@ -37,16 +53,64 @@ const calculatePopoverPos = () => {
       left = Math.max(16, window.innerWidth - pw - 16);
     }
     return {
-      top: rect.bottom + 8,
+      top: rect.bottom + 10,
       left,
     };
   }
 
-  // Fallback: place towards the top-right corner, never at left: 24
+  // Fallback: top-right corner
   return {
-    top: 80,
-    left: Math.max(16, window.innerWidth - pw - 24),
+    top: 76,
+    left: Math.max(16, window.innerWidth - pw - 20),
   };
+};
+
+// Staggered cascade animation variants (ladder entrance)
+const panelVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: -20,
+    scale: 0.96,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      damping: 25,
+      stiffness: 380,
+      mass: 0.7,
+      staggerChildren: 0.045,
+      delayChildren: 0.02,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -14,
+    scale: 0.97,
+    transition: {
+      duration: 0.15,
+      ease: [0.32, 0, 0.67, 0],
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: -10,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      damping: 24,
+      stiffness: 420,
+      mass: 0.6,
+    },
+  },
 };
 
 export default function SettingsModal({
@@ -63,7 +127,7 @@ export default function SettingsModal({
   volume,
   onVolumeChange,
   isSoundEnabled,
-  onSoundToggle
+  onSoundToggle,
 }: SettingsModalProps) {
   const t = translations[lang] || translations.ru;
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>(calculatePopoverPos);
@@ -119,35 +183,35 @@ export default function SettingsModal({
     }
   }, [isLangMenuOpen]);
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: number) => void) => {
-    setter(Number(e.target.value));
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 pointer-events-none">
-          {/* Backdrop */}
+          {/* Frosted translucent backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
-            onAnimationComplete={() => { if (!isOpen) setBackdropClickable(false); }}
+            transition={{ duration: 0.15 }}
+            onAnimationComplete={() => {
+              if (!isOpen) setBackdropClickable(false);
+            }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/10"
+            className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"
             style={{ pointerEvents: backdropClickable ? 'auto' : 'none' }}
             id="settings-quick-backdrop"
           />
 
-          {/* Quick Settings Panel */}
+          {/* Quick Settings Panel (Translucent Frosted Glass + Staggered Cascade) */}
           <motion.div
-            initial={{ scale: 0.95, y: -8, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.95, y: -8, opacity: 0 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 500 }}
-            onAnimationComplete={() => { if (!isOpen) setBackdropClickable(false); }}
-            className="fixed z-10 w-[calc(100vw-32px)] max-w-xs rounded-3xl border border-[var(--outline-var)] bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-xl p-5 shadow-2xl select-none"
+            variants={panelVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onAnimationComplete={() => {
+              if (!isOpen) setBackdropClickable(false);
+            }}
+            className="fixed z-10 w-[calc(100vw-32px)] max-w-[340px] rounded-[24px] border border-white/20 dark:border-white/10 bg-[color-mix(in_srgb,var(--surface)_75%,transparent)] backdrop-blur-xl p-4 shadow-[0_20px_45px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)] select-none overflow-hidden"
             style={{
               top: `${popoverPos.top}px`,
               left: `${popoverPos.left}px`,
@@ -155,104 +219,177 @@ export default function SettingsModal({
             }}
             id="settings-quick-modal"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-black tracking-widest text-[var(--on-surface-var)] uppercase">
-                {t.quick_settings_title}
-              </span>
+            {/* Step 1: Header */}
+            <motion.div variants={itemVariants} className="flex items-center justify-between mb-3 px-0.5">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-[var(--accent)]" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-[var(--on-surface-var)]">
+                  {t.quick_settings_title || (lang === 'ru' ? 'БЫСТРЫЕ НАСТРОЙКИ' : 'QUICK SETTINGS')}
+                </span>
+              </div>
               <button
                 onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--on-surface-var)] transition-all hover:bg-[var(--surface-high)]/60 hover:text-[var(--on-surface)] active:scale-95 cursor-pointer"
                 id="quick-settings-close"
+                title={lang === 'ru' ? 'Закрыть' : 'Close'}
               >
-                <X size={14} />
+                <X size={15} />
               </button>
-            </div>
+            </motion.div>
 
-            {/* Sliders Area */}
-            <div className="flex gap-4 mb-4 justify-around h-32">
-              {/* Brightness Vertical Slider */}
-              <div className="relative w-12 h-full bg-[var(--container)] rounded-2xl overflow-hidden flex flex-col justify-end group border border-[var(--outline-var)] shadow-inner">
-                <div 
-                  className="absolute bottom-0 w-full origin-bottom transition-all" 
-                  style={{ height: `${brightness}%`, backgroundColor: primaryColor }} 
-                />
+            {/* Step 2: Brightness Slider */}
+            <motion.div
+              variants={itemVariants}
+              className="mb-2.5 p-3 rounded-2xl bg-[color-mix(in_srgb,var(--container)_60%,transparent)] border border-white/10 dark:border-white/5"
+            >
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--on-surface)] mb-1.5">
+                <div className="flex items-center gap-2 text-[var(--on-surface-var)]">
+                  <Sun size={15} />
+                  <span className="text-xs font-semibold text-[var(--on-surface)]">
+                    {lang === 'ru' ? 'Яркость' : 'Brightness'}
+                  </span>
+                </div>
+                <span className="text-xs font-black tabular-nums text-[var(--on-surface)]">{brightness}%</span>
+              </div>
+              <div className="relative flex items-center h-5">
                 <input
                   type="range"
                   min="20"
                   max="100"
                   value={brightness}
-                  onChange={(e) => handleSliderChange(e, onBrightnessChange)}
-                  className="absolute inset-0 w-32 h-12 -rotate-90 origin-center translate-y-10 -translate-x-10 opacity-0 cursor-pointer"
+                  onChange={(e) => onBrightnessChange(Number(e.target.value))}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer bg-[var(--surface-high)]/70 accent-[var(--accent)]"
+                  style={{
+                    accentColor: primaryColor,
+                  }}
+                  id="quick-settings-brightness-range"
                 />
-                <div className="absolute top-3 w-full flex justify-center text-white/70 pointer-events-none">
-                  <Sun size={18} />
-                </div>
               </div>
+            </motion.div>
 
-                            {/* Volume Vertical Slider */}
-              <div className="relative w-12 h-full bg-[var(--container)] rounded-2xl overflow-hidden flex flex-col justify-end group border border-[var(--outline-var)] shadow-inner">
-                <div 
-                  className="absolute bottom-0 w-full origin-bottom transition-all" 
-                  style={{ height: `${volume}%`, backgroundColor: primaryColor }} 
-                />
+            {/* Step 3: Volume Slider */}
+            <motion.div
+              variants={itemVariants}
+              className="mb-3 p-3 rounded-2xl bg-[color-mix(in_srgb,var(--container)_60%,transparent)] border border-white/10 dark:border-white/5"
+            >
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--on-surface)] mb-1.5">
+                <div className="flex items-center gap-2 text-[var(--on-surface-var)]">
+                  {volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                  <span className="text-xs font-semibold text-[var(--on-surface)]">
+                    {lang === 'ru' ? 'Громкость' : 'Volume'}
+                  </span>
+                </div>
+                <span className="text-xs font-black tabular-nums text-[var(--on-surface)]">{volume}%</span>
+              </div>
+              <div className="relative flex items-center h-5">
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={volume}
-                  onChange={(e) => handleSliderChange(e, onVolumeChange)}
-                  className="absolute inset-0 w-32 h-12 -rotate-90 origin-center translate-y-10 -translate-x-10 opacity-0 cursor-pointer"
+                  onChange={(e) => onVolumeChange(Number(e.target.value))}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer bg-[var(--surface-high)]/70 accent-[var(--accent)]"
+                  style={{
+                    accentColor: primaryColor,
+                  }}
+                  id="quick-settings-volume-range"
                 />
-                <div className="absolute top-3 w-full flex justify-center text-white/70 pointer-events-none">
-                  <Volume2 size={18} />
-                </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Silent Mode Toggle */}
-            <div className="flex items-center justify-between mb-4 mt-6 px-4">
-              <span className="text-sm font-bold text-[var(--on-surface)]">
-                {lang === 'ru' ? 'Тихий режим' : 'Silent Mode'}
-              </span>
+            {/* Step 4: Quick Toggles (Theme & Silent Mode) */}
+            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-2 mb-2.5">
+              {/* Theme Toggle Button */}
               <button
-                onClick={onSoundToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isSoundEnabled ? 'bg-[var(--container-high)]' : ''
-                }`}
-                style={{ backgroundColor: isSoundEnabled ? undefined : primaryColor }}
+                type="button"
+                onClick={onThemeToggle}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-[color-mix(in_srgb,var(--container)_60%,transparent)] border border-white/10 dark:border-white/5 hover:border-white/20 transition-all cursor-pointer text-left active:scale-95 group shadow-2xs"
+                id="quick-settings-theme-btn"
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform shadow-sm ${
-                    isSoundEnabled ? 'translate-x-1' : 'translate-x-6'
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                    theme === 'dark'
+                      ? 'bg-[var(--accent)] text-white shadow-xs'
+                      : 'bg-amber-500 text-white shadow-xs'
                   }`}
-                />
+                >
+                  {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[var(--on-surface)] leading-tight truncate">
+                    {theme === 'dark'
+                      ? lang === 'ru'
+                        ? 'Тёмная'
+                        : 'Dark'
+                      : lang === 'ru'
+                        ? 'Светлая'
+                        : 'Light'}
+                  </span>
+                  <span className="text-[10px] font-semibold text-[var(--on-surface-var)] leading-tight mt-0.5">
+                    {lang === 'ru' ? 'Тема' : 'Theme'}
+                  </span>
+                </div>
               </button>
-            </div>
 
-            {/* Language Selection Dropdown Ladder (without increasing popover size) */}
-            <div className="relative mb-4" ref={langMenuRef} id="quick-settings-lang-ladder-container">
+              {/* Silent Mode Toggle Button */}
+              <button
+                type="button"
+                onClick={onSoundToggle}
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-[color-mix(in_srgb,var(--container)_60%,transparent)] border border-white/10 dark:border-white/5 hover:border-white/20 transition-all cursor-pointer text-left active:scale-95 group shadow-2xs"
+                id="quick-settings-sound-btn"
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                    !isSoundEnabled
+                      ? 'bg-[var(--accent)] text-white shadow-xs'
+                      : 'bg-white/10 dark:bg-black/20 text-[var(--on-surface-var)]'
+                  }`}
+                >
+                  {!isSoundEnabled ? <BellOff size={15} /> : <Bell size={15} />}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[var(--on-surface)] leading-tight truncate">
+                    {!isSoundEnabled
+                      ? lang === 'ru'
+                        ? 'Без звука'
+                        : 'Muted'
+                      : lang === 'ru'
+                        ? 'Со звуком'
+                        : 'Sound on'}
+                  </span>
+                  <span className="text-[10px] font-semibold text-[var(--on-surface-var)] leading-tight mt-0.5">
+                    {lang === 'ru' ? 'Звук' : 'Sound'}
+                  </span>
+                </div>
+              </button>
+            </motion.div>
+
+            {/* Step 5: Language Selector */}
+            <motion.div variants={itemVariants} className="relative mb-2.5" ref={langMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[var(--container)] border border-[var(--outline-var)] hover:border-[var(--outline)] rounded-2xl transition-all cursor-pointer shadow-sm group"
-                id="quick-settings-lang-trigger"
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-[color-mix(in_srgb,var(--container)_60%,transparent)] border border-white/10 dark:border-white/5 hover:border-white/20 transition-all cursor-pointer text-left active:scale-95 shadow-2xs"
+                id="quick-settings-lang-btn"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-[var(--surface)] flex items-center justify-center text-[var(--accent)] border border-[var(--outline-var)] shadow-2xs">
-                    <Languages size={13} />
+                  <div className="w-8 h-8 rounded-xl bg-white/10 dark:bg-black/20 flex items-center justify-center text-[var(--accent)] border border-white/10 shadow-2xs">
+                    <Languages size={15} />
                   </div>
-                  <div className="flex flex-col text-left">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] leading-none">
-                      {lang === 'ru' ? 'Язык' : lang === 'uk' ? 'Мова' : 'Language'}
-                    </span>
-                    <span className="text-xs font-bold text-[var(--on-surface)] mt-0.5 leading-none">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-[var(--on-surface)] leading-tight">
                       {langOptions.find((l) => l.id === lang)?.name || lang.toUpperCase()}
+                    </span>
+                    <span className="text-[10px] font-semibold text-[var(--on-surface-var)] leading-tight mt-0.5">
+                      {lang === 'ru' ? 'Язык интерфейса' : 'Interface language'}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-[var(--accent)] text-white shadow-2xs">
+                  <span
+                    className="text-[10px] font-black px-2 py-0.5 rounded-lg text-white shadow-2xs"
+                    style={{ backgroundColor: primaryColor }}
+                  >
                     {lang.toUpperCase()}
                   </span>
                   <ChevronDown
@@ -264,7 +401,7 @@ export default function SettingsModal({
                 </div>
               </button>
 
-              {/* Floating Ladder Menu */}
+              {/* Language Dropdown */}
               <AnimatePresence>
                 {isLangMenuOpen && (
                   <motion.div
@@ -272,12 +409,9 @@ export default function SettingsModal({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.96 }}
                     transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                    className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[var(--surface)]/95 backdrop-blur-xl border border-[var(--outline-var)] rounded-2xl p-1.5 shadow-xl space-y-1"
-                    id="quick-settings-lang-ladder-menu"
+                    className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[color-mix(in_srgb,var(--surface)_85%,transparent)] backdrop-blur-2xl border border-white/20 dark:border-white/10 rounded-2xl p-1.5 shadow-2xl space-y-1"
+                    id="quick-settings-lang-menu"
                   >
-                    <div className="px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] border-b border-[var(--outline-var)] pb-1 mb-0.5">
-                      {lang === 'ru' ? 'Выбор языка' : lang === 'uk' ? 'Вибір мови' : 'Select language'}
-                    </div>
                     {langOptions.map((opt) => {
                       const isSelected = lang === opt.id;
                       return (
@@ -290,16 +424,19 @@ export default function SettingsModal({
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                             isSelected
-                              ? 'bg-[var(--accent)] text-white shadow-sm'
-                              : 'text-[var(--on-surface)] hover:bg-[var(--container)]'
+                              ? 'text-white shadow-sm'
+                              : 'text-[var(--on-surface)] hover:bg-white/10 dark:hover:bg-white/5'
                           }`}
+                          style={{
+                            backgroundColor: isSelected ? primaryColor : undefined,
+                          }}
                         >
                           <div className="flex items-center gap-2.5">
                             <span
                               className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${
                                 isSelected
                                   ? 'bg-white/20 text-white border-white/30'
-                                  : 'bg-[var(--container)] text-[var(--on-surface-var)] border-[var(--outline-var)]'
+                                  : 'bg-white/10 dark:bg-black/20 text-[var(--on-surface-var)] border-white/10'
                               }`}
                             >
                               {opt.code}
@@ -322,46 +459,27 @@ export default function SettingsModal({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
 
-            {/* Theme Toggle */}
-            <div className="flex items-center justify-between mb-4 px-4" id="quick-settings-theme-row">
-              <span className="text-sm font-bold text-[var(--on-surface)]">
-                {t.theme_toggle_label}
-              </span>
+            {/* Step 6: Full Settings Button */}
+            <motion.div variants={itemVariants} className="pt-1 border-t border-white/10">
               <button
-                onClick={onThemeToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  theme === 'dark' ? '' : 'bg-[var(--container-high)]'
-                }`}
-                style={{ backgroundColor: theme === 'dark' ? primaryColor : undefined }}
-                id="quick-settings-theme-toggle"
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenFullSettings();
+                }}
+                className="w-full flex items-center justify-between p-2.5 hover:bg-white/10 dark:hover:bg-white/5 rounded-2xl transition-all text-left group active:scale-[0.99] cursor-pointer"
+                id="quick-settings-full-btn"
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-[var(--surface)] transition-transform shadow-sm ${
-                    theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
+                <span className="text-xs font-extrabold text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
+                  {t.all_settings_label || (lang === 'ru' ? 'Все настройки...' : 'All Settings...')}
+                </span>
+                <div className="w-6 h-6 rounded-full bg-white/10 dark:bg-black/20 flex items-center justify-center text-[var(--on-surface-var)] group-hover:text-[var(--on-surface)] group-hover:translate-x-0.5 transition-all">
+                  <ChevronRight size={14} />
+                </div>
               </button>
-            </div>
-
-            {/* Divider */}
-            <div className="h-[1px] bg-[var(--outline-var)] my-3" />
-
-            {/* Navigate Full Settings App */}
-            <button
-              onClick={() => {
-                onClose();
-                onOpenFullSettings();
-              }}
-              className="w-full flex items-center justify-between p-2.5 hover:bg-[var(--container-high)] rounded-xl transition-colors text-left"
-              id="quick-settings-full-btn"
-            >
-              <span className="text-xs font-extrabold text-[var(--on-surface)]">
-                {t.all_settings_label}
-              </span>
-              <ChevronRight size={16} className="text-[var(--on-surface-var)]" />
-            </button>
+            </motion.div>
           </motion.div>
         </div>
       )}
