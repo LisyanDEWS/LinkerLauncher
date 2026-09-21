@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { userAuth, userDb } from './lib/userFirebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import {
   Sun,
   Moon, SunMoon,
@@ -87,6 +87,9 @@ import { SpaceProxyCard } from './components/SpaceProxyCard';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 import { LanguageSelector } from './components/LanguageSelector';
 import { LiveWallpaper } from './components/LiveWallpaper';
+import LisyanAIApp from './components/LisyanAIApp';
+import LisyanLogo from './components/lisyan-ai/components/Logo';
+import LisyanConnectLogo from './components/LisyanConnectLogo';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -318,8 +321,12 @@ export default function App() {
     };
   }, [wm]);
 
-  const [isAgnoOpen, setIsAgnoOpen] = useState(false);
-  const [isAgnoFullscreen, setIsAgnoFullscreen] = useState(false);
+  const [isLisyanAiOpen, setIsLisyanAiOpen] = useState(false);
+  const [isLisyanAiFullscreen, setIsLisyanAiFullscreen] = useState(false);
+  const isAgnoOpen = isLisyanAiOpen;
+  const setIsAgnoOpen = setIsLisyanAiOpen;
+  const isAgnoFullscreen = isLisyanAiFullscreen;
+  const setIsAgnoFullscreen = setIsLisyanAiFullscreen;
 
   const [customLinks, setCustomLinks] = useState<QuickLink[]>(() => {
     const s = localStorage.getItem('linkerru_links');
@@ -751,94 +758,103 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let unsubscribeDoc: (() => void) | null = null;
+
     const unsubscribeAuth = onAuthStateChanged(userAuth, async (user) => {
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = null;
+      }
+
       if (user) {
         setIsAuthenticated(true);
         localStorage.setItem('linkerru_auth', 'true');
         
         try {
-          // Fetch user data from Firestore
+          // Listen to user document in real-time across all devices & tabs
           const userDocRef = doc(userDb, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
           
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.nickname) {
-              setNickname(data.nickname);
-              localStorage.setItem('linkerru_nickname', data.nickname);
-            }
-            
-            if (data.settings) {
-              isSyncingFromCloud.current = true;
-              const s = data.settings;
+          unsubscribeDoc = onSnapshot(userDocRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.data();
+              if (data.nickname) {
+                setNickname(data.nickname);
+                localStorage.setItem('linkerru_nickname', data.nickname);
+              }
               
-              if (s.lang) { setLang(s.lang); localStorage.setItem('linkerru_lang', s.lang); }
-              if (s.standby_bg) { setStandbyBg(s.standby_bg); localStorage.setItem('linkerru_standby_bg', s.standby_bg); }
-              if (s.wallpaper) { setMainWallpaper(s.wallpaper); localStorage.setItem('linkerru_wallpaper', s.wallpaper); }
-              if (s.font) { setFontFamily(s.font); localStorage.setItem('linkerru_font', s.font); }
-              if (s.theme) { setTheme(s.theme); localStorage.setItem('linkerru_theme', s.theme); }
-              if (s.accent) { setActivePaletteId(s.accent); localStorage.setItem('linkerru_accent', s.accent); }
-              if (s.contrast !== undefined) { setIsContrast(s.contrast); localStorage.setItem('linkerru_contrast', String(s.contrast)); }
-              if (s.glass_blur !== undefined) { setIsGlassBlur(s.glass_blur); localStorage.setItem('linkerru_glass_blur', String(s.glass_blur)); }
-              if (s.toast !== undefined) { setIsToastEnabled(s.toast); localStorage.setItem('linkerru_toast', String(s.toast)); }
-              if (s.sound !== undefined) { setIsSoundEnabled(s.sound); localStorage.setItem('linkerru_sound', String(s.sound)); }
-              if (s.sound_volume !== undefined) { setSoundVolume(s.sound_volume); localStorage.setItem('linkerru_sound_volume', String(s.sound_volume)); }
-              if (s.brightness !== undefined) { setBrightness(s.brightness); localStorage.setItem('linkerru_brightness', String(s.brightness)); }
-              if (s.click_sound) { setClickSound(s.click_sound); localStorage.setItem('linkerru_click_sound', s.click_sound); }
-              if (s.notify_sound) { setNotifySound(s.notify_sound); localStorage.setItem('linkerru_notify_sound', s.notify_sound); }
-              if (s.panic_key !== undefined) { setPanicKey(s.panic_key); localStorage.setItem('linkerru_panic_key', s.panic_key); }
-              if (s.panic_url) { setPanicUrl(s.panic_url); localStorage.setItem('linkerru_panic_url', s.panic_url); }
-              if (s.server) { setSelectedServer(s.server); localStorage.setItem('linkerru_server', s.server); }
-              if (s.tablet_choice !== undefined) { setTabletChoice(s.tablet_choice); if(s.tablet_choice) localStorage.setItem('linkerru_tablet_choice', s.tablet_choice); else localStorage.removeItem('linkerru_tablet_choice'); }
-              if (s.clock_type) { setClockType(s.clock_type); localStorage.setItem('linkerru_clock_type', s.clock_type); }
-              if (s.clock_variation) { setClockVariation(s.clock_variation); localStorage.setItem('linkerru_clock_variation', String(s.clock_variation)); }
-              if (s.links) {
-                const parsedLinks = typeof s.links === 'string' ? JSON.parse(s.links) : s.links;
-                if (Array.isArray(parsedLinks)) {
-                  const clamped = parsedLinks.slice(0, MAX_QUICK_LINKS);
-                  setCustomLinks(clamped);
-                  localStorage.setItem('linkerru_links', JSON.stringify(clamped));
-                }
-              }
-              if (s.toggles) {
-                const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
-                if (Array.isArray(parsedToggles)) {
-                   const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
-                   setActiveToggles(valid);
-                   localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
-                }
-              }
-              if (s.optimized_engine !== undefined) {
-                const opt = s.optimized_engine === true || s.optimized_engine === 'true';
-                setIsOptimizedEngine(opt);
-                localStorage.setItem('linkerru_optimized_engine', String(opt));
-              }
-              if (s.installed_extensions) {
-                try {
-                  const exts = typeof s.installed_extensions === 'string' ? JSON.parse(s.installed_extensions) : s.installed_extensions;
-                  if (Array.isArray(exts)) {
-                    localStorage.setItem('linkerru_installed_extensions', JSON.stringify(exts));
+              if (data.settings && !isSyncingFromCloud.current) {
+                isSyncingFromCloud.current = true;
+                const s = data.settings;
+                
+                if (s.lang) { setLang(s.lang); localStorage.setItem('linkerru_lang', s.lang); }
+                if (s.standby_bg) { setStandbyBg(s.standby_bg); localStorage.setItem('linkerru_standby_bg', s.standby_bg); }
+                if (s.wallpaper) { setMainWallpaper(s.wallpaper); localStorage.setItem('linkerru_wallpaper', s.wallpaper); }
+                if (s.font) { setFontFamily(s.font); localStorage.setItem('linkerru_font', s.font); }
+                if (s.theme) { setTheme(s.theme); localStorage.setItem('linkerru_theme', s.theme); }
+                if (s.accent) { setActivePaletteId(s.accent); localStorage.setItem('linkerru_accent', s.accent); }
+                if (s.contrast !== undefined) { setIsContrast(s.contrast); localStorage.setItem('linkerru_contrast', String(s.contrast)); }
+                if (s.glass_blur !== undefined) { setIsGlassBlur(s.glass_blur); localStorage.setItem('linkerru_glass_blur', String(s.glass_blur)); }
+                if (s.toast !== undefined) { setIsToastEnabled(s.toast); localStorage.setItem('linkerru_toast', String(s.toast)); }
+                if (s.sound !== undefined) { setIsSoundEnabled(s.sound); localStorage.setItem('linkerru_sound', String(s.sound)); }
+                if (s.sound_volume !== undefined) { setSoundVolume(s.sound_volume); localStorage.setItem('linkerru_sound_volume', String(s.sound_volume)); }
+                if (s.brightness !== undefined) { setBrightness(s.brightness); localStorage.setItem('linkerru_brightness', String(s.brightness)); }
+                if (s.click_sound) { setClickSound(s.click_sound); localStorage.setItem('linkerru_click_sound', s.click_sound); }
+                if (s.notify_sound) { setNotifySound(s.notify_sound); localStorage.setItem('linkerru_notify_sound', s.notify_sound); }
+                if (s.panic_key !== undefined) { setPanicKey(s.panic_key); localStorage.setItem('linkerru_panic_key', s.panic_key); }
+                if (s.panic_url) { setPanicUrl(s.panic_url); localStorage.setItem('linkerru_panic_url', s.panic_url); }
+                if (s.server) { setSelectedServer(s.server); localStorage.setItem('linkerru_server', s.server); }
+                if (s.tablet_choice !== undefined) { setTabletChoice(s.tablet_choice); if(s.tablet_choice) localStorage.setItem('linkerru_tablet_choice', s.tablet_choice); else localStorage.removeItem('linkerru_tablet_choice'); }
+                if (s.clock_type) { setClockType(s.clock_type); localStorage.setItem('linkerru_clock_type', s.clock_type); }
+                if (s.clock_variation) { setClockVariation(s.clock_variation); localStorage.setItem('linkerru_clock_variation', String(s.clock_variation)); }
+                if (s.links) {
+                  const parsedLinks = typeof s.links === 'string' ? JSON.parse(s.links) : s.links;
+                  if (Array.isArray(parsedLinks)) {
+                    const clamped = parsedLinks.slice(0, MAX_QUICK_LINKS);
+                    setCustomLinks(clamped);
+                    localStorage.setItem('linkerru_links', JSON.stringify(clamped));
                   }
-                } catch { /* ignore */ }
+                }
+                if (s.toggles) {
+                  const parsedToggles = typeof s.toggles === 'string' ? JSON.parse(s.toggles) : s.toggles;
+                  if (Array.isArray(parsedToggles)) {
+                     const valid = parsedToggles.filter((t: string) => (TOGGLE_IDS as readonly string[]).includes(t)).slice(0, MAX_TOGGLES) as ToggleId[];
+                     setActiveToggles(valid);
+                     localStorage.setItem('linkerru_toggles', JSON.stringify(valid));
+                  }
+                }
+                if (s.optimized_engine !== undefined) {
+                  const opt = s.optimized_engine === true || s.optimized_engine === 'true';
+                  setIsOptimizedEngine(opt);
+                  localStorage.setItem('linkerru_optimized_engine', String(opt));
+                }
+                if (s.installed_extensions) {
+                  try {
+                    const exts = typeof s.installed_extensions === 'string' ? JSON.parse(s.installed_extensions) : s.installed_extensions;
+                    if (Array.isArray(exts)) {
+                      localStorage.setItem('linkerru_installed_extensions', JSON.stringify(exts));
+                    }
+                  } catch { /* ignore */ }
+                }
+                
+                setTimeout(() => {
+                  isSyncingFromCloud.current = false;
+                }, 300);
               }
-              
-              isSyncingFromCloud.current = false;
             } else {
-              // No settings in cloud, push local ones
-              saveUserDataToFirebase(user.uid, user.email || '', data.nickname || nickname);
+              // New user record creation
+              const initNick = user.displayName || localStorage.getItem('linkerru_nickname') || 'Guest';
+              setDoc(userDocRef, {
+                uid: user.uid,
+                nickname: initNick,
+                email: user.email || '',
+                updatedAt: serverTimestamp()
+              }, { merge: true });
             }
-          } else {
-            // New user, create user record & save current local settings
-            await setDoc(userDocRef, {
-              uid: user.uid,
-              nickname: nickname || 'Guest',
-              email: user.email || '',
-              updatedAt: serverTimestamp()
-            });
-            saveUserDataToFirebase(user.uid, user.email || '', nickname || 'Guest');
-          }
+          }, (err) => {
+            console.error("Error in real-time user sync:", err);
+          });
         } catch (err) {
-          console.error("Error loading user profile from Firebase:", err);
+          console.error("Error setting up user profile from Firebase:", err);
         }
       } else {
         setIsAuthenticated(false);
@@ -846,7 +862,18 @@ export default function App() {
       }
     });
 
-    return () => unsubscribeAuth();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'linkerru_nickname' && e.newValue) {
+        setNickname(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -1653,8 +1680,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const rawWmOpen = wm.open;
   const openAppWithMode = (opts: Parameters<typeof wm.open>[0]) => {
     if (appMode === 'classic') {
-      if (opts.id === 'agno') {
-        openAboutBlank('https://agno-agent-ui.vercel.app/', 'Agno GPT');
+      if (opts.id === 'lisyan_ai' || opts.id === 'agno') {
+        const lisyanUrl = `${window.location.origin}${window.location.pathname}?standalone=lisyan_ai`;
+        openAboutBlank(lisyanUrl, 'Lisyan AI');
         return;
       }
       if (opts.id === 'proxy') {
@@ -1692,7 +1720,8 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     const w = wm.windows.find((win) => win.id === id);
     return w ? w.isMinimized : false;
   };
-  const agnoMinimized = isMinimized('agno');
+  const agnoMinimized = isMinimized('lisyan_ai') || isMinimized('agno');
+  const lisyanAiMinimized = agnoMinimized;
   const lisyanMinimized = isMinimized('lisyan');
   const settingsMinimized = isMinimized('settings');
   const calculatorMinimized = isMinimized('calculator');
@@ -1700,25 +1729,26 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const wallpapersMinimized = isMinimized('wallpapers');
   const proxyMinimized = isMinimized('proxy');
 
-  const openAgnoWindow = () => {
+  const openLisyanAiWindow = () => {
     activeWm.open({
-      id: 'agno',
-      title: 'Agno GPT',
-      icon: <Bot size={14} className="text-[var(--on-surface)]" />,
+      id: 'lisyan_ai',
+      title: 'Lisyan AI',
+      icon: <LisyanLogo className="w-3.5 h-3.5" variant="raw" />,
       singleton: true,
-      initialWidth: 900,
+      initialWidth: 920,
       initialHeight: 640,
-      minWidth: 480,
-      minHeight: 360,
+      minWidth: 440,
+      minHeight: 380,
       render: () => (
-        <iframe
-          src="https://agno-agent-ui.vercel.app/"
-          className="h-full w-full border-none"
-          title="Agno GPT"
+        <LisyanAIApp
+          lang={lang}
+          onLangChange={setLang}
+          theme={theme}
         />
       ),
     });
   };
+  const openAgnoWindow = openLisyanAiWindow;
 
   const openSettingsWindow = (tab: 'appearance' | 'language' | 'notifications' | 'sound' | 'about' | 'security' | 'toggles' | 'developer' | 'account' = 'appearance') => {
     setSettingsInitialTab(tab);
@@ -1874,15 +1904,11 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
 
-  const openLisyanWindow = () => {
+  const openLisyanWindow = (initialRoomId?: string) => {
     activeWm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
-      icon: (
-        <div className="w-4 h-4 rounded flex items-center justify-center p-0 overflow-hidden">
-          <M3LoadingIndicator size={14} color="var(--accent)" speed={0.4} />
-        </div>
-      ),
+      icon: <LisyanConnectLogo className="w-3.5 h-3.5" variant="raw" theme={theme} />,
       singleton: true,
       initialWidth: 880,
       initialHeight: 680,
@@ -1895,7 +1921,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             onClose={() => { wm.close('lisyan'); setClassicModalState(null); }}
             lang={lang}
             theme={theme}
+            activePalette={activePalette}
             isMobileLayout={isMobileLayout}
+            initialRoomId={initialRoomId}
           />
         </div>
       ),
@@ -2025,6 +2053,20 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   useEffect(() => {
     localStorage.setItem('linkerru_palette', activePalette.primary);
   }, [activePalette]);
+
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const joinCode =
+        searchParams.get('join') || searchParams.get('room') || searchParams.get('pin');
+      const app = searchParams.get('app');
+      if (joinCode && joinCode.trim()) {
+        openLisyanWindow(joinCode.trim().toUpperCase());
+      } else if (app === 'lisyan' || app === 'connect' || app === 'lisyanconnect' || app === 'lisyan_connect') {
+        openLisyanWindow();
+      }
+    } catch {}
+  }, []);
 
   const handlePaletteChange = (paletteId: string) => {
     playChime('click');
@@ -2454,6 +2496,46 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     }
   }, []);
 
+  if (
+    standaloneParam === 'lisyan_connect' ||
+    standaloneParam === 'lisyanconnect' ||
+    standaloneParam === 'connect' ||
+    standaloneParam === 'lisyan'
+  ) {
+    let initialJoin: string | null = null;
+    try {
+      const p = new URLSearchParams(window.location.search);
+      initialJoin = p.get('join') || p.get('room') || p.get('pin');
+    } catch {}
+
+    return (
+      <div className="h-screen w-screen bg-[var(--surface)] text-[var(--on-surface)] overflow-hidden font-sans select-none">
+        <LisyanConnectModal
+          isOpen={true}
+          onClose={() => {
+            window.location.href = window.location.pathname;
+          }}
+          lang={lang}
+          theme={theme}
+          isMobileLayout={isMobileLayout}
+          initialRoomId={initialJoin}
+        />
+      </div>
+    );
+  }
+
+  if (standaloneParam === 'lisyan_ai' || standaloneParam === 'lisyanai' || standaloneParam === 'agno') {
+    return (
+      <div className="h-screen w-screen bg-[var(--surface)] text-[var(--on-surface)] overflow-hidden font-sans select-none">
+        <LisyanAIApp
+          lang={lang}
+          onLangChange={setLang}
+          theme={theme}
+        />
+      </div>
+    );
+  }
+
   if (standaloneParam === 'subconvert') {
     return (
       <div className="h-screen w-screen bg-[var(--surface)] text-[var(--on-surface)] overflow-hidden font-sans select-none">
@@ -2566,7 +2648,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="min-h-screen text-[var(--on-surface)] p-5 transition-colors duration-300 md:p-8 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white"
+        className={`min-h-screen text-[var(--on-surface)] ${isMobileLayout ? 'p-0' : 'p-5 md:p-8'} transition-colors duration-300 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white`}
         id="root-launcher-app"
       >
       <div className="fixed top-6 right-6 z-[100] pointer-events-auto flex flex-col items-end">
@@ -2654,9 +2736,9 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </button>
         </div>
       ) : isMobileLayout ? (
-        <div className="flex flex-col flex-1 w-full max-w-md mx-auto bg-[var(--surface)] text-[var(--on-surface)] relative overflow-hidden font-sans select-none min-h-screen">
+        <div className="flex flex-col flex-1 w-full bg-[var(--surface)] text-[var(--on-surface)] relative overflow-x-hidden font-sans select-none min-h-screen">
           {/* Mobile Top Bar */}
-          <div className="flex justify-between items-center px-6 pt-8 pb-3 relative z-10">
+          <div className="w-full max-w-2xl mx-auto flex justify-between items-center px-6 pt-6 pb-4 relative z-10 border-b border-[var(--outline-var)]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] p-2 shadow-sm flex items-center justify-center">
                 <img
@@ -2666,51 +2748,62 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 />
               </div>
               <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-black tracking-tight text-[var(--on-surface)]">
-                    LinkerRu <span className="text-[var(--on-surface-var)]">:MBL</span>
-                  </span>
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--container)] border border-[var(--outline-var)] text-[var(--on-surface)]">
-                    Mobile
-                  </span>
-                </div>
+                <span className="text-xl font-black tracking-tight text-[var(--on-surface)]">
+                  LinkerRu
+                </span>
                 <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
                   LISYAN X LINKERRU
                 </span>
               </div>
             </div>
+
+            {/* Top Bar Quick Language Switcher */}
+            <button
+              onClick={() => {
+                playChime('click');
+                const nextLang: Language = lang === 'ru' ? 'en' : 'ru';
+                setLang(nextLang);
+                localStorage.setItem('linkerru_lang', nextLang);
+              }}
+              className="px-3.5 py-2 rounded-2xl bg-[var(--surface-dim)] hover:bg-[var(--container)] border border-[var(--outline)] flex items-center gap-2 text-xs font-black text-[var(--on-surface)] transition-all active:scale-95 shadow-xs cursor-pointer"
+              title={lang === 'ru' ? 'Сменить язык' : 'Switch language'}
+            >
+              <Languages size={16} style={{ color: activePalette.primary }} />
+              <span className="uppercase">{lang === 'ru' ? 'RU' : 'EN'}</span>
+            </button>
           </div>
 
           {/* Mobile Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-6 scrollbar-hide pb-28 relative z-10">
+          <div className="flex-1 overflow-y-auto px-6 py-6 max-w-2xl mx-auto w-full flex flex-col gap-6 scrollbar-hide pb-28 relative z-10">
             
-            {/* Hero Card: Lisyan Connect (In Development - Gray state, non-clickable) */}
+            {/* Hero Card: Lisyan Connect */}
             <div
-              className="w-full rounded-3xl bg-[var(--surface-dim)]/80 border border-[var(--outline)]/80 p-6 flex flex-col gap-5 transition-all shadow-sm relative overflow-hidden select-none cursor-default opacity-85"
+              onClick={() => {
+                playChime('click');
+                openLisyanWindow();
+              }}
+              className="w-full rounded-3xl panel-gradient p-6 flex flex-col gap-5 transition-all shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden cursor-pointer group border border-[var(--outline-var)]"
+              id="hero-card-lisyan-connect"
             >
               <div className="flex items-start justify-between relative z-10">
                 <div
-                  className="w-16 h-16 rounded-2xl border border-[var(--outline-var)] flex items-center justify-center shadow-md p-2 overflow-hidden transition-colors"
+                  className="w-16 h-16 rounded-2xl border border-[var(--btn-border)] flex items-center justify-center shadow-inner p-3 overflow-hidden transition-transform group-hover:scale-105"
                   style={{
                     backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
                   }}
                 >
-                  <M3LoadingIndicator
-                    size={38}
-                    color={theme === 'dark' ? '#ffffff' : '#ffffff'}
-                    speed={0.4}
-                  />
+                  <LisyanConnectLogo className="w-10 h-10" variant="raw" theme={theme} />
                 </div>
-                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--container)] text-[var(--on-surface)] border border-[var(--outline-var)] tracking-wider">
+                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-[var(--container)] text-[var(--accent)] border border-[var(--outline-var)] tracking-wider">
                   {lang === 'ru' ? 'ФАЙЛООБМЕННИК' : 'FILE SHARING'}
                 </span>
               </div>
 
               <div className="flex flex-col gap-1 relative z-10">
-                <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)]">
+                <h2 className="text-2xl font-black tracking-tight text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
                   Lisyan Connect
                 </h2>
-                <p className="text-xs font-medium text-[var(--on-surface-var)] leading-relaxed opacity-85">
+                <p className="text-xs font-medium text-[var(--on-surface-var)] leading-relaxed">
                   {lang === 'ru'
                     ? 'Файлообменник для быстрой и безопасной передачи данных без ограничений.'
                     : 'File sharing service for fast and secure data transfer without limits.'}
@@ -2718,14 +2811,21 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               </div>
 
               <div className="pt-3 border-t border-[var(--outline-var)] flex items-center justify-between relative z-10">
-                <span className="text-xs font-bold text-[var(--on-surface-var)] flex items-center gap-1 opacity-75">
-                  {lang === 'ru' ? 'В разработке' : 'In Development'}
+                <span className="text-xs font-bold text-[var(--accent)] flex items-center gap-1">
+                  {lang === 'ru' ? 'Открыть' : lang === 'uk' ? 'Відкрити' : 'Open'}
                 </span>
-                <div className="w-8 h-8 rounded-full bg-[var(--container)] flex items-center justify-center text-[var(--on-surface-var)] opacity-60">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs group-hover:translate-x-0.5 transition-transform"
+                  style={{
+                    backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                    color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                  }}
+                >
                   <ChevronRight size={16} />
                 </div>
               </div>
             </div>
+
             {/* Account Manager Card */}
             <div className="flex flex-col gap-2.5">
               <span className="text-[11px] font-black uppercase tracking-wider text-[var(--on-surface-var)] pl-1">
@@ -2759,27 +2859,26 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </div>
 
           {/* Bottom Navigation Bar */}
-          <div className="absolute bottom-0 left-0 right-0 h-20 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--outline)] flex items-center justify-around px-8 z-50">
+          <div className="fixed bottom-0 left-0 right-0 h-20 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--outline)] flex items-center justify-around px-6 z-50">
             <button
-              disabled
-              title={lang === 'ru' ? 'В разработке' : 'In Development'}
-              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] opacity-40 cursor-not-allowed select-none"
+              onClick={() => {
+                playChime('click');
+                const nextLang: Language = lang === 'ru' ? 'en' : 'ru';
+                setLang(nextLang);
+                localStorage.setItem('linkerru_lang', nextLang);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[var(--surface-dim)] hover:bg-[var(--container)] border border-[var(--outline)] text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer font-bold text-xs shadow-xs"
             >
-              <Monitor size={20} strokeWidth={2.2} />
-              <span className="text-[10px] font-bold">Lisyan</span>
-            </button>            <button 
-              onClick={() => { playChime('click'); handleOpenSettings('appearance'); }}
-              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
-            >
-              <Settings size={20} strokeWidth={2.2} />
-              <span className="text-[10px] font-bold">{lang === 'ru' ? 'Настройки' : 'Settings'}</span>
+              <Languages size={18} style={{ color: activePalette.primary }} />
+              <span>{lang === 'ru' ? 'Язык: RU' : 'Lang: EN'}</span>
             </button>
+
             <button 
               onClick={() => { playChime('click'); openAccountWindow(); }}
-              className="flex flex-col items-center gap-1 text-[var(--on-surface-var)] hover:text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[var(--surface-dim)] hover:bg-[var(--container)] border border-[var(--outline)] text-[var(--on-surface)] active:scale-95 transition-all cursor-pointer font-bold text-xs shadow-xs"
             >
-              <User size={20} strokeWidth={2.2} />
-              <span className="text-[10px] font-bold">{lang === 'ru' ? 'Аккаунт' : 'Account'}</span>
+              <User size={18} style={{ color: activePalette.primary }} />
+              <span>{lang === 'ru' ? 'Аккаунт' : 'Account'}</span>
             </button>
           </div>
 
@@ -3001,37 +3100,41 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           playChime={playChime}
         />
 
-        {/* WIDGET 2: Agno GPT */}
-        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-agno-gpt">
-          {agnoMinimized && (
+        {/* WIDGET 2: Lisyan AI */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-ai">
+          {lisyanAiMinimized && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 playChime('click');
-                openAgnoWindow();
+                openLisyanAiWindow();
               }}
               className="running-pill"
-              title={lang === 'ru' ? 'Развернуть Agno GPT' : 'Restore Agno GPT'}
+              title={lang === 'ru' ? 'Развернуть Lisyan AI' : lang === 'uk' ? 'Розгорнути Lisyan AI' : 'Restore Lisyan AI'}
             >
-              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : 'Running'}
+              <span className="running-pill-dot" />{lang === 'ru' ? 'В фоне' : lang === 'uk' ? 'У фоні' : 'Running'}
             </button>
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center shadow-inner" style={{ backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary }}>
-              <Bot size={20} className={theme === 'dark' ? 'text-[var(--on-surface)]' : 'text-white'} />
+              <LisyanLogo className="w-6 h-6" variant="raw" />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
-            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Agno GPT</h3>
+            <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan AI</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
-              {lang === 'ru' ? 'Персональный ИИ-ассистент на базе OpenAI' : 'Personal AI assistant powered by OPENAI'}
+              {lang === 'ru'
+                ? 'Персональный ИИ-ассистент: GPT-OSS, Compound & Vision'
+                : lang === 'uk'
+                  ? 'Персональний ІІ-асистент: GPT-OSS, Compound & Vision'
+                  : 'Personal AI Assistant: GPT-OSS, Compound & Vision'}
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
             <button
               onClick={() => {
                 playChime('click');
-                openAgnoWindow();
+                openLisyanAiWindow();
               }}
               className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
               style={{
@@ -3040,15 +3143,15 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                 color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
                 boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
               }}
-              id="agno-card-open-btn"
+              id="lisyan-ai-card-open-btn"
             >
-              {lang === 'ru' ? 'Открыть' : 'Open'}
+              {lang === 'ru' ? 'Открыть' : lang === 'uk' ? 'Відкрити' : 'Open'}
             </button>
           </div>
         </div>
 
-        {/* WIDGET 3: Lisyan Connect (In Development - Gray state, non-interactive) */}
-        <div className="card rounded-3xl p-6 flex flex-col justify-between min-h-[250px] relative bg-[var(--surface-dim)]/80 border border-[var(--outline)]/70 shadow-xs select-none cursor-default opacity-85" id="card-lisyan-connect">
+        {/* WIDGET 3: Lisyan Connect (Active) */}
+        <div className="card panel-gradient rounded-3xl p-6 flex flex-col justify-between min-h-[250px] transition-all hover:scale-[1.02] active:scale-[0.98] relative" id="card-lisyan-connect">
           {lisyanMinimized && (
             <button
               onClick={(e) => {
@@ -3064,33 +3167,37 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           )}
           <div className="flex justify-between items-start h-[44px]">
             <div
-              className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-1.5 shadow-inner"
+              className="w-11 h-11 rounded-2xl border border-[var(--btn-border)] overflow-hidden flex items-center justify-center p-2 shadow-inner"
               style={{
                 backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
               }}
             >
-              <M3LoadingIndicator
-                size={26}
-                color={theme === 'dark' ? '#ffffff' : '#ffffff'}
-                speed={0.4}
-              />
+              <LisyanConnectLogo className="w-7 h-7" variant="raw" theme={theme} />
             </div>
           </div>
           <div className="flex-1 mt-3 flex flex-col pr-8">
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan Connect</h3>
-            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1 opacity-80">
+            <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru' ? 'Файлообменник для быстрой и безопасной передачи данных без ограничений.' : 'File sharing service for fast and secure data transfer without limits.'}
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <div className="flex gap-2 flex-1">
-              <button
-                disabled
-                className="flex-1 py-3 rounded-full text-xs font-extrabold border transition-all text-center shadow-xs bg-[var(--container)]/80 border-[var(--outline)] text-[var(--on-surface-var)] opacity-60 cursor-not-allowed select-none"
-              >
-                {lang === 'ru' ? 'В разработке' : 'In Development'}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                playChime('click');
+                openLisyanWindow();
+              }}
+              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
+              style={{
+                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
+                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
+                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
+                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              }}
+              id="lisyan-connect-card-open-btn"
+            >
+              {lang === 'ru' ? 'Открыть' : lang === 'uk' ? 'Відкрити' : 'Open'}
+            </button>
           </div>
         </div>
         {/* WIDGET 4: Nexus Game Box NGB (In Development - Gray state, non-interactive) */}
@@ -3582,41 +3689,47 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
       {/* --- ALL REGISTERED APPLICATION OVERLAYS --- */}
       
-      {/* Floating Agno GPT Window */}
+      {/* Floating Lisyan AI Window */}
       <AnimatePresence>
-        {isAgnoOpen && (
+        {isLisyanAiOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`fixed z-[60] flex flex-col rounded-3xl overflow-hidden shadow-2xl border border-[var(--outline)] transition-all duration-300 ${isAgnoFullscreen ? 'inset-0 md:inset-0 rounded-none border-none' : 'inset-4 md:inset-10'}`}
+            className={`fixed z-[60] flex flex-col rounded-3xl overflow-hidden shadow-2xl border border-[var(--outline)] transition-all duration-300 ${isLisyanAiFullscreen ? 'inset-0 md:inset-0 rounded-none border-none' : 'inset-4 md:inset-10'}`}
             style={{ backgroundColor: 'var(--surface)' }}
           >
             <div className="h-12 border-b border-[var(--outline-var)] flex items-center justify-between px-4 shrink-0" style={{ backgroundColor: 'var(--surface-dim)' }}>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md overflow-hidden bg-[var(--surface)] border border-[var(--outline-var)] p-0.5">
-                  <img src={theme === 'dark' ? "https://github.com/user-attachments/assets/708555b4-14a6-4f32-9240-5ecd928ec9fd" : "https://github.com/user-attachments/assets/6805ef80-9512-4954-9035-1b53133f26c1"} alt="Logo" className={`w-full h-full object-contain ${theme === "dark" ? "bg-black" : "bg-white"}`} />
+                <div className="w-6 h-6 rounded-md overflow-hidden bg-[var(--surface)] border border-[var(--outline-var)] p-0.5 flex items-center justify-center">
+                  <Sparkles size={14} className="text-[var(--accent)]" />
                 </div>
-                <span className="text-xs font-black text-[var(--on-surface)]">Agno GPT</span>
+                <span className="text-xs font-black text-[var(--on-surface)]">Lisyan AI</span>
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-2" title="Online" />
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsAgnoFullscreen(!isAgnoFullscreen)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
-                  title={isAgnoFullscreen ? "Minimize" : "Maximize"}
+                  onClick={() => setIsLisyanAiFullscreen(!isLisyanAiFullscreen)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)] cursor-pointer"
+                  title={isLisyanAiFullscreen ? "Minimize" : "Maximize"}
                 >
-                  {isAgnoFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                  {isLisyanAiFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
                 </button>
                 <button
-                  onClick={() => setIsAgnoOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)]"
+                  onClick={() => setIsLisyanAiOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--outline-var)] bg-[var(--surface)] text-[var(--on-surface-var)] transition-all hover:bg-[var(--container)] hover:text-[var(--on-surface)] cursor-pointer"
                 >
                   <X size={14} />
                 </button>
               </div>
             </div>
-            <iframe src="https://agno-agent-ui.vercel.app/" className="flex-1 w-full h-full border-none" />
+            <div className="flex-1 w-full h-full overflow-hidden">
+              <LisyanAIApp
+                lang={lang}
+                onLangChange={setLang}
+                theme={theme}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3949,6 +4062,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               );
             case 'changelog':
               return <ChangelogModal lang={lang} embeddedInWindow={true} />;
+            case 'lisyan_ai':
+            case 'agno':
+              return (
+                <div className="wm-embedded h-full w-full">
+                  <LisyanAIApp
+                    lang={lang}
+                    onLangChange={setLang}
+                    theme={theme}
+                  />
+                </div>
+              );
             case 'lisyan':
               return (
                 <div className="wm-embedded h-full w-full">
@@ -3957,6 +4081,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                     onClose={() => wm.close('lisyan')}
                     lang={lang}
                     theme={theme}
+                    activePalette={activePalette}
                     isMobileLayout={isMobileLayout}
                   />
                 </div>
@@ -3977,14 +4102,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
                   lang={lang}
                   primaryColor={activePalette.primary}
                   embeddedInWindow={true}
-                />
-              );
-            case 'agno':
-              return (
-                <iframe
-                  src="https://agno-agent-ui.vercel.app/"
-                  className="h-full w-full border-none"
-                  title="Agno GPT"
                 />
               );
             default:

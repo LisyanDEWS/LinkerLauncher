@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, KeyRound, Lock, Loader2, Check, ShieldCheck, LogOut, Mail, AlertCircle } from 'lucide-react';
 import { userAuth, userDb } from '../lib/userFirebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { updatePassword, signOut } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { updatePassword, signOut, updateProfile } from 'firebase/auth';
 import type { Language } from '../types';
 
 interface AccountManagerModalProps {
@@ -31,7 +31,8 @@ export function AccountManagerModal({
   }, [nickname]);
 
   const handleUpdateNickname = async () => {
-    if (!nickInput.trim()) {
+    const cleanNick = nickInput.trim();
+    if (!cleanNick) {
       setMessage({
         type: 'error',
         text: lang === 'ru' ? 'Никнейм не может быть пустым' : 'Nickname cannot be empty',
@@ -41,13 +42,28 @@ export function AccountManagerModal({
     setIsLoading(true);
     setMessage(null);
     try {
-      onNicknameChange(nickInput.trim());
+      onNicknameChange(cleanNick);
+      localStorage.setItem('linkerru_nickname', cleanNick);
+      window.dispatchEvent(new Event('storage'));
+
       if (isAuthenticated && userAuth.currentUser) {
         const userDocRef = doc(userDb, 'users', userAuth.currentUser.uid);
-        await updateDoc(userDocRef, {
-          nickname: nickInput.trim(),
-          updatedAt: Date.now(),
-        });
+        await setDoc(
+          userDocRef,
+          {
+            uid: userAuth.currentUser.uid,
+            nickname: cleanNick,
+            email: userAuth.currentUser.email || '',
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        try {
+          await updateProfile(userAuth.currentUser, { displayName: cleanNick });
+        } catch {
+          // ignore auth profile error
+        }
       }
       setMessage({
         type: 'success',
@@ -147,13 +163,6 @@ export function AccountManagerModal({
               <h3 className="text-lg font-black text-[var(--on-surface)] tracking-tight">
                 {isAuthenticated ? (nickname || 'User') : (lang === 'ru' ? 'Гостевой аккаунт' : 'Guest Account')}
               </h3>
-              <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
-                isAuthenticated 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' 
-                  : 'bg-[var(--surface)] border-[var(--outline-var)] text-[var(--on-surface-var)]'
-              }`}>
-                {isAuthenticated ? (lang === 'ru' ? 'Активен' : 'Verified') : (lang === 'ru' ? 'Гость' : 'Guest')}
-              </span>
             </div>
             <p className="text-xs font-semibold text-[var(--on-surface-var)] flex items-center justify-center sm:justify-start gap-1.5 mt-1">
               <Mail size={12} />

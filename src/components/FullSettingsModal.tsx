@@ -54,8 +54,8 @@ import { materialPalettes } from '../data/themes';
 import SquashToggle from './SquashToggle';
 import { ColorPickerField } from './ColorPickerField';
 import { userAuth, userDb } from '../lib/userFirebase';
-import { updatePassword } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { updatePassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { LanguageSelector } from './LanguageSelector';
 import { LiveWallpaper } from './LiveWallpaper';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
@@ -2295,27 +2295,24 @@ export default function FullSettingsModal({
                                 </div>
                               </a>
 
-                              {/* Agno GPT Credit */}
-                              <a 
-                                href="https://agno.com/" 
-                                target="_blank" 
-                                rel="noreferrer" 
+                              {/* Lisyan AI Credit */}
+                              <div 
                                 className="p-3.5 bg-[var(--surface-dim)] hover:bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] rounded-2xl flex items-center gap-3 transition-all group"
                               >
                                 <img 
-                                  src="https://mintcdn.com/agno-v2/SgkhZ8Fg5uYnD8iq/logo/black.svg?fit=max&auto=format&n=SgkhZ8Fg5uYnD8iq&q=85&s=fbe4dbb306f50c4d379aff3861e202fa" 
-                                  alt="Agno GPT" 
-                                  className="w-8 h-8 rounded-lg object-contain bg-white p-1 shrink-0 border border-black/10" 
+                                  src="https://github.com/user-attachments/assets/5805610d-ed98-41c3-9b92-83e53dc1adb4" 
+                                  alt="Lisyan AI" 
+                                  className="w-8 h-8 rounded-lg object-cover p-0.5 shrink-0 border border-purple-500/20" 
                                 />
                                 <div>
                                   <div className="text-xs font-black text-[var(--on-surface)] group-hover:text-[var(--accent)] transition-colors">
-                                    Agno (for Agno GPT)
+                                    Lisyan AI
                                   </div>
                                   <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
-                                    agno.com
+                                    GPT-OSS, Compound & Vision
                                   </div>
                                 </div>
-                              </a>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2361,7 +2358,8 @@ function AccountTabContent({
   }, [nickname]);
 
   const handleUpdateNickname = async () => {
-    if (!nickInput.trim()) {
+    const cleanNick = nickInput.trim();
+    if (!cleanNick) {
       setMessage({
         type: 'error',
         text: lang === 'ru' ? 'Никнейм не может быть пустым' : 'Nickname cannot be empty'
@@ -2371,14 +2369,29 @@ function AccountTabContent({
     setIsLoading(true);
     setMessage(null);
     try {
-      onNicknameChange(nickInput.trim());
+      onNicknameChange(cleanNick);
+      localStorage.setItem('linkerru_nickname', cleanNick);
+      window.dispatchEvent(new Event('storage'));
+
       // If user is authenticated, we also update it in Firestore
       if (isAuthenticated && userAuth.currentUser) {
         const userDocRef = doc(userDb, 'users', userAuth.currentUser.uid);
-        await updateDoc(userDocRef, {
-          nickname: nickInput.trim(),
-          updatedAt: Date.now()
-        });
+        await setDoc(
+          userDocRef,
+          {
+            uid: userAuth.currentUser.uid,
+            nickname: cleanNick,
+            email: userAuth.currentUser.email || '',
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        try {
+          await updateProfile(userAuth.currentUser, { displayName: cleanNick });
+        } catch {
+          // ignore auth profile error
+        }
       }
       setMessage({
         type: 'success',

@@ -40,7 +40,16 @@ service cloud.firestore {
       }
     }
 
-    // 4. Fallback: allow read and write across all collections
+    // 4. Lisyan AI Distributed Semantic & Question Cache
+    match /lisyan_cache/{cacheId} {
+      allow read, write: if true;
+    }
+    
+    match /lisyan_questions/{questionId} {
+      allow read, write: if true;
+    }
+
+    // 5. Fallback: allow read and write across all collections
     match /{document=**} {
       allow read, write: if true;
     }

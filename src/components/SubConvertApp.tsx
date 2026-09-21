@@ -61,6 +61,7 @@ interface SubConvertAppProps {
   activePalette?: Material3Palette;
   playChime?: (type?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
   triggerToast?: (text: string) => void;
+  openLisyanAI?: () => void;
   openAgnoGPT?: () => void;
 }
 
@@ -256,6 +257,7 @@ export function SubConvertApp({
   activePalette,
   playChime,
   triggerToast,
+  openLisyanAI,
   openAgnoGPT,
 }: SubConvertAppProps) {
   const [videoUrl, setVideoUrl] = useState('');
@@ -411,15 +413,17 @@ export function SubConvertApp({
     downloadFile(filename, JSON.stringify(data, null, 2), 'application/json');
   };
 
-  const handleAnalyzeAgno = async () => {
+  const handleAnalyzeLisyan = async () => {
     if (!data) return;
     try {
       await navigator.clipboard.writeText(data.text);
       setCopiedType('agno');
       setTimeout(() => setCopiedType(null), 2000);
       playChime?.('click');
-      triggerToast?.(lang === 'ru' ? 'Текст скопирован. Открываем AgnoGPT...' : lang === 'uk' ? 'Текст скопійовано. Відкриваємо AgnoGPT...' : 'Text copied. Opening AgnoGPT...');
-      if (openAgnoGPT) {
+      triggerToast?.(lang === 'ru' ? 'Текст скопирован. Открываем Lisyan AI...' : lang === 'uk' ? 'Текст скопійовано. Відкриваємо Lisyan AI...' : 'Text copied. Opening Lisyan AI...');
+      if (openLisyanAI) {
+        openLisyanAI();
+      } else if (openAgnoGPT) {
         openAgnoGPT();
       }
     } catch (err) {
@@ -743,13 +747,13 @@ export function SubConvertApp({
             {/* DOWNLOAD & COPY BUTTONS */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <button
-                onClick={handleAnalyzeAgno}
+                onClick={handleAnalyzeLisyan}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                 style={{ backgroundColor: primaryColor }}
-                title="Analyze in AgnoGPT"
+                title="Analyze in Lisyan AI"
               >
                 {copiedType === 'agno' ? <Check size={13} className="text-white" /> : <Bot size={13} />}
-                <span>{copiedType === 'agno' ? (lang === 'ru' ? 'Открываем...' : lang === 'uk' ? 'Відкриваємо...' : 'Opening...') : (lang === 'ru' ? 'Анализ в AgnoGPT' : lang === 'uk' ? 'Аналіз в AgnoGPT' : 'Analyze in AgnoGPT')}</span>
+                <span>{copiedType === 'agno' ? (lang === 'ru' ? 'Открываем...' : lang === 'uk' ? 'Відкриваємо...' : 'Opening...') : (lang === 'ru' ? 'Анализ в Lisyan AI' : lang === 'uk' ? 'Аналіз в Lisyan AI' : 'Analyze in Lisyan AI')}</span>
               </button>
               <button
                 onClick={handleCopyText}

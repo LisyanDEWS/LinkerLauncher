@@ -1089,50 +1089,64 @@ function WindowFrame({
       {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
         {renderWindowContent ? (renderWindowContent(win.id) ?? win.render()) : win.render()}
+      </div>
 
-        {/* Material You M3 Window Launching Loader */}
-        {!isSystemApp && loaderPhase !== 'hidden' && (
-          <div
-            className={`absolute inset-0 z-30 flex flex-col items-center justify-center select-none ${
-              loaderPhase === 'fading' ? 'pointer-events-none' : 'pointer-events-auto'
-            }`}
-            style={{
-              backdropFilter: 'blur(20px) saturate(140%)',
-              WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-              background: 'color-mix(in srgb, var(--surface) 88%, transparent)',
-              opacity: loaderPhase === 'fading' ? 0 : 1,
-              transition: 'opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-          >
-            <div className="flex flex-col items-center justify-center gap-3.5 px-4 text-center w-full max-w-xs">
-              <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <M3LoadingIndicator size={44} color="var(--accent)" speed={1} />
+      {/* Material You M3 Window Launching Loader (covers entire window full-page) */}
+      {!isSystemApp && loaderPhase !== 'hidden' && (
+        <div
+          className={`absolute inset-0 z-50 flex flex-col items-center justify-center select-none rounded-[inherit] overflow-hidden ${
+            loaderPhase === 'fading' ? 'pointer-events-none' : 'pointer-events-auto'
+          }`}
+          style={{
+            backdropFilter: 'blur(24px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(150%)',
+            background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
+            opacity: loaderPhase === 'fading' ? 0 : 1,
+            transition: 'opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          {/* Dismiss button on top right */}
+          <div className="absolute top-3 right-3 flex items-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              title={isRu ? 'Закрыть' : isUk ? 'Закрити' : 'Close'}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[var(--on-surface-var)] hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center justify-center gap-4 px-6 text-center w-full max-w-sm">
+            <div style={{ width: 50, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <M3LoadingIndicator size={50} color="var(--accent)" speed={1} />
+            </div>
+            <div className="flex flex-col items-center justify-center w-full gap-2.5">
+              <div className="flex items-center gap-2">
+                {win.icon && (
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0 opacity-80 text-[var(--accent)]">
+                    {win.icon}
+                  </div>
+                )}
+                <span className="text-xs sm:text-sm font-bold tracking-tight text-[var(--on-surface)]">
+                  {win.loaderTitle || win.title} — {isRu ? 'Запуск' : isUk ? 'Запуск' : 'Launching'} <span className="text-[var(--on-surface-var)] ml-1 font-mono text-xs">{Math.round(loaderProgress)}%</span>
+                </span>
               </div>
-              <div className="flex flex-col items-center justify-center w-full gap-2">
-                <div className="flex items-center gap-2">
-                  {win.icon && (
-                    <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-80 text-[var(--accent)]">
-                      {win.icon}
-                    </div>
-                  )}
-                  <span className="text-xs font-bold tracking-tight text-[var(--on-surface)]">
-                    {win.loaderTitle || win.title} — {isRu ? 'Запуск' : isUk ? 'Запуск' : 'Launching'} <span className="text-[var(--on-surface-var)] ml-1">{Math.round(loaderProgress)}%</span>
-                  </span>
-                </div>
-                {/* Horizontal status fill — simple line */}
-                <div className="w-full h-0.5 bg-[var(--outline-var)] rounded-full overflow-hidden opacity-70">
-                  <div
-                    className="h-full bg-[var(--accent)] transition-all duration-150 ease-out"
-                    style={{
-                      width: `${Math.min(100, Math.round(loaderProgress))}%`,
-                    }}
-                  />
-                </div>
+              {/* Horizontal status fill — simple line */}
+              <div className="w-full h-1 bg-[var(--outline-var)] rounded-full overflow-hidden opacity-75">
+                <div
+                  className="h-full bg-[var(--accent)] transition-all duration-150 ease-out"
+                  style={{
+                    width: `${Math.min(100, Math.round(loaderProgress))}%`,
+                  }}
+                />
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Resize handle */}
       {!win.isMaximized && !isMobileLayout && (
