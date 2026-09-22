@@ -1,119 +1,158 @@
 import type { Message, ModelId } from "../types";
 import { getModel } from "../data/models";
 import { Language } from "../../../types";
-import { normalizeText, detectInstantRuleResponse } from "./optimizer/textCompressor";
+import { normalizeText, detectInstantRuleResponse, ultraCompressForSmall } from "./optimizer/textCompressor";
 import { buildOptimizedContext } from "./optimizer/contextManager";
-import { routeRequest, calculateAdaptiveMaxTokens } from "./optimizer/smartRouter";
-import { getCachedResponse, saveCachedResponse } from "./optimizer/cacheEngine";
+import { routeRequest, isSmallQuestion, isTinyQuestion } from "./optimizer/smartRouter";
+import { getCachedResponse, saveCachedResponse, getRamCacheSync } from "./optimizer/cacheEngine";
 import { recordOptimizationEvent } from "./optimizer/statsTracker";
+import { detectInputLanguage, buildLanguageInstruction, type DetectedLanguage } from "./languageDetector";
 
 const GROQ_API_KEY =
   ((import.meta as any).env?.VITE_GROQ_API_KEY || "").trim();
 const GROQ_URL =
   ((import.meta as any).env?.VITE_GROQ_URL || "https://api.groq.com/openai/v1/chat/completions").trim();
 
+// --- Performance caches (in-memory, super fast) ---
+const searchCache = new Map<string, { data: any; ts: number }>();
+const weatherCache = new Map<string, { data: string; ts: number }>();
+const subConvertCache = new Map<string, { data: string; ts: number }>();
+const ongoingRequests = new Map<string, Promise<string>>();
+
+const SEARCH_CACHE_TTL = 5 * 60 * 1000;
+const WEATHER_CACHE_TTL = 10 * 60 * 1000;
+const SUBCONVERT_CACHE_TTL = 30 * 60 * 1000;
+
+function getCachedIntegration(cache: Map<string, any>, key: string, ttl: number): any | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > ttl) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
 const SYSTEM_PROMPTS: Record<ModelId, Record<Language, string>> = {
   lnv1: {
     ru: `Вы — Lisyan AI, умный, четкий и полезный персональный ассистент LinkerRu.
 ПРАВИЛА:
-1. Давайте прямой, содержательный ответ без лишней «воды», без внутренних рассуждений и без шаблонных вводных фраз («Вот ответ:», «We need to answer:»).
-2. Всегда отвечайте на том же языке, на котором обратился пользователь.
-3. При запросе таблиц, сопоставлений или списков всегда оформляйте стандартные валидные Markdown-таблицы (| Заголовок 1 | Заголовок 2 | с разделителем |---|---|).
-4. Большие тексты анализируйте полностью, выделяя главные тезисы и структуру.
-5. Для вопросов по учебе, тестам или контрольным формулируйте естественные, понятные человеку ответы без механических клише.`,
+1. Давайте прямой, содержательный ответ без лишней «воды», без внутренних рассуждений и без шаблонных вводных фраз.
+2. КРИТИЧНО: Всегда отвечайте на том же языке, на котором написал пользователь в ПОСЛЕДНЕМ сообщении. Если пользователь пишет по-английски — отвечайте по-английски. Если по-испански — по-испански. Язык ответа = язык последнего вопроса.
+3. При запросе таблиц всегда используйте валидные Markdown-таблицы (| A | B | с |---|---|).
+4. Для крошечных вопросов отвечайте максимально коротко (1-2 предложения если достаточно).`,
     uk: `Ви — Lisyan AI, розумний, чіткий і корисний персональний асистент LinkerRu.
 ПРАВИЛА:
-1. Давайте пряму, змістовну відповідь без зайвої «води», внутрішніх міркувань та шаблонних вступних фраз.
-2. Завжди відповідайте тією ж мовою, якою звернувся користувач.
-3. При запиті таблиць завжди використовуйте стандартні валідні Markdown-таблиці (| Заголовок 1 | Заголовок 2 |).
-4. Великі тексти аналізуйте повністю, виділяючи головні тези та структуру.`,
+1. Давайте пряму, змістовну відповідь без зайвої «води».
+2. КРИТИЧНО: Завжди відповідайте тією ж мовою, якою написав користувач в ОСТАННЬОМУ повідомленні. Мова відповіді = мова останнього запитання.
+3. Для крихітних запитань відповідайте максимально коротко.`,
     en: `You are Lisyan AI, a direct, highly capable personal assistant in LinkerRu.
 RULES:
-1. Provide a direct, crystal-clear answer with zero fluff, no meta-reasoning ramblings, and no filler intros.
-2. Always reply in the exact language used by the user.
-3. For comparisons or structured data, always use clean, standard Markdown tables (| Col 1 | Col 2 | with |---|---|).
-4. When processing large texts, analyze the full input thoroughly and deliver a structured, complete response.
-5. For academic, test or exam questions, write clearly and naturally like a human expert.`,
+1. Provide a direct, crystal-clear answer with zero fluff.
+2. CRITICAL: Always reply in the EXACT language used by the user in their LAST message. If user writes in Spanish, answer in Spanish. If Russian, answer in Russian. Answer language = language of last user message.
+3. For tiny questions, answer as concisely as possible (1-2 sentences if sufficient).`,
   },
   lv1pro: {
-    ru: `Вы — Lisyan AI Pro, флагманский интеллектуальный ассистент LinkerRu.
-ПРАВИЛА:
-1. Давайте глубокие, точные и структурированные ответы без пустой «воды» и внутренних рассуждений.
-2. Всегда отвечайте на том же языке, на котором пишет пользователь.
-3. При запросе таблиц, аналитики, сравнений всегда используйте чистый синтаксис Markdown-таблиц.
-4. При работе со сложным кодом пишите чистый, современный код с краткими пояснениями.
-5. При анализе больших объемов текста и документов обрабатывайте материал целиком без усечений.
-6. Для тестов и контрольных отвечайте емко, по-человечески и по существу.`,
-    uk: `Ви — Lisyan AI Pro, флагманський інтелектуальний асистент LinkerRu.
-ПРАВИЛА:
-1. Надавайте глибокі, точні та структуровані відповіді без порожньої «води» та внутрішніх міркувань.
-2. Завжди відповідайте тією ж мовою, якою пише користувач.
-3. При запиті таблиць, аналітики або порівнянь завжди використовуйте чистий синтаксис Markdown-таблиць.
-4. При роботі зі складним кодом пишіть чистий сучасний код із короткими поясненнями.
-5. Великі тексти та документи аналізуйте повністю без урізань.`,
-    en: `You are Lisyan AI Pro, the flagship intelligent assistant in LinkerRu.
-RULES:
-1. Provide comprehensive, direct, and structured answers with zero fluff and no meta-reasoning leakages.
-2. Always reply in the exact language used by the user.
-3. For structured data or comparisons, always format standard Markdown tables.
-4. For programming tasks, produce clean, robust, modern code with clear explanations.
-5. For large texts and documents, process the entire content without arbitrary truncation.
-6. For exams and tests, explain naturally and logically like a human tutor.`,
+    ru: `Вы — Lisyan AI Pro, флагманский ассистент LinkerRu. Глубокие, точные, структурированные ответы без воды. Код — чистый, современный. КРИТИЧНО: Отвечайте на языке последнего сообщения пользователя.`,
+    uk: `Ви — Lisyan AI Pro, флагманський асистент LinkerRu. Глибокі, точні відповіді. КРИТИЧНО: Відповідайте мовою останнього повідомлення користувача.`,
+    en: `You are Lisyan AI Pro, flagship assistant. Deep, accurate, structured, zero fluff. Clean modern code. CRITICAL: Answer in language of user's last message.`,
   },
   lvision: {
-    ru: `Вы — Lisyan AI Vision, ассистент с компьютерным зрением LinkerRu.
-ПРАВИЛА:
-1. Внимательно анализируйте изображения, скриншоты, схемы и текст на них.
-2. Давайте прямой, четкий ответ на том же языке, на котором обратился пользователь.`,
-    uk: `Ви — Lisyan AI Vision, асистент із комп'ютерним зором LinkerRu.
-ПРАВИЛА:
-1. Уважно аналізуйте зображення, скріншоти, схеми та текст на них.
-2. Давайте пряму, чітку відповідь тією ж мовою, якою звернувся користувач.`,
-    en: `You are Lisyan AI Vision, a visual intelligence assistant in LinkerRu.
-RULES:
-1. Thoroughly analyze images, screenshots, diagrams, and OCR text.
-2. Provide direct, concise answers in the language used by the user.`,
+    ru: `Вы — Lisyan AI Vision. Анализируйте изображения четко, на языке последнего сообщения пользователя.`,
+    uk: `Ви — Lisyan AI Vision. Аналізуйте зображення чітко, мовою останнього повідомлення користувача.`,
+    en: `You are Lisyan AI Vision. Analyze images concisely in language of user's last message.`,
   },
+};
+
+// Ultra minimal system prompt for compound tiny questions — now includes language detection
+const ULTRA_MINIMAL_PROMPTS: Record<Language, string> = {
+  ru: "Ты — Lisyan AI. Отвечай кратко, точно, по существу. ЯЗЫК ОТВЕТА = ЯЗЫК ПОСЛЕДНЕГО СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ. 1-3 предложения достаточно.",
+  uk: "Ти — Lisyan AI. Відповідай коротко, точно. МОВА ВІДПОВІДІ = МОВА ОСТАННЬОГО ПОВІДОМЛЕННЯ КОРИСТУВАЧА.",
+  en: "You are Lisyan AI. Answer concisely, accurately. ANSWER LANGUAGE = LANGUAGE OF USER'S LAST MESSAGE. 1-3 sentences is enough.",
 };
 
 const FALLBACKS: Record<ModelId, string[]> = {
-  lnv1: ["llama-3.3-70b", "llama-3.3-70b-versatile", "meta/llama-3.3-70b-instruct", "llama3.1-8b", "openrouter/free"],
-  lv1pro: ["llama-3.3-70b", "deepseek-r1-distill-llama-70b", "meta/llama-3.3-70b-instruct", "deepseek-ai/deepseek-r1", "meta-llama/llama-3.3-70b-instruct:free", "openrouter/free"],
-  lvision: ["inclusionai/ling-3.0-flash-vl:free", "meta/llama-3.2-11b-vision-instruct", "google/gemini-2.0-flash-exp:free", "openrouter/free"],
+  lnv1: [
+    "groq/compound-mini",
+    "groq/compound",
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+    "llama-3.3-70b",
+    "meta/llama-3.3-70b-instruct",
+    "openrouter/free",
+  ],
+  lv1pro: [
+    "llama-3.3-70b-versatile",
+    "deepseek-r1-distill-llama-70b",
+    "groq/compound",
+    "meta/llama-3.3-70b-instruct",
+    "deepseek-ai/deepseek-r1",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter/free",
+  ],
+  lvision: [
+    "inclusionai/ling-3.0-flash-vl:free",
+    "meta/llama-3.2-11b-vision-instruct",
+    "google/gemini-2.0-flash-exp:free",
+    "openrouter/free",
+  ],
 };
 
-/**
- * Silent background warmup: on first launch tests models with "Reply YES if you can hear me"
- * and marks responsive models so users get immediate zero-latency answers.
- */
+const COMPOUND_FALLBACKS = [
+  "groq/compound-mini",
+  "groq/compound",
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+];
+
 export async function initLrouteWarmup(): Promise<void> {
   try {
-    const warmed = sessionStorage.getItem('linkerru_lroute_warmed');
+    const warmed = sessionStorage.getItem('linkerru_lroute_warmed_v3');
     if (warmed) return;
 
-    fetch('/api/ai/warmup')
+    fetch('/api/ai/warmup', { priority: 'high' as any } as any)
       .then((r) => r.json())
       .then((data) => {
         if (data?.verifiedModels) {
-          sessionStorage.setItem('linkerru_lroute_warmed', 'true');
+          sessionStorage.setItem('linkerru_lroute_warmed_v3', 'true');
           sessionStorage.setItem('linkerru_verified_models', JSON.stringify(data.verifiedModels));
         }
       })
       .catch(() => {});
+
+    if (GROQ_API_KEY) {
+      fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
+        body: JSON.stringify({
+          model: 'groq/compound-mini',
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 5,
+        }),
+      }).catch(() => {});
+    }
   } catch {}
 }
 
-// Auto-trigger warmup in background
 if (typeof window !== 'undefined') {
-  setTimeout(initLrouteWarmup, 1000);
+  if (document.readyState === 'complete') initLrouteWarmup();
+  else window.addEventListener('load', initLrouteWarmup, { once: true });
+  setTimeout(initLrouteWarmup, 500);
 }
 
 export async function fetchWebSearch(query: string): Promise<{
   context: string;
   sources: { title: string; url: string; domain: string; snippet?: string }[];
 }> {
+  const cacheKey = query.toLowerCase().trim().slice(0, 100);
+  const cached = getCachedIntegration(searchCache, cacheKey, SEARCH_CACHE_TTL);
+  if (cached) return cached;
+
   try {
-    const res = await fetch(`/api/ai/search?q=${encodeURIComponent(query)}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`/api/ai/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+    clearTimeout(timeout);
     if (res.ok) {
       const data = await res.json();
       if (data && Array.isArray(data.results) && data.results.length > 0) {
@@ -121,10 +160,16 @@ export async function fetchWebSearch(query: string): Promise<{
         const snippets = sources
           .map((s: any, i: number) => `[${i + 1}] "${s.title}" (${s.domain}): ${s.snippet}`)
           .join("\n\n");
-        return {
-          context: `[Результаты поиска в интернете (Google/DuckDuckGo)]:\n${snippets}`,
+        const result = {
+          context: `[Web search]:\n${snippets}`,
           sources,
         };
+        searchCache.set(cacheKey, { data: result, ts: Date.now() });
+        if (searchCache.size > 50) {
+          const first = searchCache.keys().next().value;
+          if (first) searchCache.delete(first);
+        }
+        return result;
       }
     }
   } catch (e) {
@@ -137,22 +182,32 @@ async function fetchSubConvertContext(prompt: string, lang: Language): Promise<s
   const ytMatch = prompt.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
   if (!ytMatch) return null;
   const videoId = ytMatch[1];
+  const cacheKey = `${videoId}_${lang}`;
+  const cached = getCachedIntegration(subConvertCache, cacheKey, SUBCONVERT_CACHE_TTL);
+  if (cached) return cached;
+
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const res = await fetch('/api/subconvert/fetch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, language: lang }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (res.ok) {
       const data = await res.json();
       if (data && data.transcript) {
-        const text = typeof data.transcript === 'string' 
-          ? data.transcript 
-          : Array.isArray(data.transcript) 
-            ? data.transcript.map((t: any) => t.text || '').join(' ') 
+        const text = typeof data.transcript === 'string'
+          ? data.transcript
+          : Array.isArray(data.transcript)
+            ? data.transcript.map((t: any) => t.text || '').join(' ')
             : '';
-        return `[Интеграция SubConvert: Субтитры видео "${data.title || videoId}"]:\n${text.slice(0, 6000)}`;
+        const result = `[SubConvert: "${data.title || videoId}"]:\n${text.slice(0, 6000)}`;
+        subConvertCache.set(cacheKey, { data: result, ts: Date.now() });
+        return result;
       }
     }
   } catch (e) {
@@ -162,48 +217,60 @@ async function fetchSubConvertContext(prompt: string, lang: Language): Promise<s
 }
 
 async function fetchWeatherContext(prompt: string, lang: Language): Promise<string | null> {
-  const isWeatherQuery = /погода|температура|forecast|weather|градус|дождь|снег/i.test(prompt);
+  const isWeatherQuery = /погода|температура|forecast|weather|градус|дождь|снег|влажн|ветер/i.test(prompt);
   if (!isWeatherQuery) return null;
+
+  const cacheKey = `weather_${lang}_${(prompt.slice(0, 50))}`;
+  const cached = getCachedIntegration(weatherCache, cacheKey, WEATHER_CACHE_TTL);
+  if (cached) return cached;
 
   try {
     let lat = 55.7558;
     let lon = 37.6173;
-    let cityName = lang === 'ru' ? 'Москва' : lang === 'uk' ? 'Москва' : 'Moscow';
+    let cityName = lang === 'ru' ? 'Москва' : lang === 'uk' ? 'Київ' : 'Moscow';
 
     const customCity = localStorage.getItem('linkerru_weather_custom_city');
     if (customCity) {
       cityName = customCity;
-      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(customCity)}&count=1`);
-      if (geoRes.ok) {
-        const geoData = await geoRes.json();
-        if (geoData?.results?.[0]) {
-          lat = geoData.results[0].latitude;
-          lon = geoData.results[0].longitude;
+      try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 2500);
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(customCity)}&count=1`, { signal: controller.signal });
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData?.results?.[0]) {
+            lat = geoData.results[0].latitude;
+            lon = geoData.results[0].longitude;
+          }
         }
-      }
+      } catch {}
     } else {
-      const ipRes = await fetch('/api/geoip');
-      if (ipRes.ok) {
-        const ipData = await ipRes.json();
-        if (ipData?.latitude) {
-          lat = ipData.latitude;
-          lon = ipData.longitude;
-          cityName = ipData.city || cityName;
+      try {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 2000);
+        const ipRes = await fetch('/api/geoip', { signal: controller.signal });
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData?.latitude) {
+            lat = ipData.latitude;
+            lon = ipData.longitude;
+            cityName = ipData.city || cityName;
+          }
         }
-      }
+      } catch {}
     }
 
-    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`);
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 3000);
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`, { signal: controller.signal });
     if (wRes.ok) {
       const wData = await wRes.json();
       const curr = wData?.current;
       const daily = wData?.daily;
       if (curr) {
-        return `[Интеграция с сервисом Погода (город ${cityName})]:
-- Текущая температура: ${Math.round(curr.temperature_2m)}°C (ощущается как ${Math.round(curr.apparent_temperature)}°C)
-- Влажность: ${curr.relative_humidity_2m}%
-- Ветер: ${Math.round(curr.wind_speed_10m)} км/ч
-- Прогноз на сегодня: макс ${daily?.temperature_2m_max?.[0] ?? '--'}°C, мин ${daily?.temperature_2m_min?.[0] ?? '--'}°C.`;
+        const result = `[Weather ${cityName}]: ${Math.round(curr.temperature_2m)}°C (feels ${Math.round(curr.apparent_temperature)}°C), hum ${curr.relative_humidity_2m}%, wind ${Math.round(curr.wind_speed_10m)} km/h, today max ${daily?.temperature_2m_max?.[0] ?? '--'}°C min ${daily?.temperature_2m_min?.[0] ?? '--'}°C.`;
+        weatherCache.set(cacheKey, { data: result, ts: Date.now() });
+        return result;
       }
     }
   } catch (e) {
@@ -245,22 +312,26 @@ async function callServerAiProxy(
   };
 }
 
-const DIRECT_GROQ_MODELS = [
+const DIRECT_GROQ_MODELS_COMPOUND = [
+  "groq/compound-mini",
+  "groq/compound",
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+];
+
+const DIRECT_GROQ_MODELS_DEFAULT = [
+  "groq/compound-mini",
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
   "llama-3.3-70b",
 ];
 
-/**
- * Last-resort path for static hosts (Netlify without server proxy, local
- * `vite preview`, …): talk to the provider straight from the browser using the
- * public VITE_GROQ_API_KEY. Returns the answer text or null.
- */
 async function callGroqDirect(
   apiMessages: any[],
   temperature: number,
   maxCompletionTokens: number,
   signal?: AbortSignal,
+  useCompound: boolean = false,
 ): Promise<string | null> {
   if (!GROQ_API_KEY) return null;
 
@@ -269,7 +340,43 @@ async function callGroqDirect(
     content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
   }));
 
-  for (const model of DIRECT_GROQ_MODELS) {
+  const modelsToTry = useCompound ? DIRECT_GROQ_MODELS_COMPOUND : DIRECT_GROQ_MODELS_DEFAULT;
+
+  if (useCompound && modelsToTry.length >= 2) {
+    const racePromises = modelsToTry.slice(0, 2).map(async (model) => {
+      try {
+        const res = await fetch(GROQ_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+          },
+          signal,
+          body: JSON.stringify({
+            model,
+            messages: flatMessages,
+            temperature: Math.min(temperature, 0.35),
+            max_tokens: maxCompletionTokens,
+          }),
+        });
+        if (!res.ok) throw new Error("not ok");
+        const data = await res.json();
+        const text = data?.choices?.[0]?.message?.content;
+        if (text && String(text).trim()) return String(text).trim();
+        throw new Error("empty");
+      } catch (e) {
+        if (signal?.aborted) throw e;
+        return null;
+      }
+    });
+
+    try {
+      const winner = await Promise.any(racePromises.map(p => p.then(v => v ? Promise.resolve(v) : Promise.reject())));
+      if (winner) return winner;
+    } catch {}
+  }
+
+  for (const model of modelsToTry) {
     try {
       const res = await fetch(GROQ_URL, {
         method: "POST",
@@ -281,7 +388,7 @@ async function callGroqDirect(
         body: JSON.stringify({
           model,
           messages: flatMessages,
-          temperature,
+          temperature: useCompound ? Math.min(temperature, 0.35) : temperature,
           max_tokens: maxCompletionTokens,
         }),
       });
@@ -299,6 +406,22 @@ async function callGroqDirect(
   return null;
 }
 
+// Ultra-fast path for tiny questions — now includes detected language instruction
+function buildUltraFastContext(
+  prompt: string,
+  uiLang: Language,
+  detected: DetectedLanguage,
+  systemPromptBase?: string
+): { role: string; content: string }[] {
+  const base = systemPromptBase || ULTRA_MINIMAL_PROMPTS[uiLang] || ULTRA_MINIMAL_PROMPTS.en;
+  const langInstruction = buildLanguageInstruction(detected, uiLang);
+  const sys = `${base}${langInstruction}`;
+  return [
+    { role: "system", content: sys },
+    { role: "user", content: ultraCompressForSmall(prompt) },
+  ];
+}
+
 export async function sendChatRequest(
   messages: Message[],
   modelId: ModelId,
@@ -307,199 +430,328 @@ export async function sendChatRequest(
   onNotice?: (text: string) => void,
   onSourcesFound?: (sources: { title: string; url: string; domain: string; snippet?: string }[]) => void,
 ): Promise<string> {
-  const startTime = Date.now();
+  const startTime = performance.now();
   const latestMessage = messages[messages.length - 1];
   const latestPrompt = latestMessage?.content || "";
   const attachments = latestMessage?.attachments || [];
   const imageAttachment = attachments.find((a) => a.isImage && a.dataUrl);
 
-  // 1. Check Instant Non-LLM Handlers
-  const instantResult = detectInstantRuleResponse(latestPrompt, lang);
-  if (instantResult && !imageAttachment && attachments.length === 0) {
-    const origTokens = Math.ceil(latestPrompt.length / 3.8) + 120;
-    recordOptimizationEvent({
-      originalTokens: origTokens,
-      optimizedTokens: 0,
-      tokensSaved: origTokens,
-      isInstantRule: true,
-      latencySavedMs: 1400,
-    });
-    return instantResult.content;
+  // --- NEW: Detect language of the typed question ---
+  const detected: DetectedLanguage = detectInputLanguage(latestPrompt, lang);
+  const answerLangCode = detected.code; // e.g., 'es','en','ru' — used for cache key
+  const answerLangInstruction = buildLanguageInstruction(detected, lang);
+
+  // Deduplication key — now includes detected language for correctness
+  const dedupKey = `${latestPrompt.slice(0, 200)}_${modelId}_${answerLangCode}_${attachments.length}`;
+  if (ongoingRequests.has(dedupKey)) {
+    return ongoingRequests.get(dedupKey)!;
   }
 
-  // 2. Check Smart Routing & Adaptive max_tokens (Lroutev1)
-  const routing = routeRequest(latestPrompt, attachments, modelId);
-  const activeModelId = routing.modelId;
-  const info = getModel(activeModelId);
-  const vision = Boolean(info.vision || activeModelId === "lvision");
-
-  if (routing.isAutomaticRoute && onNotice) {
-    onNotice(routing.reason);
-  }
-
-  // 3. Multi-Tier Cache Check
-  const cached = await getCachedResponse(
-    latestPrompt,
-    activeModelId,
-    lang,
-    imageAttachment?.dataUrl
-  );
-
-  if (cached && !signal?.aborted) {
-    const elapsed = Date.now() - startTime;
-    const origTokens = Math.ceil((latestPrompt.length + 300) / 3.8);
-    recordOptimizationEvent({
-      originalTokens: origTokens,
-      optimizedTokens: 0,
-      tokensSaved: origTokens,
-      isCacheHit: true,
-      latencySavedMs: Math.max(800, 1800 - elapsed),
-    });
-    return cached.entry.response;
-  }
-
-  // 4. Live Integrations (SubConvert, Weather, Web/Google Search)
-  const isSearchQuery =
-    /найди в интернете|поищи|google|гугл|новости|кто такой|что такое|курс|актуальн|wiki|вики/i.test(latestPrompt) &&
-    !imageAttachment;
-
-  let webSearchData: { context: string; sources: any[] } = { context: "", sources: [] };
-  if (isSearchQuery) {
-    if (onNotice) onNotice(lang === "ru" ? "🌐 Ищу информацию в интернете..." : "🌐 Searching the web...");
-    webSearchData = await fetchWebSearch(latestPrompt);
-    if (webSearchData.sources.length > 0 && onSourcesFound) {
-      onSourcesFound(webSearchData.sources);
+  const exec = async (): Promise<string> => {
+    // 1. Check Instant Non-LLM Handlers — now language-aware
+    const instantResult = detectInstantRuleResponse(latestPrompt, lang, detected);
+    if (instantResult && !imageAttachment && attachments.length === 0) {
+      const origTokens = Math.ceil(latestPrompt.length / 3.8) + 120;
+      recordOptimizationEvent({
+        originalTokens: origTokens,
+        optimizedTokens: 0,
+        tokensSaved: origTokens,
+        isInstantRule: true,
+        latencySavedMs: 1400,
+      });
+      return instantResult.content;
     }
-  }
 
-  const [subConvertContext, weatherContext] = await Promise.all([
-    fetchSubConvertContext(latestPrompt, lang),
-    fetchWeatherContext(latestPrompt, lang),
-  ]);
+    // 2. Check Smart Routing & Adaptive max_tokens (Lroutev1 + Compound)
+    const routing = routeRequest(latestPrompt, attachments, modelId);
+    const activeModelId = routing.modelId;
+    const info = getModel(activeModelId);
+    const vision = Boolean(info.vision || activeModelId === "lvision");
+    const useCompound = Boolean(routing.useGroqCompound || routing.category === "compound" || (routing.category === "fact" && isSmallQuestion(latestPrompt)));
+    const tiny = isTinyQuestion(latestPrompt) && !vision && attachments.length === 0;
 
-  let systemPrompt =
-    SYSTEM_PROMPTS[activeModelId]?.[lang] || SYSTEM_PROMPTS[activeModelId]?.en || "You are Lisyan AI.";
+    if (routing.isAutomaticRoute && onNotice) {
+      onNotice(routing.reason);
+    } else if (useCompound && onNotice) {
+      onNotice(routing.reason);
+    }
 
-  if (webSearchData.context) {
-    systemPrompt += `\n\n${webSearchData.context}\n(Используйте эти актуальные данные для ответа)`;
-  }
-  if (subConvertContext) {
-    systemPrompt += `\n\n${subConvertContext}`;
-  }
-  if (weatherContext) {
-    systemPrompt += `\n\n${weatherContext}`;
-  }
+    // 3. Multi-Tier Cache Check — RAM sync first for <1ms hit, now with detected language
+    const ramHit = getRamCacheSync(latestPrompt, activeModelId, answerLangCode);
+    if (ramHit && !signal?.aborted) {
+      const elapsed = performance.now() - startTime;
+      recordOptimizationEvent({
+        originalTokens: Math.ceil((latestPrompt.length + 300) / 3.8),
+        optimizedTokens: 0,
+        tokensSaved: Math.ceil((latestPrompt.length + 300) / 3.8),
+        isCacheHit: true,
+        latencySavedMs: Math.max(800, 1800 - elapsed),
+      });
+      return ramHit.response;
+    }
 
-  const contextResult = buildOptimizedContext(
-    messages,
-    activeModelId,
-    systemPrompt,
-    lang,
-    vision
-  );
-
-  const adaptiveMaxTokens = routing.maxCompletionTokens;
-
-  // 5. Send optimized payload via Lroutev1 Engine
-  let proxyMissing = false;
-
-  try {
-    const serverResult = await callServerAiProxy(
-      contextResult.apiMessages,
-      "openrouter/free",
-      info.temperature,
-      adaptiveMaxTokens,
-      signal
+    const cached = await getCachedResponse(
+      latestPrompt,
+      activeModelId,
+      answerLangCode,
+      imageAttachment?.dataUrl
     );
 
-    if (serverResult.ok && serverResult.data?.content) {
-      const responseText = serverResult.data.content.trim();
+    if (cached && !signal?.aborted) {
+      const elapsed = performance.now() - startTime;
+      const origTokens = Math.ceil((latestPrompt.length + 300) / 3.8);
+      recordOptimizationEvent({
+        originalTokens: origTokens,
+        optimizedTokens: 0,
+        tokensSaved: origTokens,
+        isCacheHit: true,
+        latencySavedMs: Math.max(800, 1800 - elapsed),
+      });
+      return cached.entry.response;
+    }
 
-      saveCachedResponse(
-        latestPrompt,
-        responseText,
+    // 4. Ultra-fast path for tiny questions — skip all integrations, minimal context + language instruction
+    let apiMessages: any[];
+    let adaptiveMaxTokens = routing.maxCompletionTokens;
+    let systemPromptBase = "";
+
+    if (tiny) {
+      systemPromptBase = ULTRA_MINIMAL_PROMPTS[lang] || ULTRA_MINIMAL_PROMPTS.en;
+      // Append critical language instruction for tiny path
+      systemPromptBase += answerLangInstruction;
+      apiMessages = buildUltraFastContext(latestPrompt, lang, detected, systemPromptBase);
+      adaptiveMaxTokens = Math.min(adaptiveMaxTokens, 512);
+    } else {
+      const shouldDoExternalSearch = !useCompound && !imageAttachment &&
+        /найди в интернете|поищи|google|гугл|новости|кто такой|что такое|курс|актуальн|wiki|вики/i.test(latestPrompt);
+
+      const integrationPromises: Promise<any>[] = [];
+
+      if (shouldDoExternalSearch) {
+        if (onNotice) onNotice(lang === "ru" ? "🌐 Ищу информацию в интернете..." : "🌐 Searching the web...");
+        integrationPromises.push(fetchWebSearch(latestPrompt).then(data => ({ type: 'search', data })));
+      } else {
+        integrationPromises.push(Promise.resolve({ type: 'search', data: { context: "", sources: [] } }));
+      }
+
+      integrationPromises.push(fetchSubConvertContext(latestPrompt, lang).then(data => ({ type: 'subconvert', data })));
+      integrationPromises.push(fetchWeatherContext(latestPrompt, lang).then(data => ({ type: 'weather', data })));
+
+      const integrationResults = await Promise.all(integrationPromises);
+
+      let webSearchData = { context: "", sources: [] as any[] };
+      let subConvertContext: string | null = null;
+      let weatherContext: string | null = null;
+
+      for (const res of integrationResults) {
+        if (res.type === 'search') webSearchData = res.data;
+        if (res.type === 'subconvert') subConvertContext = res.data;
+        if (res.type === 'weather') weatherContext = res.data;
+      }
+
+      if (webSearchData.sources.length > 0 && onSourcesFound) {
+        onSourcesFound(webSearchData.sources);
+      }
+
+      systemPromptBase =
+        SYSTEM_PROMPTS[activeModelId]?.[lang] || SYSTEM_PROMPTS[activeModelId]?.en || "You are Lisyan AI.";
+
+      // Inject critical language rule
+      systemPromptBase += answerLangInstruction;
+
+      if (useCompound) {
+        systemPromptBase += lang === "ru"
+          ? "\n[Короткий вопрос — отвечай максимально кратко, 1-3 предложения.]"
+          : "\n[Short question — answer concisely, 1-3 sentences.]";
+      }
+
+      if (webSearchData.context) {
+        systemPromptBase += `\n\n${webSearchData.context}`;
+      }
+      if (subConvertContext) {
+        systemPromptBase += `\n\n${subConvertContext}`;
+      }
+      if (weatherContext) {
+        systemPromptBase += `\n\n${weatherContext}`;
+      }
+
+      const contextResult = buildOptimizedContext(
+        messages,
         activeModelId,
+        systemPromptBase,
         lang,
-        0,
-        imageAttachment?.dataUrl
+        vision
       );
+      apiMessages = contextResult.apiMessages;
 
-      const elapsed = Date.now() - startTime;
       const originalEstTokens = Math.ceil(
         messages.reduce((acc, m) => acc + (m.content?.length || 0), 0) / 3.8 + 800
       );
       const actualEstTokens = Math.ceil(
-        contextResult.apiMessages.reduce(
+        apiMessages.reduce(
           (acc, m) =>
             acc + (typeof m.content === "string" ? m.content.length : 100),
           0
         ) / 3.8 + 250
       );
 
-      recordOptimizationEvent({
-        originalTokens: Math.max(originalEstTokens, actualEstTokens),
-        optimizedTokens: actualEstTokens,
-        tokensSaved: Math.max(0, originalEstTokens - actualEstTokens),
-        latencySavedMs: Math.max(300, 1500 - elapsed),
-      });
-
-      return responseText;
+      (apiMessages as any)._origTokens = originalEstTokens;
+      (apiMessages as any)._actualTokens = actualEstTokens;
     }
 
-    // 404/405 means this deployment serves no proxy at all — replaying the
-    // rest of the chain would only repeat the same dead request.
-    proxyMissing = serverResult.status === 404 || serverResult.status === 405;
-    if (proxyMissing) {
-      console.warn("Server AI proxy is unavailable on this host, switching to direct provider calls.");
-    }
-  } catch (err: any) {
-    if (signal?.aborted) throw err;
-    proxyMissing = true;
-    console.warn("Lroutev1 server proxy attempt failed, trying fallback models...", err);
-  }
+    let proxyMissing = false;
+    const fastTimeoutMs = tiny ? 8000 : useCompound ? 10000 : 15000;
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), fastTimeoutMs);
 
-  // Fallback chain
-  if (!proxyMissing) {
-    const fallbacks = FALLBACKS[activeModelId] || ["openrouter/free", "llama-3.3-70b"];
-    for (const fallbackModel of fallbacks) {
+    const combinedSignal = signal
+      ? (() => {
+          const ctrl = new AbortController();
+          const onAbort = () => ctrl.abort();
+          signal.addEventListener('abort', onAbort, { once: true });
+          timeoutController.signal.addEventListener('abort', onAbort, { once: true });
+          return ctrl.signal;
+        })()
+      : timeoutController.signal;
+
+    try {
+      const requestedModel = useCompound ? "groq/compound-mini" : "openrouter/free";
+      const serverResult = await callServerAiProxy(
+        apiMessages,
+        requestedModel,
+        useCompound ? Math.min(info.temperature, 0.35) : info.temperature,
+        adaptiveMaxTokens,
+        combinedSignal
+      );
+      clearTimeout(timeoutId);
+
+      if (serverResult.ok && serverResult.data?.content) {
+        const responseText = serverResult.data.content.trim();
+
+        saveCachedResponse(
+          latestPrompt,
+          responseText,
+          activeModelId,
+          answerLangCode,
+          0,
+          imageAttachment?.dataUrl
+        );
+
+        const elapsed = performance.now() - startTime;
+        const originalEstTokens = (apiMessages as any)._origTokens || Math.ceil((latestPrompt.length + 800) / 3.8);
+        const actualEstTokens = (apiMessages as any)._actualTokens || Math.ceil((apiMessages as any[]).reduce((acc, m) => acc + (typeof m.content === "string" ? m.content.length : 100), 0) / 3.8 + 250);
+
+        const tokensSaved = Math.max(0, originalEstTokens - actualEstTokens);
+        const compoundBonus = useCompound ? Math.round(adaptiveMaxTokens * 0.7) : 0;
+
+        recordOptimizationEvent({
+          originalTokens: Math.max(originalEstTokens, actualEstTokens) + compoundBonus,
+          optimizedTokens: actualEstTokens,
+          tokensSaved: tokensSaved + compoundBonus,
+          latencySavedMs: Math.max(200, 1200 - elapsed),
+          usedCompound: useCompound,
+          isSmallQuestion: useCompound,
+        } as any);
+
+        return responseText;
+      }
+
+      proxyMissing = serverResult.status === 404 || serverResult.status === 405;
+      if (proxyMissing) {
+        console.warn("Server AI proxy unavailable, switching to direct.");
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (signal?.aborted || err?.name === 'AbortError') {
+        if (signal?.aborted) throw err;
+        console.warn("Server proxy timed out, trying fallback");
+      } else {
+        proxyMissing = true;
+        console.warn("Server proxy failed, trying fallback", err);
+      }
+    }
+
+    if (!proxyMissing || true) {
+      const fallbacks = useCompound
+        ? COMPOUND_FALLBACKS
+        : FALLBACKS[activeModelId] || ["openrouter/free", "llama-3.3-70b"];
+
+      if (tiny && fallbacks.length >= 2) {
+        const raceResults = await Promise.allSettled(
+          fallbacks.slice(0, 2).map(async (fbModel) => {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 7000);
+            try {
+              const fbResult = await callServerAiProxy(
+                apiMessages,
+                fbModel,
+                0.3,
+                adaptiveMaxTokens,
+                signal ? (() => { const c = new AbortController(); signal.addEventListener('abort', () => c.abort(), { once: true }); ctrl.signal.addEventListener('abort', () => c.abort(), { once: true }); return c.signal; })() : ctrl.signal
+              );
+              clearTimeout(tid);
+              if (fbResult.ok && fbResult.data?.content) return fbResult.data.content.trim();
+              throw new Error("no content");
+            } catch (e) {
+              clearTimeout(tid);
+              throw e;
+            }
+          })
+        );
+        for (const r of raceResults) {
+          if (r.status === 'fulfilled' && r.value) return r.value;
+        }
+      }
+
+      for (const fallbackModel of fallbacks) {
+        try {
+          const fbResult = await callServerAiProxy(
+            apiMessages,
+            fallbackModel,
+            useCompound ? 0.3 : info.temperature,
+            adaptiveMaxTokens,
+            signal
+          );
+          if (fbResult.ok && fbResult.data?.content) {
+            const txt = fbResult.data.content.trim();
+            saveCachedResponse(latestPrompt, txt, activeModelId, answerLangCode, 0, imageAttachment?.dataUrl);
+            return txt;
+          }
+        } catch (err: any) {
+          if (signal?.aborted) throw err;
+        }
+      }
+    }
+
+    if (!imageAttachment) {
       try {
-        const fbResult = await callServerAiProxy(
-          contextResult.apiMessages,
-          fallbackModel,
+        const direct = await callGroqDirect(
+          apiMessages,
           info.temperature,
           adaptiveMaxTokens,
-          signal
+          signal,
+          useCompound
         );
-        if (fbResult.ok && fbResult.data?.content) {
-          return fbResult.data.content.trim();
+        if (direct) {
+          saveCachedResponse(latestPrompt, direct, activeModelId, answerLangCode, 0);
+          return direct;
         }
       } catch (err: any) {
         if (signal?.aborted) throw err;
       }
     }
-  }
 
-  // Direct browser-side provider call (static hosts without the server proxy)
-  if (!imageAttachment) {
-    try {
-      const direct = await callGroqDirect(
-        contextResult.apiMessages,
-        info.temperature,
-        adaptiveMaxTokens,
-        signal
-      );
-      if (direct) {
-        saveCachedResponse(latestPrompt, direct, activeModelId, lang, 0);
-        return direct;
-      }
-    } catch (err: any) {
-      if (signal?.aborted) throw err;
-    }
-  }
+    throw new Error(
+      lang === "ru"
+        ? "Не удалось получить ответ от моделей. Пожалуйста, попробуйте еще раз."
+        : "Failed to receive a response from AI models. Please try again."
+    );
+  };
 
-  throw new Error(
-    lang === "ru"
-      ? "Не удалось получить ответ от моделей. Пожалуйста, попробуйте еще раз."
-      : "Failed to receive a response from AI models. Please try again."
-  );
+  const promise = exec().finally(() => {
+    ongoingRequests.delete(dedupKey);
+  });
+
+  ongoingRequests.set(dedupKey, promise);
+  return promise;
 }

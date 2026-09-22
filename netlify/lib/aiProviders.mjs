@@ -2,10 +2,45 @@
 // Lisyan AI backend (mirrors the /api/ai/* routes in server.ts).
 
 const DEFAULT_TIMEOUT_MS = 12000;
-
-// Netlify kills synchronous functions at 60s — stay under that hard cap so the
-// caller always gets a JSON answer instead of a platform timeout page.
 const CHAT_DEADLINE_MS = 52000;
+
+// In-memory LRU cache for Netlify functions (shared within warm instance)
+const SERVER_CACHE = new Map();
+const MAX_SERVER_CACHE = 300;
+const SERVER_CACHE_TTL_SMALL = 24 * 60 * 60 * 1000;
+const SERVER_CACHE_TTL_LARGE = 60 * 60 * 1000;
+
+function computeCacheKey(messages) {
+  try {
+    const last = messages[messages.length - 1];
+    const content = typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content || '');
+    const normalized = content.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 200);
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i++) hash = ((hash << 5) - hash + normalized.charCodeAt(i)) | 0;
+    return `ai_${hash}_${normalized.length}`;
+  } catch { return `ai_${Date.now()}`; }
+}
+
+function getServerCache(key) {
+  const entry = SERVER_CACHE.get(key);
+  if (!entry) return null;
+  const ttl = entry.content.length < 500 ? SERVER_CACHE_TTL_SMALL : SERVER_CACHE_TTL_LARGE;
+  if (Date.now() - entry.ts > ttl) { SERVER_CACHE.delete(key); return null; }
+  entry.hits++;
+  return entry;
+}
+
+function setServerCache(key, content, model) {
+  if (SERVER_CACHE.size >= MAX_SERVER_CACHE) {
+    let oldestKey; let minScore = Infinity;
+    for (const [k, v] of SERVER_CACHE) {
+      const score = v.hits * 100000 - v.ts;
+      if (score < minScore) { minScore = score; oldestKey = k; }
+    }
+    if (oldestKey) SERVER_CACHE.delete(oldestKey);
+  }
+  SERVER_CACHE.set(key, { content, ts: Date.now(), hits: 1, model });
+}
 
 export const OPENROUTER_MODELS = [
   'openrouter/free',
@@ -19,6 +54,22 @@ export const OPENROUTER_MODELS = [
 
 export const CEREBRAS_MODELS = ['llama-3.3-70b', 'llama3.1-8b'];
 
+export const GROQ_COMPOUND_MODELS = [
+  'groq/compound-mini',
+  'groq/compound',
+  'llama-3.1-8b-instant',
+  'llama-3.3-70b-versatile',
+];
+
+export const GROQ_MODELS = [
+  'groq/compound-mini',
+  'groq/compound',
+  'llama-3.3-70b-versatile',
+  'deepseek-r1-distill-llama-70b',
+  'llama-3.1-8b-instant',
+  'qwen-2.5-32b',
+];
+
 export const NVIDIA_MODELS = [
   'meta/llama-3.3-70b-instruct',
   'deepseek-ai/deepseek-r1',
@@ -26,8 +77,6 @@ export const NVIDIA_MODELS = [
   'mistralai/mistral-large-2-instruct',
   'meta/llama-3.1-8b-instruct',
 ];
-
-export const GROQ_MODELS = ['llama-3.3-70b-versatile', 'deepseek-r1-distill-llama-70b', 'qwen-2.5-32b'];
 
 export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -44,9 +93,10 @@ export function cleanModelOutput(text) {
   let cleaned = text
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
-    .replace(/\[\/?THINKING\]/gi, '');
+    .replace(/\[\/?THINKING\]/gi, '')
+    .replace(/<tool_calls>[\s\S]*?<\/tool_calls>/gi, '')
+    .replace(/<function_calls>[\s\S]*?<\/function_calls>/gi, '');
 
-  // Strip meta-reasoning ramblings (e.g., "We need to answer: ... The user wants ...")
   if (/^(?:we need to answer|the user wants|the user is asking|i should answer|i will provide|let's think about this):/i.test(cleaned.trim())) {
     const paragraphs = cleaned.split(/\n\s*\n/);
     if (paragraphs.length > 1) {
@@ -56,7 +106,6 @@ export function cleanModelOutput(text) {
       }
     }
   }
-
   return cleaned.trim();
 }
 
@@ -103,14 +152,48 @@ function hasImageContent(messages) {
   );
 }
 
+function isSmallQuestion(messages) {
+  try {
+    const last = messages[messages.length - 1];
+    const content = typeof last?.content === 'string' ? last.content : '';
+    const clean = content.trim();
+    return clean.length <= 200 && clean.split(/\s+/).length <= 28;
+  } catch { return false; }
+}
+
+function isTinyQuestion(messages) {
+  try {
+    const last = messages[messages.length - 1];
+    const content = typeof last?.content === 'string' ? last.content : '';
+    const clean = content.trim();
+    return clean.length <= 80 && clean.split(/\s+/).length <= 10;
+  } catch { return false; }
+}
+
 const TIERS = [
+  {
+    name: 'groq-compound',
+    tier: 0,
+    key: 'groq',
+    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    models: (requested, isSmall) => {
+      if (requested && (requested.includes('compound') || isSmall)) {
+        return [requested, ...GROQ_COMPOUND_MODELS.filter(m => m !== requested)];
+      }
+      return GROQ_COMPOUND_MODELS;
+    },
+    timeout: 8000,
+    skipOnImage: true,
+    flatten: true,
+    onlyForSmall: true,
+  },
   {
     name: 'cerebras',
     tier: 1,
     key: 'cerebras',
     endpoint: 'https://api.cerebras.ai/v1/chat/completions',
     models: () => CEREBRAS_MODELS,
-    timeout: 12000,
+    timeout: 9000,
     skipOnImage: true,
     flatten: true,
   },
@@ -120,7 +203,7 @@ const TIERS = [
     key: 'groq',
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
     models: () => GROQ_MODELS,
-    timeout: 14000,
+    timeout: 11000,
     skipOnImage: true,
     flatten: true,
   },
@@ -130,7 +213,7 @@ const TIERS = [
     key: 'nvidia',
     endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
     models: () => NVIDIA_MODELS,
-    timeout: 18000,
+    timeout: 14000,
     skipOnImage: false,
     flatten: true,
   },
@@ -139,7 +222,7 @@ const TIERS = [
     tier: 4,
     key: 'openrouter',
     endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-    timeout: 25000,
+    timeout: 18000,
     skipOnImage: false,
     flatten: false,
     headers: { 'HTTP-Referer': 'https://linkerru.local', 'X-Title': 'LinkerRu Lisyan AI' },
@@ -150,22 +233,77 @@ const TIERS = [
   },
 ];
 
-/**
- * Runs the same tiered failover chain as the Express server:
- * Cerebras -> Groq -> NVIDIA NIM -> OpenRouter.
- * Resolves to `{ provider, model, tier, content, usage }` or `null`.
- */
 export async function runChatCompletion({ messages, model, temperature = 0.6, maxTokens = 4096 }) {
   const keys = providerKeys();
   const startedAt = Date.now();
   const withImage = hasImageContent(messages);
+  const small = isSmallQuestion(messages);
+  const tiny = isTinyQuestion(messages);
+  const isCompoundRequested = model && model.includes('compound');
+
+  // Server-side cache check — instant
+  if (!withImage) {
+    const cacheKey = computeCacheKey(messages);
+    const cached = getServerCache(cacheKey);
+    if (cached) {
+      return {
+        provider: 'server-cache',
+        model: cached.model,
+        tier: -1,
+        content: cached.content,
+        usage: { cached: true, hits: cached.hits },
+      };
+    }
+  }
 
   for (const tier of TIERS) {
     const apiKey = keys[tier.key];
     if (!apiKey) continue;
     if (withImage && tier.skipOnImage) continue;
+    if (tier.onlyForSmall && !small && !isCompoundRequested) continue;
 
-    for (const modelName of tier.models(model)) {
+    const modelsList = tier.models(model, small);
+
+    // For tiny questions, race first 2 models in parallel for speed
+    if (tiny && modelsList.length >= 2 && tier.tier <= 1) {
+      const racePromises = modelsList.slice(0, 2).map(async (modelName) => {
+        const remaining = CHAT_DEADLINE_MS - (Date.now() - startedAt);
+        if (remaining < 2500) throw new Error('deadline');
+        const res = await fetchWithTimeout(
+          tier.endpoint,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+              ...(tier.headers || {}),
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: tier.flatten ? flattenMessages(messages) : messages,
+              temperature: Math.min(temperature, 0.35),
+              max_tokens: Math.min(maxTokens, tiny ? 512 : 1024),
+            }),
+          },
+          Math.min(tier.timeout, remaining)
+        );
+        if (!res.ok) throw new Error('not ok');
+        const data = await res.json();
+        const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+        if (text) return { provider: tier.name + '-race', model: modelName, tier: tier.tier, content: text, usage: data?.usage };
+        throw new Error('empty');
+      });
+
+      try {
+        const winner = await Promise.any(racePromises);
+        if (winner?.content) {
+          setServerCache(computeCacheKey(messages), winner.content, winner.model);
+          return winner;
+        }
+      } catch {}
+    }
+
+    for (const modelName of modelsList) {
       const remaining = CHAT_DEADLINE_MS - (Date.now() - startedAt);
       if (remaining < 2500) {
         console.warn(`[ai-chat] deadline reached before ${tier.name}/${modelName}`);
@@ -185,8 +323,8 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
             body: JSON.stringify({
               model: modelName,
               messages: tier.flatten ? flattenMessages(messages) : messages,
-              temperature,
-              max_tokens: maxTokens,
+              temperature: (small || modelName.includes('compound')) ? Math.min(temperature, 0.35) : temperature,
+              max_tokens: tiny ? Math.min(maxTokens, 512) : small ? Math.min(maxTokens, 1024) : maxTokens,
             }),
           },
           Math.min(tier.timeout, remaining)
@@ -197,6 +335,7 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
         const data = await res.json();
         const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
         if (text) {
+          setServerCache(computeCacheKey(messages), text, modelName);
           return {
             provider: tier.name,
             model: modelName,
@@ -214,9 +353,6 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
   return null;
 }
 
-/**
- * Lightweight liveness probe used by the first-run warmup.
- */
 export async function probeProviders() {
   const keys = providerKeys();
   const verifiedModels = [];
@@ -233,9 +369,7 @@ export async function probeProviders() {
         },
         4000
       )
-        .then((r) => {
-          if (r.ok) verifiedModels.push('llama3.1-8b', 'llama-3.3-70b');
-        })
+        .then((r) => { if (r.ok) verifiedModels.push('llama3.1-8b', 'llama-3.3-70b'); })
         .catch(() => {}),
     keys.openrouter &&
       fetchWithTimeout(
@@ -247,9 +381,7 @@ export async function probeProviders() {
         },
         5000
       )
-        .then((r) => {
-          if (r.ok) verifiedModels.push('openrouter/free', 'meta-llama/llama-3.3-70b-instruct:free');
-        })
+        .then((r) => { if (r.ok) verifiedModels.push('openrouter/free', 'meta-llama/llama-3.3-70b-instruct:free'); })
         .catch(() => {}),
     keys.nvidia &&
       fetchWithTimeout(
@@ -257,17 +389,11 @@ export async function probeProviders() {
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.nvidia}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'meta/llama-3.3-70b-instruct',
-            messages: checkMessage,
-            max_tokens: 10,
-          }),
+          body: JSON.stringify({ model: 'meta/llama-3.3-70b-instruct', messages: checkMessage, max_tokens: 10 }),
         },
         4500
       )
-        .then((r) => {
-          if (r.ok) verifiedModels.push('meta/llama-3.3-70b-instruct', 'nvidia/llama-3.1-nemotron-70b-instruct');
-        })
+        .then((r) => { if (r.ok) verifiedModels.push('meta/llama-3.3-70b-instruct', 'nvidia/llama-3.1-nemotron-70b-instruct'); })
         .catch(() => {}),
     keys.groq &&
       fetchWithTimeout(
@@ -275,13 +401,11 @@ export async function probeProviders() {
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.groq}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: 'llama3.1-8b-instant', messages: checkMessage, max_tokens: 10 }),
+          body: JSON.stringify({ model: 'groq/compound-mini', messages: checkMessage, max_tokens: 10 }),
         },
-        4000
+        3000
       )
-        .then((r) => {
-          if (r.ok) verifiedModels.push('llama-3.3-70b-versatile', 'deepseek-r1-distill-llama-70b');
-        })
+        .then((r) => { if (r.ok) verifiedModels.push('groq/compound-mini', 'groq/compound', 'llama-3.3-70b-versatile'); })
         .catch(() => {}),
   ].filter(Boolean);
 

@@ -5,12 +5,22 @@ export const config = {
   method: ['GET', 'OPTIONS'],
 };
 
+// In-memory cache for search (warm Netlify instances)
+const SEARCH_CACHE = new Map();
+const SEARCH_TTL = 5 * 60 * 1000;
+
 export default async (req) => {
   if (req.method === 'OPTIONS') return preflightResponse();
 
   const url = new URL(req.url);
   const query = (url.searchParams.get('q') || '').trim();
   if (!query) return jsonResponse(400, { error: 'Query parameter q is required' });
+
+  const cacheKey = query.toLowerCase().slice(0, 80);
+  const cached = SEARCH_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.ts < SEARCH_TTL) {
+    return jsonResponse(200, cached.data);
+  }
 
   const results = [];
 
@@ -26,7 +36,7 @@ export default async (req) => {
           'Accept-Language': 'ru,en;q=0.9',
         },
       },
-      7000
+      4000
     );
 
     if (searchRes.ok) {
@@ -71,13 +81,12 @@ export default async (req) => {
       }
     }
 
-    // Fallback: Instant Wikipedia / DuckDuckGo API if HTML scraping was light
     if (results.length === 0) {
       try {
         const ddgJson = await fetchWithTimeout(
           `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
           {},
-          4000
+          2500
         );
         if (ddgJson.ok) {
           const data = await ddgJson.json();
@@ -109,7 +118,13 @@ export default async (req) => {
       } catch {}
     }
 
-    return jsonResponse(200, { query, count: results.length, results });
+    const responseData = { query, count: results.length, results };
+    SEARCH_CACHE.set(cacheKey, { data: responseData, ts: Date.now() });
+    if (SEARCH_CACHE.size > 100) {
+      const first = SEARCH_CACHE.keys().next().value;
+      if (first) SEARCH_CACHE.delete(first);
+    }
+    return jsonResponse(200, responseData);
   } catch (err) {
     console.warn('Search error:', err);
     return jsonResponse(200, { query, count: 0, results: [] });
