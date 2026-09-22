@@ -16,7 +16,9 @@ interface SettingsValue {
 
 const SettingsContext = createContext<SettingsValue | null>(null);
 
-const LANG_KEY = "linkerru_lang";
+// APP-ONLY language key — independent from system linkerru_lang
+const LANG_KEY = "lisyan_ai_lang";
+const LEGACY_LANG_KEY = "linkerru_lang";
 const THEME_KEY = "lisyan_theme_mode";
 
 interface SettingsProviderProps {
@@ -29,13 +31,25 @@ interface SettingsProviderProps {
 export function SettingsProvider({
   children,
   parentLang,
-  onParentLangChange,
+  onParentLangChange, // kept for compatibility but NOT used for app-only behavior
   parentTheme,
 }: SettingsProviderProps) {
   const [lang, setLangState] = useState<Language>(() => {
-    if (parentLang) return parentLang;
-    const saved = localStorage.getItem(LANG_KEY);
-    if (saved === "ru" || saved === "en" || saved === "uk") return saved as Language;
+    try {
+      // 1. Check app-specific key first (app-only)
+      const savedApp = localStorage.getItem(LANG_KEY);
+      if (savedApp === "ru" || savedApp === "en" || savedApp === "uk") return savedApp as Language;
+      // 2. If parentLang provided and no app setting yet, use it as initial default (one-time)
+      if (parentLang && (parentLang === "ru" || parentLang === "en" || parentLang === "uk")) {
+        return parentLang;
+      }
+      // 3. Legacy migration: if old system key exists and app key doesn't, migrate it
+      const legacy = localStorage.getItem(LEGACY_LANG_KEY);
+      if (legacy === "ru" || legacy === "en" || legacy === "uk") {
+        localStorage.setItem(LANG_KEY, legacy);
+        return legacy as Language;
+      }
+    } catch {}
     return "ru";
   });
 
@@ -50,7 +64,6 @@ export function SettingsProvider({
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
-  // Track OS system theme changes
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -64,11 +77,9 @@ export function SettingsProvider({
     }
   }, []);
 
-  // Sync theme when parent theme changes or storage events fire
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "linkerru_theme" && e.newValue) {
-        // Trigger re-render
         setSystemIsDark(e.newValue === "dark");
       }
     };
@@ -86,32 +97,31 @@ export function SettingsProvider({
     };
   }, []);
 
-  // Compute resolved theme
   const theme: Theme = useMemo(() => {
     if (themeSetting === "light") return "light";
     if (themeSetting === "dark") return "dark";
-    // If system mode, prefer parentTheme if explicitly given, otherwise check parent localStorage, then OS dark mode
     if (parentTheme) return parentTheme;
     const parentSaved = typeof window !== "undefined" ? localStorage.getItem("linkerru_theme") : null;
     if (parentSaved === "dark" || parentSaved === "light") return parentSaved as Theme;
     return systemIsDark ? "dark" : "light";
   }, [themeSetting, parentTheme, systemIsDark]);
 
-  // Keep language in sync when parent props change
-  useEffect(() => {
-    if (parentLang && parentLang !== lang) {
-      setLangState(parentLang);
-    }
-  }, [parentLang]);
+  // NOTE: Removed parentLang sync effect — app-only language, changing it does NOT affect system
+  // Previously this caused Lisyan AI toggle to change entire system language
 
   const setLang = useCallback(
     (l: Language) => {
       setLangState(l);
-      localStorage.setItem(LANG_KEY, l);
-      window.dispatchEvent(new Event("linkerru_lang_changed"));
-      onParentLangChange?.(l);
+      try {
+        localStorage.setItem(LANG_KEY, l);
+        // Dispatch app-only event, NOT system-wide
+        window.dispatchEvent(new CustomEvent("lisyan_ai_lang_changed", { detail: l }));
+        // IMPORTANT: Do NOT call onParentLangChange — app-only behavior
+        // onParentLangChange?.(l); // disabled for app-only
+        // Do NOT dispatch linkerru_lang_changed — that would change whole system
+      } catch {}
     },
-    [onParentLangChange],
+    [],
   );
 
   const setTheme = useCallback((t: ThemeSetting) => {

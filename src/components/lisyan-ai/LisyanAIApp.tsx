@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo, useTransition } from "react";
 import { Menu, Settings as SettingsIcon, Zap } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import MessageBubble from "./components/MessageBubble";
@@ -7,9 +7,10 @@ import WelcomeScreen from "./components/WelcomeScreen";
 import SettingsDialog from "./components/SettingsDialog";
 import { OptimizationStatsModal } from "./components/OptimizationStatsModal";
 import Logo from "./components/Logo";
-import { sendChatRequest } from "./lib/chatApi";
-import { routeRequest } from "./lib/optimizer/smartRouter";
-import { getModel } from "./data/models";
+import { sendChatRequest, initLrouteWarmup } from "./lib/chatApi";
+import { routeRequest, isTinyQuestion } from "./lib/optimizer/smartRouter";
+import { getRamCacheSync } from "./lib/optimizer/cacheEngine";
+import { detectInputLanguage } from "./lib/languageDetector";
 import { SettingsProvider, useSettings } from "./context/SettingsContext";
 import type { AttachedFile, Chat, Message, ModelId } from "./types";
 import { Language, ThemeMode } from "../../types";
@@ -46,31 +47,62 @@ function ChatApp() {
   const [editingText, setEditingText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const activeChat = chats.find((c) => c.id === activeChatId) ?? chats[0] ?? makeChat();
+  const activeChat = useMemo(() => chats.find((c) => c.id === activeChatId) ?? chats[0] ?? makeChat(), [chats, activeChatId]);
+
+  // --- Performance: pre-warm and preconnect ---
+  useEffect(() => {
+    initLrouteWarmup();
+    try {
+      const links = [
+        { rel: 'preconnect', href: 'https://api.groq.com' },
+        { rel: 'preconnect', href: 'https://api.cerebras.ai' },
+        { rel: 'dns-prefetch', href: 'https://api.groq.com' },
+      ];
+      links.forEach(({ rel, href }) => {
+        if (!document.querySelector(`link[rel="${rel}"][href="${href}"]`)) {
+          const l = document.createElement('link');
+          l.rel = rel;
+          l.href = href;
+          document.head.appendChild(l);
+        }
+      });
+    } catch {}
+  }, []);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+      const id = setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+      }, 300);
+      return () => clearTimeout(id);
     } catch {}
   }, [chats]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    const lastMsg = activeChat?.messages[activeChat?.messages.length - 1];
+    const isTiny = lastMsg ? isTinyQuestion(lastMsg.content) : false;
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: isTiny ? 'instant' as any : 'smooth',
+    });
   }, [activeChat?.messages.length, activeChat?.messages[activeChat?.messages.length - 1]?.content]);
 
-  const updateChat = (id: string, updater: (chat: Chat) => Chat) => {
-    setChats((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
-  };
+  const updateChat = useCallback((id: string, updater: (chat: Chat) => Chat) => {
+    startTransition(() => {
+      setChats((prev) => prev.map((c) => (c.id === id ? updater(c) : c)));
+    });
+  }, []);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     const chat = makeChat(activeChat?.modelId ?? "lnv1", t("newChat"));
     setChats((prev) => [chat, ...prev]);
     setActiveChatId(chat.id);
     setSidebarOpen(false);
-  };
+  }, [activeChat?.modelId, t]);
 
-  const handleDeleteChat = (id: string) => {
+  const handleDeleteChat = useCallback((id: string) => {
     setChats((prev) => {
       const next = prev.filter((c) => c.id !== id);
       if (id === activeChatId) {
@@ -83,9 +115,9 @@ function ChatApp() {
       }
       return next;
     });
-  };
+  }, [activeChatId, t]);
 
-  const handleSend = async (text: string, attachments: AttachedFile[] = []) => {
+  const handleSend = useCallback(async (text: string, attachments: AttachedFile[] = []) => {
     const chatId = activeChatId;
     const currentChat = chats.find((c) => c.id === chatId) ?? activeChat;
     const initialModelId = currentChat?.modelId ?? "lnv1";
@@ -100,6 +132,28 @@ function ChatApp() {
     };
 
     const assistantId = makeId();
+
+    // --- Ultra-fast path: check RAM cache synchronously with DETECTED language (app-only + question language) ---
+    const detectedForCache = detectInputLanguage(text, lang);
+    const ramHit = getRamCacheSync(text, activeModelId, detectedForCache.code);
+    if (ramHit && attachments.length === 0) {
+      const assistantMsg: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: ramHit.response,
+        modelId: activeModelId,
+        streaming: false,
+        sources: [],
+      };
+      const title = text.trim() ? (text.length > 32 ? text.slice(0, 32) + "…" : text) : t("newChat");
+      setChats((prev) => prev.map((c) => c.id === chatId ? {
+        ...c,
+        title: c.messages.length === 0 ? title : c.title,
+        messages: [...c.messages, userMsg, assistantMsg],
+      } : c));
+      return;
+    }
+
     const assistantMsg: Message = {
       id: assistantId,
       role: "assistant",
@@ -115,11 +169,11 @@ function ChatApp() {
         : text
       : attachments[0]?.name ?? t("newChat");
 
-    updateChat(chatId, (c) => ({
+    setChats((prev) => prev.map((c) => c.id === chatId ? {
       ...c,
       title: c.messages.length === 0 ? title : c.title,
       messages: [...c.messages, userMsg, assistantMsg],
-    }));
+    } : c));
 
     setIsGenerating(true);
     const controller = new AbortController();
@@ -133,12 +187,21 @@ function ChatApp() {
         lang,
         controller.signal,
         (notice) => {
-          updateChat(chatId, (c) => ({
-            ...c,
-            messages: c.messages.map((m) =>
-              m.id === assistantId ? { ...m, content: notice, streaming: true } : m,
-            ),
-          }));
+          if (isTinyQuestion(text)) {
+            setChats((prev) => prev.map((c) => c.id === chatId ? {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === assistantId ? { ...m, content: notice, streaming: true } : m,
+              ),
+            } : c));
+          } else {
+            updateChat(chatId, (c) => ({
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === assistantId ? { ...m, content: notice, streaming: true } : m,
+              ),
+            }));
+          }
         },
         (sources) => {
           updateChat(chatId, (c) => ({
@@ -150,55 +213,49 @@ function ChatApp() {
         }
       );
 
-      updateChat(chatId, (c) => ({
+      setChats((prev) => prev.map((c) => c.id === chatId ? {
         ...c,
         messages: c.messages.map((m) =>
           m.id === assistantId ? { ...m, content: full, streaming: false } : m,
         ),
-      }));
+      } : c));
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setIsGenerating(false);
         return;
       }
       const message = error instanceof Error ? error.message : t("noAnswer");
-      updateChat(chatId, (c) => ({
+      setChats((prev) => prev.map((c) => c.id === chatId ? {
         ...c,
         messages: c.messages.map((m) =>
           m.id === assistantId
             ? { ...m, content: `${t("apiError")}\n\n${message}`, streaming: false }
             : m,
         ),
-      }));
+      } : c));
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [activeChat, activeChatId, chats, lang, t, updateChat]);
 
-  const handleEditMessage = (msg: Message) => {
-    // Fill text into ChatInput and optionally prune messages from that point
+  const handleEditMessage = useCallback((msg: Message) => {
     const msgIdx = activeChat.messages.findIndex((m) => m.id === msg.id);
     if (msgIdx !== -1) {
       setEditingText(msg.content);
-      // Prune history to right before this prompt
       const pruned = activeChat.messages.slice(0, msgIdx);
       updateChat(activeChatId, (c) => ({
         ...c,
         messages: pruned,
       }));
     }
-  };
+  }, [activeChat.messages, activeChatId, updateChat]);
 
-  const handleRegenerateMessage = async (msg: Message) => {
+  const handleRegenerateMessage = useCallback(async (msg: Message) => {
     if (isGenerating) return;
     const msgIdx = activeChat.messages.findIndex((m) => m.id === msg.id);
     if (msgIdx === -1) return;
 
-    // Find the previous user message
     const prevHistory = activeChat.messages.slice(0, msgIdx);
-    const lastUserMsg = [...prevHistory].reverse().find((m) => m.role === "user");
-    if (!lastUserMsg) return;
-
     const assistantId = msg.id;
     updateChat(activeChatId, (c) => ({
       ...c,
@@ -235,39 +292,39 @@ function ChatApp() {
         }
       );
 
-      updateChat(activeChatId, (c) => ({
+      setChats((prev) => prev.map((c) => c.id === activeChatId ? {
         ...c,
         messages: c.messages.map((m) =>
           m.id === assistantId ? { ...m, content: full, streaming: false } : m
         ),
-      }));
+      } : c));
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
         const errTxt = error instanceof Error ? error.message : t("noAnswer");
-        updateChat(activeChatId, (c) => ({
+        setChats((prev) => prev.map((c) => c.id === activeChatId ? {
           ...c,
           messages: c.messages.map((m) =>
             m.id === assistantId ? { ...m, content: `${t("apiError")}\n\n${errTxt}`, streaming: false } : m
           ),
-        }));
+        } : c));
       }
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [activeChat.messages, activeChat.modelId, activeChatId, isGenerating, lang, t, updateChat]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     abortRef.current?.abort();
     setIsGenerating(false);
-    updateChat(activeChatId, (c) => ({
+    setChats((prev) => prev.map((c) => c.id === activeChatId ? {
       ...c,
       messages: c.messages.map((m) =>
         m.streaming ? { ...m, content: m.content || t("stopped"), streaming: false } : m,
       ),
-    }));
-  };
+    } : c));
+  }, [activeChatId, t]);
 
-  const handleSelectChat = (id: string, targetMessageId?: string) => {
+  const handleSelectChat = useCallback((id: string, targetMessageId?: string) => {
     setActiveChatId(id);
     setSidebarOpen(false);
     if (targetMessageId) {
@@ -280,7 +337,7 @@ function ChatApp() {
         }
       }, 150);
     }
-  };
+  }, []);
 
   return (
     <div
@@ -322,7 +379,7 @@ function ChatApp() {
               title={lang === "ru" ? "Статистика оптимизации" : lang === "uk" ? "Статистика оптимізації" : "Optimization Stats"}
             >
               <Zap className="h-3.5 w-3.5 fill-current" />
-              <span className="hidden sm:inline">Lroutev1 Engine</span>
+              <span className="hidden sm:inline">Lroutev1 ⚡ Compound</span>
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
@@ -334,13 +391,13 @@ function ChatApp() {
           </div>
         </header>
 
-        <main ref={scrollRef} className="flex flex-1 flex-col overflow-y-auto custom-scrollbar">
+        <main ref={scrollRef} className="flex flex-1 flex-col overflow-y-auto custom-scrollbar will-change-scroll">
           {activeChat?.messages.length === 0 ? (
             <WelcomeScreen onPick={(p) => handleSend(p, [])} />
           ) : (
             <div className="mx-auto w-full max-w-3xl flex-1 space-y-5 py-5">
               {activeChat?.messages.map((m) => (
-                <div id={`msg-${m.id}`} key={m.id} className="transition-all duration-300">
+                <div id={`msg-${m.id}`} key={m.id} className="transition-all duration-200">
                   <MessageBubble
                     message={m}
                     onEdit={m.role === "user" ? handleEditMessage : undefined}
