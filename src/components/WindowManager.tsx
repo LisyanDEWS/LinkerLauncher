@@ -148,27 +148,27 @@ export function useWindows(): WindowManager {
       const maxOffsetX = 160;
       const maxOffsetY = 120;
 
-      const centerX = (window.innerWidth - w) / 2;
-      const centerY = (window.innerHeight - h) / 2;
+      const centerX = Math.round((window.innerWidth - w) / 2);
+      const centerY = Math.round((window.innerHeight - h) / 2);
       const rawX = isMobileScreen ? 8 : centerX + Math.min(offsetCount * cascadeX, maxOffsetX);
       const rawY = isMobileScreen ? 8 : centerY + Math.min(offsetCount * cascadeY, maxOffsetY);
 
-      // Clamp to viewport with a small margin
-      const x = Math.max(4, Math.min(rawX, window.innerWidth - w - 4));
-      const y = Math.max(4, Math.min(rawY, window.innerHeight - h - 50));
+      // Clamp to viewport with a small margin and integer pixel alignment
+      const x = Math.round(Math.max(4, Math.min(rawX, window.innerWidth - w - 4)));
+      const y = Math.round(Math.max(4, Math.min(rawY, window.innerHeight - h - 50)));
       const instance: WindowInstance = {
         id: opts.id,
         title: opts.title,
         icon: opts.icon,
         render: opts.render,
-        initialWidth: opts.initialWidth ?? 720,
-        initialHeight: opts.initialHeight ?? 560,
-        minWidth: isMobileScreen ? 280 : (opts.minWidth ?? 360),
-        minHeight: isMobileScreen ? 320 : (opts.minHeight ?? 280),
+        initialWidth: Math.round(opts.initialWidth ?? 720),
+        initialHeight: Math.round(opts.initialHeight ?? 560),
+        minWidth: Math.round(isMobileScreen ? 280 : (opts.minWidth ?? 360)),
+        minHeight: Math.round(isMobileScreen ? 320 : (opts.minHeight ?? 280)),
         x,
         y,
-        width: w,
-        height: h,
+        width: Math.round(w),
+        height: Math.round(h),
         isMaximized: isMobileScreen,
         isMinimized: false,
         zIndex: nextZ,
@@ -817,15 +817,15 @@ function WindowFrame({
             longPressTimerRef.current = null;
           }
         }
-        const nx = Math.max(0, Math.min(window.innerWidth - 100, dragState.current.origX + dx));
-        const ny = Math.max(0, Math.min(window.innerHeight - 60, dragState.current.origY + dy));
+        const nx = Math.round(Math.max(0, Math.min(window.innerWidth - 100, dragState.current.origX + dx)));
+        const ny = Math.round(Math.max(0, Math.min(window.innerHeight - 60, dragState.current.origY + dy)));
         onGeometryChange({ x: nx, y: ny });
       }
       if (resizeState.current) {
         const dx = clientX - resizeState.current.startX;
         const dy = clientY - resizeState.current.startY;
-        const nw = Math.max(win.minWidth ?? 360, resizeState.current.origW + dx);
-        const nh = Math.max(win.minHeight ?? 280, resizeState.current.origH + dy);
+        const nw = Math.round(Math.max(win.minWidth ?? 360, resizeState.current.origW + dx));
+        const nh = Math.round(Math.max(win.minHeight ?? 280, resizeState.current.origH + dy));
         onGeometryChange({ width: nw, height: nh });
       }
     };
@@ -878,12 +878,17 @@ function WindowFrame({
   const isFullScreen = win.isMaximized || isMobileLayout;
   const frameStyle: React.CSSProperties = isFullScreen
     ? { left: 0, top: 0, width: '100vw', height: '100vh' }
-    : { left: win.x, top: win.y, width: win.width, height: win.height };
+    : {
+        left: Math.round(win.x),
+        top: Math.round(win.y),
+        width: Math.round(win.width),
+        height: Math.round(win.height),
+      };
 
-  const taskbarX = window.innerWidth / 2;
-  const taskbarY = window.innerHeight - 24;
-  const winCenterX = win.x + win.width / 2;
-  const winCenterY = win.y + win.height / 2;
+  const taskbarX = Math.round(window.innerWidth / 2);
+  const taskbarY = Math.round(window.innerHeight - 24);
+  const winCenterX = Math.round(win.x + win.width / 2);
+  const winCenterY = Math.round(win.y + win.height / 2);
   const minimizeX = taskbarX - winCenterX;
   const minimizeY = taskbarY - winCenterY;
 
@@ -930,7 +935,7 @@ function WindowFrame({
       }
       onMouseDown={onFocus}
       onTouchStart={onFocus}
-      className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)]/85 backdrop-blur-2xl ${isFullScreen ? 'border-none' : 'border border-[var(--outline-var)]/60 shadow-2xl'}`}
+      className={`fixed z-[100] flex flex-col overflow-hidden bg-[var(--surface)] text-[var(--on-surface)] wm-window-frame ${isFullScreen ? 'border-none' : 'border border-[var(--outline-var)]/80 shadow-2xl'}`}
       style={{
         ...frameStyle,
         zIndex: win.zIndex,
@@ -943,7 +948,9 @@ function WindowFrame({
           : isActive
             ? '0 20px 50px -12px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent)'
             : 'var(--shadow-2, 0 4px 12px rgba(0,0,0,0.15))',
-        willChange: 'transform, opacity',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale',
+        textRendering: 'optimizeLegibility',
         transition: isInteracting
           ? 'none'
           : 'left 0.32s cubic-bezier(0.16, 1, 0.3, 1), top 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.32s cubic-bezier(0.16, 1, 0.3, 1)',

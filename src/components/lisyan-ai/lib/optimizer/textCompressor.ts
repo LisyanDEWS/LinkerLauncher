@@ -97,6 +97,51 @@ export function detectInstantRuleResponse(
     return { handled: true, content: replies[lang] || replies.ru, source: "greeting" };
   }
 
+  // 2b. How are you / Как дела
+  const howAreYouPatterns = [
+    /^(как дела|как ты|как поживаешь|как жизнь|че как|чё как|как успехи|как настроение|как сам|как оно)$/i,
+    /^(як справи|як ти|як ся маєш|як життя|як настрій)$/i,
+    /^(how are you|how's it going|how are you doing|how do you do|what's up|how is everything)$/i,
+  ];
+  if (howAreYouPatterns.some((p) => p.test(clean))) {
+    const replies = {
+      ru: "У меня всё отлично, системы работают на полную мощность! 🚀 Готов помочь вам с кодом, текстом, анализом видео или любыми вопросами. Как ваши дела?",
+      uk: "У мене все чудово, системи працюють на повну потужність! 🚀 Готовий допомогти вам з кодом, текстом, аналізом відео чи будь-якими питаннями. Як ваші справи?",
+      en: "I'm doing great, all systems operational! 🚀 Ready to assist you with code, writing, YouTube summaries, or any questions. How are you doing?",
+    };
+    return { handled: true, content: replies[lang] || replies.ru, source: "courtesy" };
+  }
+
+  // 2c. Who are you / Кто ты
+  const whoAreYouPatterns = [
+    /^(кто ты|расскажи о себе|ты кто|что ты такое)$/i,
+    /^(хто ти|розкажи про себе|ти хто)$/i,
+    /^(who are you|tell me about yourself|what are you)$/i,
+  ];
+  if (whoAreYouPatterns.some((p) => p.test(clean))) {
+    const replies = {
+      ru: "Я — **Lisyan AI**, ваш универсальный интеллектуальный ассистент в LinkerRu. Я умею анализировать YouTube-видео через SubConvert, подсказывать погоду, писать код, находить ошибки, генерировать идеи и отвечать на любые вопросы.",
+      uk: "Я — **Lisyan AI**, ваш універсальний інтелектуальний асистент у LinkerRu. Я вмію аналізувати YouTube-відео через SubConvert, підказувати погоду, писати код, знаходити помилки, генерувати ідеї та відповідати на будь-які запитання.",
+      en: "I am **Lisyan AI**, your intelligent personal assistant in LinkerRu. I can summarize YouTube videos via SubConvert, fetch live weather, write code, troubleshoot issues, generate ideas, and assist with any tasks.",
+    };
+    return { handled: true, content: replies[lang] || replies.ru, source: "courtesy" };
+  }
+
+  // 2d. What can you do / Что ты умеешь
+  const whatCanYouDoPatterns = [
+    /^(что ты умеешь|что умеешь|какие возможности|твои функции|покажи что умеешь)$/i,
+    /^(що ти вмієш|що вмієш|які можливості|твої функції)$/i,
+    /^(what can you do|what are your features|capabilities|how can you help)$/i,
+  ];
+  if (whatCanYouDoPatterns.some((p) => p.test(clean))) {
+    const replies = {
+      ru: "Вот основные вещи, с которыми я могу помочь:\n\n• 🎬 **Анализ YouTube-видео** — пришлите ссылку, и я подключусь к SubConvert и сделаю выжимку.\n• 🌤️ **Погода** — спросите «какая погода», и я подключусь к сервису погоды.\n• 💻 **Программирование** — написание кода, рефакторинг, исправление багов.\n• ✍️ **Тексты и переводы** — статьи, посты, переводы на любые языки.\n• 💡 **Идеи и планирование** — генерация концепций, расписаний и решений.\n• 🖼️ **Компьютерное зрение** — распознавание и анализ прикрепленных изображений.",
+      uk: "Ось основні речі, з якими я можу допомогти:\n\n• 🎬 **Аналіз YouTube-відео** — надішліть посилання, і я підключуся до SubConvert та зроблю вижимку.\n• 🌤️ **Погода** — запитайте «яка погода», і я підключуся до сервісу погоди.\n• 💻 **Програмування** — написання коду, рефакторинг, виправлення багів.\n• ✍️ **Тексти та переклади** — статті, пости, переклади будь-якими мовами.\n• 💡 **Ідеї та планування** — генерація концепцій, розкладів та рішень.\n• 🖼️ **Комп'ютерний зір** — розпізнавання та аналіз доданих зображень.",
+      en: "Here are some of the key things I can do for you:\n\n• 🎬 **YouTube Video Analysis** — send any YouTube URL, and I'll connect to SubConvert for a full summary.\n• 🌤️ **Live Weather** — ask 'what's the weather like' to get real-time forecasts.\n• 💻 **Coding & Debugging** — write clean code, troubleshoot bugs, and design architectures.\n• ✍️ **Writing & Translation** — articles, posts, and multi-language translations.\n• 💡 **Ideas & Planning** — brainstorming, workflows, and step-by-step guides.\n• 🖼️ **Vision AI** — describe and extract text from attached images.",
+    };
+    return { handled: true, content: replies[lang] || replies.ru, source: "courtesy" };
+  }
+
   // 3. Current Time & Date requests
   const timeDatePatterns = [
     /^(сколько сейчас времени|который час|точное время|текущее время|time|what time is it|котра година)$/i,

@@ -122,40 +122,35 @@ export default function WeatherModal({ isOpen, onClose, lang, primaryColor, embe
         }
       }
 
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const newLat = pos.coords.latitude.toString();
-            const newLon = pos.coords.longitude.toString();
-            setLatStr(newLat);
-            setLonStr(newLon);
-            const myLocName = lang === 'ru' ? 'Моё местоположение' : lang === 'uk' ? 'Моє місце розташування' : 'My location';
-            setCityName(myLocName);
-            localStorage.setItem('linkerru_cached_weather_city', myLocName);
-            lastCoordsRef.current = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-            loadWeather(pos.coords.latitude, pos.coords.longitude);
-          },
-          (err) => {
-            console.warn('Geolocation failed or timed out', err);
-            const lat = Number(latStr) || 52.52;
-            const lon = Number(lonStr) || 13.41;
-            const fallbackCity = lang === 'ru' ? 'Берлин' : lang === 'uk' ? 'Берлін' : 'Berlin';
-            setCityName(fallbackCity);
-            localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
+      // Silent IP-based geolocation without any browser permission prompt
+      try {
+        const ipRes = await fetch('/api/geoip');
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData && ipData.latitude && ipData.longitude) {
+            const lat = Number(ipData.latitude);
+            const lon = Number(ipData.longitude);
+            setLatStr(lat.toString());
+            setLonStr(lon.toString());
+            const resolvedCity = ipData.city || (lang === 'ru' ? 'Москва' : 'Moscow');
+            setCityName(resolvedCity);
+            localStorage.setItem('linkerru_cached_weather_city', resolvedCity);
             lastCoordsRef.current = { lat, lon };
             loadWeather(lat, lon);
-          },
-          { timeout: 1500, maximumAge: 600000 }
-        );
-      } else {
-        const lat = Number(latStr) || 52.52;
-        const lon = Number(lonStr) || 13.41;
-        const fallbackCity = lang === 'ru' ? 'Берлин' : lang === 'uk' ? 'Берлін' : 'Berlin';
-        setCityName(fallbackCity);
-        localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
-        lastCoordsRef.current = { lat, lon };
-        loadWeather(lat, lon);
+            return;
+          }
+        }
+      } catch (geoErr) {
+        console.warn('Silent IP GeoIP fallback:', geoErr);
       }
+
+      const lat = Number(latStr) || 55.7558;
+      const lon = Number(lonStr) || 37.6173;
+      const fallbackCity = lang === 'ru' ? 'Москва' : lang === 'uk' ? 'Київ' : 'London';
+      setCityName(fallbackCity);
+      localStorage.setItem('linkerru_cached_weather_city', fallbackCity);
+      lastCoordsRef.current = { lat, lon };
+      loadWeather(lat, lon);
     };
 
     // Initial fetch

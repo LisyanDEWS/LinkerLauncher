@@ -50,6 +50,7 @@ import {
   Subtitles,
   LayoutGrid,
   RotateCw,
+  Target,
 } from 'lucide-react';
 
 import { Language, ThemeMode, QuickLink, MAX_QUICK_LINKS, DEFAULT_QUICK_LINKS, ToggleId, TOGGLE_IDS, MAX_TOGGLES, Material3Palette, AppMode } from './types';
@@ -90,6 +91,7 @@ import { LiveWallpaper } from './components/LiveWallpaper';
 import LisyanAIApp from './components/LisyanAIApp';
 import LisyanLogo from './components/lisyan-ai/components/Logo';
 import LisyanConnectLogo from './components/LisyanConnectLogo';
+import DailyFocusApp from './components/DailyFocusApp';
 
 export default function App() {
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean }[]>([]);
@@ -1995,6 +1997,26 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       minWidth: 420,
       minHeight: 380,
       render: () => <TelegramRouteApp lang={lang} onReloadTrigger={() => playChime('click')} />,
+    });
+  };
+
+  const openDailyFocusWindow = () => {
+    playChime('click');
+    activeWm.open({
+      id: 'daily_focus',
+      title: lang === 'ru' ? 'Daily Focus' : 'Daily Focus',
+      icon: <Target size={14} className="text-[var(--on-surface)]" />,
+      singleton: true,
+      initialWidth: 780,
+      initialHeight: 620,
+      minWidth: 380,
+      minHeight: 420,
+      render: () => (
+        <DailyFocusApp
+          primaryColor={activePalette.primary}
+          lang={lang}
+        />
+      ),
     });
   };
 

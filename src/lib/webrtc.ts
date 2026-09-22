@@ -136,9 +136,9 @@ export class WebRTCConnection {
     });
   }
 
-  sendData(data: string | ArrayBuffer | Blob) {
+  sendData(data: string | ArrayBuffer | Blob | ArrayBufferView) {
     if (this.dataChannel && this.dataChannel.readyState === 'open') {
-      this.dataChannel.send(data);
+      (this.dataChannel.send as (data: any) => void)(data);
     } else {
       console.error('DataChannel is not open');
     }

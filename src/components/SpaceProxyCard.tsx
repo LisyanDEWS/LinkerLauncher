@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Globe, ArrowLeft, ChevronRight } from 'lucide-react';
-import { Language } from '../types';
+import { Language, ThemeMode } from '../types';
+import { InkAppLauncherButton } from './InkAppLauncherButton';
 
 interface SpaceProxyCardProps {
   lang: Language;
-  theme: 'light' | 'dark';
+  theme: ThemeMode;
   activePalette: {
     primary: string;
     secondary?: string;
@@ -14,6 +15,9 @@ interface SpaceProxyCardProps {
   proxyMinimized?: boolean;
   onOpenHub: (url: string, serverName: string) => void;
   playChime: (sound?: 'click' | 'alert' | 'reset' | 'victory' | 'toast') => void;
+  openTabsCount?: number;
+  activeTabIndex?: number;
+  onFocusTab?: (tabIndex: number) => void;
 }
 
 const DEFAULT_SERVERS: { id: string; nameRu: string; nameEn: string; url: string }[] = [
@@ -44,15 +48,17 @@ export function SpaceProxyCard({
   proxyMinimized,
   onOpenHub,
   playChime,
+  openTabsCount = 0,
+  activeTabIndex = 1,
+  onFocusTab,
 }: SpaceProxyCardProps) {
   const isRu = lang === 'ru';
   const [isSelectingServer, setIsSelectingServer] = useState(false);
+  const [hasExplicitlySelected, setHasExplicitlySelected] = useState<boolean>(() => {
+    return localStorage.getItem('linkerru_has_selected_proxy_server') === 'true';
+  });
   const [lastSelectedUrl, setLastSelectedUrl] = useState<string>(() => {
-    const saved = localStorage.getItem('linkerru_server_url');
-    if (!saved || saved === 'https://english.neeb.wtf/') {
-      return 'https://math.soyescalahumana.cl/';
-    }
-    return saved;
+    return localStorage.getItem('linkerru_server_url') || '';
   });
   const [clickCounts, setClickCounts] = useState<Record<string, number>>(() => {
     try {
@@ -71,19 +77,6 @@ export function SpaceProxyCard({
   const getShadingStyle = (serverId: string) => {
     const count = Number(clickCounts[serverId]) || 0;
     if (totalClicks === 0) {
-      if (serverId === 'server-1') {
-        return theme === 'dark'
-          ? {
-              backgroundColor: 'color-mix(in srgb, var(--accent) 35%, var(--surface-dim))',
-              borderColor: 'var(--accent)',
-              color: 'var(--on-surface)',
-            }
-          : {
-              backgroundColor: 'color-mix(in srgb, var(--accent) 85%, #000000)',
-              borderColor: 'transparent',
-              color: '#ffffff',
-            };
-      }
       return {
         backgroundColor: 'var(--container)',
         borderColor: 'var(--outline-var)',
@@ -146,7 +139,9 @@ export function SpaceProxyCard({
     };
     setClickCounts(updated);
     setLastSelectedUrl(server.url);
+    setHasExplicitlySelected(true);
     try {
+      localStorage.setItem('linkerru_has_selected_proxy_server', 'true');
       localStorage.setItem('linkerru_proxy_server_clicks', JSON.stringify(updated));
       localStorage.setItem('linkerru_server_url', server.url);
       localStorage.setItem('linkerru_server', isRu ? server.nameRu : server.nameEn);
@@ -170,7 +165,7 @@ export function SpaceProxyCard({
           onClick={(e) => {
             e.stopPropagation();
             playChime('click');
-            onOpenHub(lastSelectedUrl, '');
+            onOpenHub(lastSelectedUrl || DEFAULT_SERVERS[0].url, '');
           }}
           className="running-pill"
           title={isRu ? 'Развернуть Space Proxy Hub' : 'Restore Space Proxy Hub'}
@@ -218,26 +213,32 @@ export function SpaceProxyCard({
               </p>
             </div>
 
-            {/* Bottom: Single Open Button */}
+            {/* Bottom: Ink Multi-Tab Launcher Button */}
             <div className="mt-3">
-              <button
-                onClick={() => {
+              <InkAppLauncherButton
+                appId="space_proxy"
+                openTabsCount={openTabsCount}
+                activeTabIndex={activeTabIndex}
+                onOpenNewTab={() => {
                   playChime('click');
                   setIsSelectingServer(true);
                 }}
-                className="w-full py-3.5 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm flex items-center justify-center gap-2"
-                style={{
-                  backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                  borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                  color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                  boxShadow:
-                    theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`,
+                onFocusTab={(idx) => {
+                  playChime('click');
+                  if (onFocusTab) {
+                    onFocusTab(idx);
+                  } else {
+                    onOpenHub(lastSelectedUrl || DEFAULT_SERVERS[0].url, '');
+                  }
                 }}
-                id="proxy-card-open-btn"
-              >
-                <span>{isRu ? 'Открыть' : 'Open'}</span>
-                <ChevronRight size={14} />
-              </button>
+                onBackground={() => {
+                  playChime('click');
+                  onOpenHub(lastSelectedUrl || DEFAULT_SERVERS[0].url, '');
+                }}
+                lang={lang}
+                theme={theme}
+                accentColor={activePalette.primary}
+              />
             </div>
           </motion.div>
         ) : (
@@ -273,7 +274,7 @@ export function SpaceProxyCard({
             <div className="flex flex-col gap-2 my-auto">
               {DEFAULT_SERVERS.map((server) => {
                 const style = getShadingStyle(server.id);
-                const isSelectedPreviously = lastSelectedUrl === server.url;
+                const isSelectedPreviously = hasExplicitlySelected && lastSelectedUrl === server.url;
 
                 return (
                   <button

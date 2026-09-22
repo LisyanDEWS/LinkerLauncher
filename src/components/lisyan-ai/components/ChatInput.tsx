@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { ArrowUp, FileText, Paperclip, Square, UploadCloud, X } from "lucide-react";
+import { ArrowUp, FileText, Globe, Paperclip, Square, UploadCloud, X } from "lucide-react";
 import type { AttachedFile } from "../types";
 import { processUploadedFile } from "../utils/fileHelpers";
 import { useSettings } from "../context/SettingsContext";
@@ -8,6 +8,8 @@ interface ChatInputProps {
   onSend: (text: string, attachments: AttachedFile[]) => void;
   disabled?: boolean;
   onStop?: () => void;
+  initialText?: string;
+  onTextConsumed?: () => void;
 }
 
 function formatSize(bytes: number) {
@@ -16,13 +18,22 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function ChatInput({ onSend, disabled, onStop }: ChatInputProps) {
-  const { t } = useSettings();
+export default function ChatInput({ onSend, disabled, onStop, initialText, onTextConsumed }: ChatInputProps) {
+  const { t, lang } = useSettings();
   const [value, setValue] = useState("");
   const [files, setFiles] = useState<AttachedFile[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [webSearchActive, setWebSearchActive] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialText !== undefined && initialText !== null) {
+      setValue(initialText);
+      if (onTextConsumed) onTextConsumed();
+      ref.current?.focus();
+    }
+  }, [initialText, onTextConsumed]);
 
   useEffect(() => {
     if (ref.current) {
@@ -49,8 +60,11 @@ export default function ChatInput({ onSend, disabled, onStop }: ChatInputProps) 
   };
 
   const submit = () => {
-    const trimmed = value.trim();
+    let trimmed = value.trim();
     if ((!trimmed && files.length === 0) || disabled) return;
+    if (webSearchActive && !/найди|поищи|google|гугл/i.test(trimmed)) {
+      trimmed = `Найди в интернете актуальную информацию: ${trimmed}`;
+    }
     onSend(trimmed, files);
     setValue("");
     setFiles([]);
@@ -110,6 +124,21 @@ export default function ChatInput({ onSend, disabled, onStop }: ChatInputProps) 
           >
             <Paperclip className="h-5 w-5" />
           </button>
+
+          <button
+            type="button"
+            onClick={() => setWebSearchActive(!webSearchActive)}
+            className={`mb-1 flex h-10 px-3 items-center gap-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
+              webSearchActive
+                ? "bg-[var(--s-brand)] text-white shadow-xs"
+                : "text-[var(--s-ink-faint)] hover:bg-[var(--s-surface-2)] hover:text-[var(--s-brand)]"
+            }`}
+            title="Google / Поиск в интернете"
+          >
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">{lang === "ru" ? "Поиск Web" : "Search"}</span>
+          </button>
+
           <textarea
             ref={ref}
             value={value}

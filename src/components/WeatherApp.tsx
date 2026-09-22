@@ -27,7 +27,23 @@ export default function WeatherApp({ primaryColor }: WeatherAppProps) {
   const [hourlyTrend, setHourlyTrend] = useState<number[]>([]);
 
   useEffect(() => {
-    loadWeather(Number(latStr), Number(lonStr));
+    const initLocation = async () => {
+      try {
+        const res = await fetch('/api/geoip');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.latitude) {
+            setLatStr(data.latitude.toString());
+            setLonStr(data.longitude.toString());
+            setLocName(data.city ? `${data.city}, ${data.country}` : 'Москва');
+            loadWeather(Number(data.latitude), Number(data.longitude));
+            return;
+          }
+        }
+      } catch {}
+      loadWeather(Number(latStr), Number(lonStr));
+    };
+    initLocation();
   }, []);
 
   const loadWeather = async (lat: number, lon: number) => {

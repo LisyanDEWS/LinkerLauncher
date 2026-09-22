@@ -12,7 +12,7 @@ import { routeRequest } from "./lib/optimizer/smartRouter";
 import { getModel } from "./data/models";
 import { SettingsProvider, useSettings } from "./context/SettingsContext";
 import type { AttachedFile, Chat, Message, ModelId } from "./types";
-import { Language, ThemeMode, Material3Palette } from "../../types";
+import { Language, ThemeMode } from "../../types";
 
 const STORAGE_KEY = "lisyan_chats_v3";
 
@@ -31,9 +31,7 @@ function loadChats(): Chat[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return [makeChat()];
 }
 
@@ -45,6 +43,7 @@ function ChatApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [editingText, setEditingText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -53,9 +52,7 @@ function ChatApp() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }, [chats]);
 
   useEffect(() => {
@@ -88,10 +85,6 @@ function ChatApp() {
     });
   };
 
-  const handleModelChange = (modelId: ModelId) => {
-    updateChat(activeChatId, (c) => ({ ...c, modelId }));
-  };
-
   const handleSend = async (text: string, attachments: AttachedFile[] = []) => {
     const chatId = activeChatId;
     const currentChat = chats.find((c) => c.id === chatId) ?? activeChat;
@@ -113,6 +106,7 @@ function ChatApp() {
       content: "",
       modelId: activeModelId,
       streaming: true,
+      sources: [],
     };
 
     const title = text.trim()
@@ -133,14 +127,28 @@ function ChatApp() {
 
     try {
       const history = [...(currentChat?.messages ?? []), userMsg];
-      const full = await sendChatRequest(history, activeModelId, lang, controller.signal, (notice) => {
-        updateChat(chatId, (c) => ({
-          ...c,
-          messages: c.messages.map((m) =>
-            m.id === assistantId ? { ...m, content: notice, streaming: true } : m,
-          ),
-        }));
-      });
+      const full = await sendChatRequest(
+        history,
+        activeModelId,
+        lang,
+        controller.signal,
+        (notice) => {
+          updateChat(chatId, (c) => ({
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === assistantId ? { ...m, content: notice, streaming: true } : m,
+            ),
+          }));
+        },
+        (sources) => {
+          updateChat(chatId, (c) => ({
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === assistantId ? { ...m, sources } : m,
+            ),
+          }));
+        }
+      );
 
       updateChat(chatId, (c) => ({
         ...c,
@@ -167,6 +175,87 @@ function ChatApp() {
     }
   };
 
+  const handleEditMessage = (msg: Message) => {
+    // Fill text into ChatInput and optionally prune messages from that point
+    const msgIdx = activeChat.messages.findIndex((m) => m.id === msg.id);
+    if (msgIdx !== -1) {
+      setEditingText(msg.content);
+      // Prune history to right before this prompt
+      const pruned = activeChat.messages.slice(0, msgIdx);
+      updateChat(activeChatId, (c) => ({
+        ...c,
+        messages: pruned,
+      }));
+    }
+  };
+
+  const handleRegenerateMessage = async (msg: Message) => {
+    if (isGenerating) return;
+    const msgIdx = activeChat.messages.findIndex((m) => m.id === msg.id);
+    if (msgIdx === -1) return;
+
+    // Find the previous user message
+    const prevHistory = activeChat.messages.slice(0, msgIdx);
+    const lastUserMsg = [...prevHistory].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+
+    const assistantId = msg.id;
+    updateChat(activeChatId, (c) => ({
+      ...c,
+      messages: c.messages.map((m) =>
+        m.id === assistantId ? { ...m, content: "", streaming: true, sources: [] } : m
+      ),
+    }));
+
+    setIsGenerating(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const full = await sendChatRequest(
+        prevHistory,
+        msg.modelId ?? activeChat.modelId ?? "lnv1",
+        lang,
+        controller.signal,
+        (notice) => {
+          updateChat(activeChatId, (c) => ({
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === assistantId ? { ...m, content: notice, streaming: true } : m
+            ),
+          }));
+        },
+        (sources) => {
+          updateChat(activeChatId, (c) => ({
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === assistantId ? { ...m, sources } : m
+            ),
+          }));
+        }
+      );
+
+      updateChat(activeChatId, (c) => ({
+        ...c,
+        messages: c.messages.map((m) =>
+          m.id === assistantId ? { ...m, content: full, streaming: false } : m
+        ),
+      }));
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        const errTxt = error instanceof Error ? error.message : t("noAnswer");
+        updateChat(activeChatId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === assistantId ? { ...m, content: `${t("apiError")}\n\n${errTxt}`, streaming: false } : m
+          ),
+        }));
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleStop = () => {
     abortRef.current?.abort();
     setIsGenerating(false);
@@ -178,6 +267,21 @@ function ChatApp() {
     }));
   };
 
+  const handleSelectChat = (id: string, targetMessageId?: string) => {
+    setActiveChatId(id);
+    setSidebarOpen(false);
+    if (targetMessageId) {
+      setTimeout(() => {
+        const el = document.getElementById(`msg-${targetMessageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-[var(--s-brand)]", "rounded-3xl");
+          setTimeout(() => el.classList.remove("ring-2", "ring-[var(--s-brand)]"), 2500);
+        }
+      }, 150);
+    }
+  };
+
   return (
     <div
       data-lisyan-theme={theme}
@@ -186,10 +290,7 @@ function ChatApp() {
       <Sidebar
         chats={chats}
         activeChatId={activeChatId}
-        onSelectChat={(id) => {
-          setActiveChatId(id);
-          setSidebarOpen(false);
-        }}
+        onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
         onOpenSettings={() => {
@@ -221,7 +322,7 @@ function ChatApp() {
               title={lang === "ru" ? "Статистика оптимизации" : lang === "uk" ? "Статистика оптимізації" : "Optimization Stats"}
             >
               <Zap className="h-3.5 w-3.5 fill-current" />
-              <span className="hidden sm:inline">Turbo AI</span>
+              <span className="hidden sm:inline">Lroutev1 Engine</span>
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
@@ -239,14 +340,26 @@ function ChatApp() {
           ) : (
             <div className="mx-auto w-full max-w-3xl flex-1 space-y-5 py-5">
               {activeChat?.messages.map((m) => (
-                <MessageBubble key={m.id} message={m} />
+                <div id={`msg-${m.id}`} key={m.id} className="transition-all duration-300">
+                  <MessageBubble
+                    message={m}
+                    onEdit={m.role === "user" ? handleEditMessage : undefined}
+                    onRegenerate={m.role === "assistant" ? handleRegenerateMessage : undefined}
+                  />
+                </div>
               ))}
             </div>
           )}
         </main>
 
         <div className="shrink-0 pt-2">
-          <ChatInput onSend={handleSend} disabled={isGenerating} onStop={handleStop} />
+          <ChatInput
+            onSend={handleSend}
+            disabled={isGenerating}
+            onStop={handleStop}
+            initialText={editingText ?? undefined}
+            onTextConsumed={() => setEditingText(null)}
+          />
         </div>
       </div>
 

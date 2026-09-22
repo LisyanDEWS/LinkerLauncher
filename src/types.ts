@@ -2,6 +2,7 @@ export type Language = 'ru' | 'en' | 'uk';
 export type ThemeMode = 'light' | 'dark';
 export type ClockType = 'digital' | 'analog';
 export type AppMode = 'window_manager' | 'classic';
+export type HomeVersion = 'classic' | 'nextgen' | 'expressive' | 'fusion';
 
 export interface Material3Palette {
   id: string;

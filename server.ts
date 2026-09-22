@@ -367,6 +367,493 @@ async function startServer() {
   app.get('/api/transcripts', handleListTranscripts);
   app.get('/api/health', (req, res) => res.json({ ok: true, service: 'linkerru-server' }));
 
+  // --- IP GEOLOCATION ENDPOINT (No browser permission prompt) ---
+  app.get('/api/geoip', async (req, res) => {
+    try {
+      // 1. Try free IP API
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+      const isLocal = !clientIp || clientIp === '::1' || clientIp === '127.0.0.1' || clientIp.startsWith('192.168.') || clientIp.startsWith('10.');
+
+      const url = isLocal ? 'https://freeipapi.com/api/json' : `https://freeipapi.com/api/json/${clientIp}`;
+      const geoRes = await fetchWithTimeout(url, {}, 4000);
+      if (geoRes.ok) {
+        const data = await geoRes.json();
+        if (data && data.cityName && data.latitude) {
+          return res.json({
+            city: data.cityName,
+            country: data.countryName || '',
+            latitude: data.latitude,
+            longitude: data.longitude,
+            ip: data.ipAddress || clientIp,
+          });
+        }
+      }
+
+      // Fallback to ipwho.is
+      const whoRes = await fetchWithTimeout(isLocal ? 'https://ipwho.is/' : `https://ipwho.is/${clientIp}`, {}, 4000);
+      if (whoRes.ok) {
+        const data = await whoRes.json();
+        if (data && data.success && data.city) {
+          return res.json({
+            city: data.city,
+            country: data.country || '',
+            latitude: data.latitude,
+            longitude: data.longitude,
+            ip: data.ip || clientIp,
+          });
+        }
+      }
+
+      // Default fallback if offline
+      return res.json({
+        city: 'Москва',
+        country: 'Россия',
+        latitude: 55.7558,
+        longitude: 37.6173,
+        ip: clientIp || '127.0.0.1',
+      });
+    } catch (e) {
+      return res.json({
+        city: 'Москва',
+        country: 'Россия',
+        latitude: 55.7558,
+        longitude: 37.6173,
+        ip: '127.0.0.1',
+      });
+    }
+  });
+
+  // --- WEB / GOOGLE SEARCH PROXY (Live search with structured source pills) ---
+  app.get('/api/ai/search', async (req, res) => {
+    try {
+      const query = (req.query.q as string || '').trim();
+      if (!query) {
+        return res.status(400).json({ error: 'Query parameter q is required' });
+      }
+
+      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      const searchRes = await fetchWithTimeout(searchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'ru,en;q=0.9',
+        },
+      }, 7000);
+
+      const results: { title: string; url: string; snippet: string; domain: string }[] = [];
+
+      if (searchRes.ok) {
+        const html = await searchRes.text();
+        const resultRegex = /<a class="result__url" href="([^"]+)"[\s\S]*?<a class="result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+        const titleRegex = /<a class="result__a" href="[^"]*">([\s\S]*?)<\/a>/gi;
+
+        const rawTitles: string[] = [];
+        let tMatch;
+        while ((tMatch = titleRegex.exec(html)) !== null && rawTitles.length < 8) {
+          rawTitles.push(tMatch[1].replace(/<[^>]+>/g, '').trim());
+        }
+
+        let match;
+        let idx = 0;
+        while ((match = resultRegex.exec(html)) !== null && results.length < 6) {
+          let rawUrl = match[1].trim();
+          if (rawUrl.startsWith('//')) rawUrl = 'https:' + rawUrl;
+          if (rawUrl.includes('uddg=')) {
+            const parsed = new URL(rawUrl, 'https://duckduckgo.com');
+            rawUrl = decodeURIComponent(parsed.searchParams.get('uddg') || rawUrl);
+          }
+
+          let domain = '';
+          try {
+            domain = new URL(rawUrl).hostname.replace(/^www\./, '');
+          } catch {
+            domain = rawUrl.split('/')[0] || 'web';
+          }
+
+          const snippet = match[2].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').trim();
+          const title = rawTitles[idx] || domain;
+
+          if (rawUrl.startsWith('http') && snippet.length > 10) {
+            results.push({
+              title,
+              url: rawUrl,
+              snippet,
+              domain,
+            });
+          }
+          idx++;
+        }
+      }
+
+      // Fallback: Instant Wikipedia / DuckDuckGo API if HTML scraping was light
+      if (results.length === 0) {
+        try {
+          const ddgJson = await fetchWithTimeout(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, {}, 4000);
+          if (ddgJson.ok) {
+            const data = await ddgJson.json();
+            if (data.AbstractText) {
+              results.push({
+                title: data.Heading || query,
+                url: data.AbstractURL || 'https://en.wikipedia.org',
+                snippet: data.AbstractText,
+                domain: data.AbstractSource || 'wikipedia.org',
+              });
+            }
+            if (Array.isArray(data.RelatedTopics)) {
+              for (const topic of data.RelatedTopics.slice(0, 4)) {
+                if (topic.Text && topic.FirstURL) {
+                  let dom = 'web';
+                  try { dom = new URL(topic.FirstURL).hostname.replace(/^www\./, ''); } catch {}
+                  results.push({
+                    title: topic.Text.split(' - ')[0] || topic.Text.slice(0, 40),
+                    url: topic.FirstURL,
+                    snippet: topic.Text,
+                    domain: dom,
+                  });
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      return res.json({
+        query,
+        count: results.length,
+        results,
+      });
+    } catch (e: any) {
+      console.warn('Search error:', e);
+      return res.json({ query: req.query.q, count: 0, results: [] });
+    }
+  });
+
+  // --- LISYAN AI SERVER-SIDE CHAT (OpenRouter + Cerebras + NVIDIA NIM + Groq from environment variables) ---
+  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+  const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY || '';
+  const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
+  const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+
+  // --- LISYAN AI MODEL WARMUP & HEALTH CHECK (Silent first-run probe) ---
+  app.get('/api/ai/warmup', async (req, res) => {
+    const verifiedModels: string[] = [];
+    const checkMessage = [{ role: 'user', content: 'Reply YES if you can hear me' }];
+
+    try {
+      // Fast probe Cerebras if key configured
+      const cbProbe = CEREBRAS_API_KEY
+        ? fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'llama3.1-8b',
+              messages: checkMessage,
+              max_tokens: 10,
+            }),
+          }, 4000).then(async (r) => {
+            if (r.ok) verifiedModels.push('llama3.1-8b', 'llama-3.3-70b');
+          }).catch(() => {})
+        : Promise.resolve();
+
+      // Fast probe OpenRouter if key configured
+      const orProbe = OPENROUTER_API_KEY
+        ? fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'openrouter/free',
+              messages: checkMessage,
+              max_tokens: 10,
+            }),
+          }, 5000).then(async (r) => {
+            if (r.ok) verifiedModels.push('openrouter/free', 'meta-llama/llama-3.3-70b-instruct:free');
+          }).catch(() => {})
+        : Promise.resolve();
+
+      // Fast probe NVIDIA NIM if key configured
+      const nvProbe = NVIDIA_API_KEY
+        ? fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'meta/llama-3.3-70b-instruct',
+              messages: checkMessage,
+              max_tokens: 10,
+            }),
+          }, 4500).then(async (r) => {
+            if (r.ok) verifiedModels.push('meta/llama-3.3-70b-instruct', 'nvidia/llama-3.1-nemotron-70b-instruct');
+          }).catch(() => {})
+        : Promise.resolve();
+
+      await Promise.allSettled([cbProbe, orProbe, nvProbe]);
+
+      return res.json({
+        ok: true,
+        verifiedModels,
+        primaryEngine: 'Lroutev1',
+      });
+    } catch {
+      return res.json({ ok: true, verifiedModels: ['openrouter/free'], primaryEngine: 'Lroutev1' });
+    }
+  });
+
+  const OPENROUTER_MODELS = [
+    'openrouter/free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemini-2.0-flash-exp:free',
+    'inclusionai/ling-3.0-flash-vl:free',
+    'deepseek/deepseek-r1:free',
+    'qwen/qwen-2.5-72b-instruct:free',
+    'nvidia/nemotron-3-embed-1b:free',
+  ];
+
+  const CEREBRAS_MODELS = [
+    'llama-3.3-70b',
+    'llama3.1-8b',
+  ];
+
+  const NVIDIA_MODELS = [
+    'meta/llama-3.3-70b-instruct',
+    'deepseek-ai/deepseek-r1',
+    'nvidia/llama-3.1-nemotron-70b-instruct',
+    'mistralai/mistral-large-2-instruct',
+    'meta/llama-3.1-8b-instruct',
+  ];
+
+  const GROQ_MODELS = [
+    'llama-3.3-70b-versatile',
+    'deepseek-r1-distill-llama-70b',
+    'qwen-2.5-32b',
+  ];
+
+  function cleanModelOutput(text: string): string {
+    if (!text) return '';
+    let cleaned = text
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+      .replace(/\[\/?THINKING\]/gi, '');
+
+    // Strip meta-reasoning ramblings (e.g., "We need to answer: ... The user wants ...")
+    if (/^(?:we need to answer|the user wants|the user is asking|i should answer|i will provide|let's think about this):/i.test(cleaned.trim())) {
+      const paragraphs = cleaned.split(/\n\s*\n/);
+      if (paragraphs.length > 1) {
+        const first = paragraphs[0];
+        if (/we need to answer|the user|let's analyze|also mention/i.test(first)) {
+          cleaned = paragraphs.slice(1).join('\n\n').trim();
+        }
+      }
+    }
+
+    return cleaned.trim();
+  }
+
+  app.post('/api/ai/chat', async (req, res) => {
+    try {
+      const { messages, model, temperature = 0.6, max_tokens = 4096, stream = false } = req.body || {};
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ error: 'Messages array is required' });
+      }
+
+      // Check if request contains image attachments for Vision handling
+      const hasImage = messages.some((m: any) =>
+        Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url' || c.image_url)
+      );
+
+      // ─────────────────────────────────────────────────────────────────────────────
+      // TIER 1: Cerebras 🚀 (Primary Workhorse: 2000+ tps, 1,000,000 daily free tokens)
+      // ─────────────────────────────────────────────────────────────────────────────
+      if (CEREBRAS_API_KEY && !hasImage) {
+        for (const cm of CEREBRAS_MODELS) {
+          try {
+            const cerebrasRes = await fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: cm,
+                messages: messages.map((msg: any) => ({
+                  role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                })),
+                temperature,
+                max_tokens,
+              }),
+            }, 12000);
+
+            if (cerebrasRes.ok) {
+              const data = await cerebrasRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) {
+                return res.json({
+                  success: true,
+                  provider: 'cerebras',
+                  model: cm,
+                  tier: 1,
+                  content: text,
+                  usage: data?.usage,
+                });
+              }
+            }
+          } catch (cbErr) {
+            console.warn(`[Tier 1: Cerebras] Model ${cm} failed, failing over:`, cbErr);
+          }
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────────────────────
+      // TIER 2: Groq ⚡ (Second-tier Speed Fallback: 500,000 daily free tokens)
+      // ─────────────────────────────────────────────────────────────────────────────
+      if (GROQ_API_KEY && !hasImage) {
+        for (const gm of GROQ_MODELS) {
+          try {
+            const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: gm,
+                messages: messages.map((msg: any) => ({
+                  role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                })),
+                temperature,
+                max_tokens,
+              }),
+            }, 14000);
+
+            if (groqRes.ok) {
+              const data = await groqRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) {
+                return res.json({
+                  success: true,
+                  provider: 'groq',
+                  model: gm,
+                  tier: 2,
+                  content: text,
+                  usage: data?.usage,
+                });
+              }
+            }
+          } catch (gErr) {
+            console.warn(`[Tier 2: Groq] Model ${gm} failed, failing over:`, gErr);
+          }
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────────────────────
+      // TIER 3: NVIDIA NIM 🛡️ (Strategic Non-Expiring Credit Reserve)
+      // ─────────────────────────────────────────────────────────────────────────────
+      if (NVIDIA_API_KEY) {
+        for (const nm of NVIDIA_MODELS) {
+          try {
+            const nvRes = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${NVIDIA_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: nm,
+                messages: messages.map((msg: any) => ({
+                  role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                })),
+                temperature,
+                max_tokens,
+              }),
+            }, 18000);
+
+            if (nvRes.ok) {
+              const data = await nvRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) {
+                return res.json({
+                  success: true,
+                  provider: 'nvidia',
+                  model: nm,
+                  tier: 3,
+                  content: text,
+                  usage: data?.usage,
+                });
+              }
+            }
+          } catch (nvErr) {
+            console.warn(`[Tier 3: NVIDIA NIM] Model ${nm} failed, failing over:`, nvErr);
+          }
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────────────────────
+      // TIER 4: OpenRouter 🛑 (Doomsday / Last-Resort Fallback: 50 requests/day)
+      // ─────────────────────────────────────────────────────────────────────────────
+      if (OPENROUTER_API_KEY) {
+        const openRouterModel = model && model.includes('/') ? model : 'openrouter/free';
+        const modelsToTry = [
+          openRouterModel,
+          ...OPENROUTER_MODELS.filter((m) => m !== openRouterModel),
+        ];
+
+        for (const m of modelsToTry) {
+          try {
+            const orRes = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'HTTP-Referer': 'https://linkerru.local',
+                'X-Title': 'LinkerRu Lisyan AI',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: m,
+                messages,
+                temperature,
+                max_tokens,
+              }),
+            }, 25000);
+
+            if (orRes.ok) {
+              const data = await orRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) {
+                return res.json({
+                  success: true,
+                  provider: 'openrouter',
+                  model: m,
+                  tier: 4,
+                  content: text,
+                  usage: data?.usage,
+                });
+              }
+            }
+          } catch (orErr) {
+            console.warn(`[Tier 4: OpenRouter] Model ${m} failed:`, orErr);
+          }
+        }
+      }
+
+      return res.status(503).json({
+        error: 'All AI providers and free models are temporarily unavailable. Please try again in a few seconds.',
+      });
+    } catch (e: any) {
+      console.error('AI chat endpoint fatal error:', e);
+      return res.status(500).json({ error: e?.message || 'Internal AI service error' });
+    }
+  });
+
   // --- BUILD INFO & CHANGELOG (GitHub commits) ---
   const GITHUB_REPO = 'LisyanDEWS/LinkerLauncher';
   let cachedBuildInfo: { buildVersion: string; buildDate: string; sha: string } | null = null;

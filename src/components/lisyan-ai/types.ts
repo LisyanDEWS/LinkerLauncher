@@ -38,6 +38,7 @@ export interface Message {
   modelId?: ModelId;
   streaming?: boolean;
   attachments?: AttachedFile[];
+  sources?: { title: string; url: string; domain: string; snippet?: string }[];
 }
 
 export interface Chat {

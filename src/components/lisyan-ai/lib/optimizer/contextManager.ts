@@ -33,10 +33,11 @@ export function estimateTokens(text: string): number {
 export function extractRelevantChunks(
   docText: string,
   query: string,
-  maxChunks: number = 3,
-  chunkSize: number = 750
+  maxChunks: number = 6,
+  chunkSize: number = 3000
 ): string {
-  if (!docText || docText.length <= chunkSize * 1.5) {
+  // Allow long texts (up to 24,000 characters) to pass through completely without discarding
+  if (!docText || docText.length <= 24000) {
     return normalizeText(docText);
   }
 
