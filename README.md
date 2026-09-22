@@ -43,6 +43,9 @@ Firebase web config (Auth + Firestore) is committed in
 ```
 index.html              Vite entry
 server.ts               Express + ws signaling server (Lisyan Connect)
+netlify/
+  functions/            Serverless /api/* handlers used by the Netlify deploy
+  lib/                  Shared provider + GitHub helpers for those functions
 src/
   main.tsx              React bootstrap
   App.tsx               Root app: state, persistence, modals, home shell
@@ -120,6 +123,31 @@ npm start          # serves dist/ + WS signaling on port 3000
 
 Set `NODE_ENV=production` so the server serves the built static bundle instead
 of Vite middleware.
+
+### Netlify (static + Functions)
+
+Netlify only serves the built `dist/` bundle, so the Express server never runs
+there. Every same-origin `/api/*` call the frontend makes is served by a
+Netlify Function instead (declared with `config.path`, see `netlify.toml`):
+
+| Function | Route | Purpose |
+| --- | --- | --- |
+| `netlify/functions/ai-chat.mjs` | `POST /api/ai/chat` | Lisyan AI proxy: Cerebras → Groq → NVIDIA NIM → OpenRouter failover |
+| `netlify/functions/ai-warmup.mjs` | `GET /api/ai/warmup` | First-run provider probe |
+| `netlify/functions/ai-search.mjs` | `GET /api/ai/search` | DuckDuckGo web search for the AI |
+| `netlify/functions/geoip.mjs` | `GET /api/geoip` | IP geolocation for Weather |
+| `netlify/functions/meta.mjs` | `GET /api/build-info`, `GET /api/changelog[/:sha]` | GitHub proxy for the changelog |
+| `netlify/functions/health.mjs` | `GET /api/health` | Liveness probe |
+
+Shared provider/GitHub helpers live in `netlify/lib/` (outside the functions
+directory so they are bundled as dependencies, never deployed as functions).
+Required environment variables: `CEREBRAS_API_KEY`, `OPENROUTER_API_KEY`,
+`NVIDIA_API_KEY`, `VITE_GROQ_API_KEY` (or `GROQ_API_KEY`) — scoped to
+**Builds, Functions, Runtime**.
+
+If no server-side proxy is reachable at all (404/405), `chatApi.ts` falls back
+to a direct browser-side Groq call using the public `VITE_GROQ_API_KEY`, so the
+assistant still answers on a purely static host.
 
 ## Security notes
 

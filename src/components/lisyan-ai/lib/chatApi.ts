@@ -245,6 +245,60 @@ async function callServerAiProxy(
   };
 }
 
+const DIRECT_GROQ_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b",
+];
+
+/**
+ * Last-resort path for static hosts (Netlify without server proxy, local
+ * `vite preview`, …): talk to the provider straight from the browser using the
+ * public VITE_GROQ_API_KEY. Returns the answer text or null.
+ */
+async function callGroqDirect(
+  apiMessages: any[],
+  temperature: number,
+  maxCompletionTokens: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  if (!GROQ_API_KEY) return null;
+
+  const flatMessages = apiMessages.map((msg: any) => ({
+    role: msg.role === "assistant" ? "assistant" : msg.role === "system" ? "system" : "user",
+    content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
+  }));
+
+  for (const model of DIRECT_GROQ_MODELS) {
+    try {
+      const res = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+        },
+        signal,
+        body: JSON.stringify({
+          model,
+          messages: flatMessages,
+          temperature,
+          max_tokens: maxCompletionTokens,
+        }),
+      });
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (text && String(text).trim()) return String(text).trim();
+    } catch (err) {
+      if (signal?.aborted) throw err;
+    }
+  }
+
+  return null;
+}
+
 export async function sendChatRequest(
   messages: Message[],
   modelId: ModelId,
@@ -347,6 +401,8 @@ export async function sendChatRequest(
   const adaptiveMaxTokens = routing.maxCompletionTokens;
 
   // 5. Send optimized payload via Lroutev1 Engine
+  let proxyMissing = false;
+
   try {
     const serverResult = await callServerAiProxy(
       contextResult.apiMessages,
@@ -389,26 +445,56 @@ export async function sendChatRequest(
 
       return responseText;
     }
+
+    // 404/405 means this deployment serves no proxy at all — replaying the
+    // rest of the chain would only repeat the same dead request.
+    proxyMissing = serverResult.status === 404 || serverResult.status === 405;
+    if (proxyMissing) {
+      console.warn("Server AI proxy is unavailable on this host, switching to direct provider calls.");
+    }
   } catch (err: any) {
     if (signal?.aborted) throw err;
+    proxyMissing = true;
     console.warn("Lroutev1 server proxy attempt failed, trying fallback models...", err);
   }
 
   // Fallback chain
-  const fallbacks = FALLBACKS[activeModelId] || ["openrouter/free", "llama-3.3-70b"];
-  for (const fallbackModel of fallbacks) {
+  if (!proxyMissing) {
+    const fallbacks = FALLBACKS[activeModelId] || ["openrouter/free", "llama-3.3-70b"];
+    for (const fallbackModel of fallbacks) {
+      try {
+        const fbResult = await callServerAiProxy(
+          contextResult.apiMessages,
+          fallbackModel,
+          info.temperature,
+          adaptiveMaxTokens,
+          signal
+        );
+        if (fbResult.ok && fbResult.data?.content) {
+          return fbResult.data.content.trim();
+        }
+      } catch (err: any) {
+        if (signal?.aborted) throw err;
+      }
+    }
+  }
+
+  // Direct browser-side provider call (static hosts without the server proxy)
+  if (!imageAttachment) {
     try {
-      const fbResult = await callServerAiProxy(
+      const direct = await callGroqDirect(
         contextResult.apiMessages,
-        fallbackModel,
         info.temperature,
         adaptiveMaxTokens,
         signal
       );
-      if (fbResult.ok && fbResult.data?.content) {
-        return fbResult.data.content.trim();
+      if (direct) {
+        saveCachedResponse(latestPrompt, direct, activeModelId, lang, 0);
+        return direct;
       }
-    } catch {}
+    } catch (err: any) {
+      if (signal?.aborted) throw err;
+    }
   }
 
   throw new Error(
