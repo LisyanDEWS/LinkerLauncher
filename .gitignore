@@ -9,3 +9,5 @@ bun.lock
 bun.lockb
 .env*
 !.env.example
+.netlify/
+.cache/

@@ -5,6 +5,11 @@
 LinkerRu :Re — React 19 + Vite 6 + Tailwind v4 + Firebase + Express + ws.
 See `README.md` for full architecture.
 
+Two backends implement the same `/api/*` routes: `server.ts` (Express, used by
+`npm start`) and `netlify/functions/*.mjs` (serverless, used by the Netlify
+deploy — routes come from each file's `config.path`). **Changing an endpoint
+means updating both**, or one host silently 404s.
+
 ## Run / verify
 
 - Dev: `npm run dev` (port 3000, Vite + WS signaling — **not** `vite dev`).
