@@ -3,7 +3,7 @@ import { getModel } from "../data/models";
 import { Language } from "../../../types";
 import { normalizeText, detectInstantRuleResponse, ultraCompressForSmall } from "./optimizer/textCompressor";
 import { buildOptimizedContext } from "./optimizer/contextManager";
-import { routeRequest, isSmallQuestion, isTinyQuestion } from "./optimizer/smartRouter";
+import { routeRequest, isSmallQuestion, isTinyQuestion, needsWebSearch } from "./optimizer/smartRouter";
 import { getCachedResponse, saveCachedResponse, getRamCacheSync } from "./optimizer/cacheEngine";
 import { recordOptimizationEvent } from "./optimizer/statsTracker";
 import { detectInputLanguage, buildLanguageInstruction, type DetectedLanguage } from "./languageDetector";
@@ -249,7 +249,7 @@ async function fetchWeatherContext(prompt: string, lang: Language): Promise<stri
     let cityName = lang === 'ru' ? 'Москва' : lang === 'uk' ? 'Київ' : 'Moscow';
 
     // 1. Check if user specified a city in the prompt (e.g. "погода в париже", "weather in london")
-    const cityInPromptMatch = prompt.match(/(?:погода|температура|weather|forecast)\s+(?:в|во|in)\s+([a-zA-Zа-яА-ЯёЁ\s-]+?)(?:\?|\.|\,|$|\s+на|\s+сегодня)/i);
+    const cityInPromptMatch = prompt.match(/(?:погода|температура|weather|forecast)\s+(?:в|во|in)\s+([a-zA-Zа-яА-ЯёЁ\s-]+?)(?:[?.]|,|$|\s+на|\s+сегодня)/i);
     let explicitCity = cityInPromptMatch ? cityInPromptMatch[1].trim() : null;
 
     if (explicitCity && explicitCity.length >= 2) {
@@ -583,7 +583,7 @@ export async function sendChatRequest(
       adaptiveMaxTokens = Math.min(adaptiveMaxTokens, 512);
     } else {
       const shouldDoExternalSearch = !useCompound && !imageAttachment &&
-        /найди в интернете|поищи|google|гугл|новости|кто такой|что такое|курс|актуальн|wiki|вики/i.test(latestPrompt);
+        (/найди в интернете|поищи|google|гугл|новости|кто такой|что такое|курс|wiki|вики/i.test(latestPrompt) || needsWebSearch(latestPrompt));
 
       const integrationPromises: Promise<any>[] = [];
 
@@ -735,7 +735,7 @@ export async function sendChatRequest(
       }
     }
 
-    if (!proxyMissing || true) {
+    {
       const fallbacks = useCompound
         ? COMPOUND_FALLBACKS
         : FALLBACKS[activeModelId] || ["openrouter/free", "llama-3.3-70b"];

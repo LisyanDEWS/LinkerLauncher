@@ -707,6 +707,21 @@ async function startServer() {
     }
   }
 
+  const CURRENT_INFO_RE =
+    /сейчас|на\s+данный\s+момент|на\s+сегодняшний\s+(день|момент)|сегодня|актуальн|свеж(и|е|ая|ие|ий)|новости|\bnews\b|\bcurrently\b|\bright\s+now\b|\bat\s+the\s+moment\b|\bas\s+of\s+now\b|\blatest\s+news\b|up[\s-]?to[\s-]?date/i;
+
+  /** True when the last non-assistant/system message hints at CURRENT info (needs web search). */
+  function hintsCurrentInfo(messages: any[]): boolean {
+    try {
+      const last = messages[messages.length - 1];
+      if (!last || last.role === 'assistant' || last.role === 'system') return false;
+      const content = typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content || '');
+      return CURRENT_INFO_RE.test(content);
+    } catch {
+      return false;
+    }
+  }
+
   function cleanModelOutput(text: string): string {
     if (!text) return '';
     let cleaned = text
@@ -741,7 +756,9 @@ async function startServer() {
 
       const smallQuestion = isSmallQuestion(messages);
       const tinyQuestion = isTinyQuestion(messages);
+      const currentInfo = hintsCurrentInfo(messages);
       const isCompoundRequested = model && typeof model === 'string' && model.includes('compound');
+      const useCompoundTier = smallQuestion || currentInfo || isCompoundRequested;
 
       // --- Server-side cache check for instant response ---
       if (!hasImage) {
@@ -765,10 +782,14 @@ async function startServer() {
       // TIER -1: Netlify AI Gateway ⚙️ — zero-config primary engine (auto-injected creds)
       // ─────────────────────────────────────────────────────────────────────────────
       const gw = getGatewayCreds();
-      if (gw) {
+      // When the user hints at CURRENT information, prefer the Groq Compound tier
+      // (built-in web search) over the plain gateway models; gateway stays as last resort.
+      const gatewayDeferred = Boolean(gw && GROQ_API_KEY && !hasImage && currentInfo);
+      const tryGateway = async (): Promise<{ content: string; model: string; usage: any } | null> => {
+        if (!gw) return null;
         const gatewayModels = hasImage
           ? GATEWAY_VISION_MODELS
-          : smallQuestion || isCompoundRequested
+          : smallQuestion || isCompoundRequested || currentInfo
             ? GATEWAY_FAST_MODELS
             : GATEWAY_MODELS;
 
@@ -784,7 +805,7 @@ async function startServer() {
               body: JSON.stringify({
                 model: gm,
                 messages,
-                temperature: smallQuestion ? Math.min(temperature, 0.35) : temperature,
+                temperature: smallQuestion || currentInfo ? Math.min(temperature, 0.35) : temperature,
                 max_tokens: Math.min(max_tokens, tinyQuestion ? 512 : smallQuestion ? 1024 : max_tokens),
               }),
             }, smallQuestion ? 10000 : 18000);
@@ -797,20 +818,27 @@ async function startServer() {
               const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
               if (text) {
                 setServerCache(computeServerCacheKey(messages), text, gm);
-                return res.json({
-                  success: true,
-                  provider: 'ai-gateway',
-                  model: gm,
-                  tier: -1,
-                  content: text,
-                  usage: data?.usage,
-                  latencyMs: Date.now() - start,
-                });
+                return { content: text, model: gm, usage: data?.usage };
               }
             }
           } catch (gwErr) {
             console.warn(`[Tier -1: AI Gateway] Model ${gm} failed, failing over:`, gwErr);
           }
+        }
+        return null;
+      };
+      if (gw && !gatewayDeferred) {
+        const gwHit = await tryGateway();
+        if (gwHit) {
+          return res.json({
+            success: true,
+            provider: 'ai-gateway',
+            model: gwHit.model,
+            tier: -1,
+            content: gwHit.content,
+            usage: gwHit.usage,
+            latencyMs: Date.now() - start,
+          });
         }
       }
 
@@ -818,7 +846,7 @@ async function startServer() {
       // TIER 0: Groq Compound Mini ⚡ — For small questions (100-300 tokens, built-in search)
       // Optimized: racing + server cache save + ultra-fast timeout
       // ─────────────────────────────────────────────────────────────────────────────
-      if (GROQ_API_KEY && !hasImage && (smallQuestion || isCompoundRequested)) {
+      if (GROQ_API_KEY && !hasImage && useCompoundTier && (smallQuestion || currentInfo || isCompoundRequested)) {
         const compoundModels = isCompoundRequested
           ? [model, ...GROQ_COMPOUND_MODELS.filter(m => m !== model)]
           : GROQ_COMPOUND_MODELS;
@@ -826,32 +854,28 @@ async function startServer() {
         // For tiny questions, race first 2 models in parallel for speed
         if (tinyQuestion && compoundModels.length >= 2) {
           const racePromises = compoundModels.slice(0, 2).map(async (cm) => {
-            try {
-              const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${GROQ_API_KEY}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  model: cm,
-                  messages: messages.map((msg: any) => ({
-                    role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
-                    content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-                  })),
-                  temperature: 0.3,
-                  max_tokens: Math.min(max_tokens, tinyQuestion ? 512 : 1024),
-                }),
-              }, 7000);
-              if (groqRes.ok) {
-                const data = await groqRes.json();
-                const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
-                if (text) return { text, model: cm, usage: data?.usage };
-              }
-              throw new Error('no content');
-            } catch (e) {
-              throw e;
+            const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: cm,
+                messages: messages.map((msg: any) => ({
+                  role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                })),
+                temperature: 0.3,
+                max_tokens: Math.min(max_tokens, tinyQuestion ? 512 : 1024),
+              }),
+            }, 7000);
+            if (groqRes.ok) {
+              const data = await groqRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) return { text, model: cm, usage: data?.usage };
             }
+            throw new Error('no content');
           });
 
           try {
@@ -924,27 +948,25 @@ async function startServer() {
         // For small questions, race cerebras models in parallel
         if (smallQuestion && CEREBRAS_MODELS.length >= 2) {
           const race = CEREBRAS_MODELS.map(async (cm) => {
-            try {
-              const r = await fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${CEREBRAS_API_KEY}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  model: cm,
-                  messages: messages.map((msg: any) => ({
-                    role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
-                    content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-                  })),
-                  temperature: Math.min(temperature, 0.5),
-                  max_tokens: Math.min(max_tokens, 2048),
-                }),
-              }, 8000);
-              if (r.ok) {
-                const data = await r.json();
-                const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
-                if (text) return { text, model: cm, usage: data?.usage };
-              }
-              throw new Error('no');
-            } catch (e) { throw e; }
+            const r = await fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${CEREBRAS_API_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: cm,
+                messages: messages.map((msg: any) => ({
+                  role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                })),
+                temperature: Math.min(temperature, 0.5),
+                max_tokens: Math.min(max_tokens, 2048),
+              }),
+            }, 8000);
+            if (r.ok) {
+              const data = await r.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) return { text, model: cm, usage: data?.usage };
+            }
+            throw new Error('no');
           });
           try {
             const winner: any = await Promise.any(race);
@@ -1124,6 +1146,22 @@ async function startServer() {
           } catch (orErr) {
             console.warn(`[Tier 4: OpenRouter] Model ${m} failed:`, orErr);
           }
+        }
+      }
+
+      // Last resort: gateway was deferred for a current-info prompt but compound failed.
+      if (gatewayDeferred) {
+        const gwHit = await tryGateway();
+        if (gwHit) {
+          return res.json({
+            success: true,
+            provider: 'ai-gateway',
+            model: gwHit.model,
+            tier: -1,
+            content: gwHit.content,
+            usage: gwHit.usage,
+            latencyMs: Date.now() - start,
+          });
         }
       }
 
