@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
@@ -534,10 +535,19 @@ async function startServer() {
     }
   });
 
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
-  const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY || '';
-  const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
-  const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+  const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+  const CEREBRAS_API_KEY = (process.env.CEREBRAS_API_KEY || '').trim();
+  const NVIDIA_API_KEY = (process.env.NVIDIA_API_KEY || '').trim();
+  const GROQ_API_KEY = (process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '').trim();
+  const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+  const GROQ_API_BASE = process.env.GROQ_API_BASE || 'https://api.groq.com/openai/v1';
+  const OPENROUTER_API_BASE = process.env.OPENROUTER_API_BASE || 'https://openrouter.ai/api/v1';
+  const CEREBRAS_API_BASE = process.env.CEREBRAS_API_BASE || 'https://api.cerebras.ai/v1';
+  const NVIDIA_API_BASE = process.env.NVIDIA_API_BASE || 'https://integrate.api.nvidia.com/v1';
+  const GEMINI_API_BASE = process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com/v1beta/openai';
+  const hasAnyProviderKey = Boolean(
+    GROQ_API_KEY || CEREBRAS_API_KEY || NVIDIA_API_KEY || OPENROUTER_API_KEY || GEMINI_API_KEY
+  );
 
   // Netlify AI Gateway — zero-config inference (env vars auto-injected at runtime).
   const AI_GATEWAY_KEY = (process.env.NETLIFY_AI_GATEWAY_KEY || '').trim();
@@ -574,7 +584,7 @@ async function startServer() {
         : Promise.resolve();
 
       const cbProbe = CEREBRAS_API_KEY
-        ? fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
+        ? fetchWithTimeout(`${CEREBRAS_API_BASE}/chat/completions`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
@@ -587,7 +597,7 @@ async function startServer() {
         : Promise.resolve();
 
       const orProbe = OPENROUTER_API_KEY
-        ? fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        ? fetchWithTimeout(`${OPENROUTER_API_BASE}/chat/completions`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -600,7 +610,7 @@ async function startServer() {
         : Promise.resolve();
 
       const nvProbe = NVIDIA_API_KEY
-        ? fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+        ? fetchWithTimeout(`${NVIDIA_API_BASE}/chat/completions`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${NVIDIA_API_KEY}`,
@@ -613,7 +623,7 @@ async function startServer() {
         : Promise.resolve();
 
       const groqProbe = GROQ_API_KEY
-        ? fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+        ? fetchWithTimeout(`${GROQ_API_BASE}/chat/completions`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -625,8 +635,21 @@ async function startServer() {
           }).catch(() => {})
         : Promise.resolve();
 
-      await Promise.allSettled([gwProbe, cbProbe, orProbe, nvProbe, groqProbe]);
-      return res.json({ ok: true, verifiedModels, primaryEngine: 'Lroutev1 + AI Gateway' });
+      const geminiProbe = GEMINI_API_KEY
+        ? fetchWithTimeout(`${GEMINI_API_BASE}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${GEMINI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ model: 'gemini-2.0-flash', messages: checkMessage, max_tokens: 10 }),
+          }, 4000).then(async (r) => {
+            if (r.ok) verifiedModels.push('gemini-2.0-flash', 'gemini-2.5-flash');
+          }).catch(() => {})
+        : Promise.resolve();
+
+      await Promise.allSettled([cbProbe, orProbe, nvProbe, groqProbe, geminiProbe]);
+      return res.json({ ok: true, verifiedModels, primaryEngine: 'Lroutev1 + Groq Compound' });
     } catch {
       return res.json({ ok: true, verifiedModels: ['groq/compound-mini', 'openrouter/free'], primaryEngine: 'Lroutev1' });
     }
@@ -805,7 +828,7 @@ async function startServer() {
         if (tinyQuestion && compoundModels.length >= 2) {
           const racePromises = compoundModels.slice(0, 2).map(async (cm) => {
             try {
-              const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+              const groqRes = await fetchWithTimeout(`${GROQ_API_BASE}/chat/completions`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -854,7 +877,7 @@ async function startServer() {
 
         for (const cm of compoundModels) {
           try {
-            const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+            const groqRes = await fetchWithTimeout(`${GROQ_API_BASE}/chat/completions`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -903,7 +926,7 @@ async function startServer() {
         if (smallQuestion && CEREBRAS_MODELS.length >= 2) {
           const race = CEREBRAS_MODELS.map(async (cm) => {
             try {
-              const r = await fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
+              const r = await fetchWithTimeout(`${CEREBRAS_API_BASE}/chat/completions`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${CEREBRAS_API_KEY}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -935,7 +958,7 @@ async function startServer() {
 
         for (const cm of CEREBRAS_MODELS) {
           try {
-            const cerebrasRes = await fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
+            const cerebrasRes = await fetchWithTimeout(`${CEREBRAS_API_BASE}/chat/completions`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
@@ -980,7 +1003,7 @@ async function startServer() {
       if (GROQ_API_KEY && !hasImage) {
         for (const gm of GROQ_MODELS) {
           try {
-            const groqRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+            const groqRes = await fetchWithTimeout(`${GROQ_API_BASE}/chat/completions`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -1024,7 +1047,7 @@ async function startServer() {
       if (NVIDIA_API_KEY) {
         for (const nm of NVIDIA_MODELS) {
           try {
-            const nvRes = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+            const nvRes = await fetchWithTimeout(`${NVIDIA_API_BASE}/chat/completions`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${NVIDIA_API_KEY}`,
@@ -1073,7 +1096,7 @@ async function startServer() {
         ];
         for (const m of modelsToTry) {
           try {
-            const orRes = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+            const orRes = await fetchWithTimeout(`${OPENROUTER_API_BASE}/chat/completions`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -1105,8 +1128,58 @@ async function startServer() {
         }
       }
 
+      // ─────────────────────────────────────────────────────────────────────────────
+      // TIER 5: Google Gemini (server-side capability / GEMINI_API_KEY)
+      // ─────────────────────────────────────────────────────────────────────────────
+      if (GEMINI_API_KEY) {
+        const geminiModels = ['gemini-2.0-flash', 'gemini-2.5-flash'];
+        for (const gm of geminiModels) {
+          try {
+            const gemRes = await fetchWithTimeout(`${GEMINI_API_BASE}/chat/completions`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${GEMINI_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: gm,
+                messages,
+                temperature,
+                max_tokens,
+              }),
+            }, smallQuestion ? 10000 : 15000);
+            if (gemRes.ok) {
+              const data = await gemRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) {
+                setServerCache(computeServerCacheKey(messages), text, gm);
+                return res.json({
+                  success: true,
+                  provider: 'gemini',
+                  model: gm,
+                  tier: 5,
+                  content: text,
+                  usage: data?.usage,
+                  latencyMs: Date.now() - start,
+                });
+              }
+            }
+          } catch (gemErr) {
+            console.warn(`[Tier 5: Gemini] Model ${gm} failed:`, gemErr);
+          }
+        }
+      }
+
+      if (!hasAnyProviderKey) {
+        return res.status(503).json({
+          error: 'AI provider keys are not configured on the server. Set GEMINI_API_KEY, GROQ_API_KEY or OPENROUTER_API_KEY in .env (see .env.example), then restart the server.',
+          code: 'no_provider_keys',
+        });
+      }
+
       return res.status(503).json({
         error: 'All AI providers and free models are temporarily unavailable. Please try again in a few seconds.',
+        code: 'providers_unavailable',
       });
     } catch (e: any) {
       console.error('AI chat endpoint fatal error:', e);

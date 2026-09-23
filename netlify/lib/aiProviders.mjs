@@ -146,7 +146,22 @@ export function providerKeys() {
     groq: (process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '').trim(),
     nvidia: (process.env.NVIDIA_API_KEY || '').trim(),
     openrouter: (process.env.OPENROUTER_API_KEY || '').trim(),
+    gemini: (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim(),
   };
+}
+
+export function providerBases() {
+  return {
+    groq: process.env.GROQ_API_BASE || 'https://api.groq.com/openai/v1',
+    openrouter: process.env.OPENROUTER_API_BASE || 'https://openrouter.ai/api/v1',
+    cerebras: process.env.CEREBRAS_API_BASE || 'https://api.cerebras.ai/v1',
+    nvidia: process.env.NVIDIA_API_BASE || 'https://integrate.api.nvidia.com/v1',
+    gemini: process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com/v1beta/openai',
+  };
+}
+
+export function hasAnyProviderKey(keys = providerKeys()) {
+  return Boolean(keys.cerebras || keys.groq || keys.nvidia || keys.openrouter || keys.gemini);
 }
 
 const CORS_HEADERS = {
@@ -221,7 +236,7 @@ const TIERS = [
     name: 'groq-compound',
     tier: 1,
     key: 'groq',
-    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    endpoint: '',
     models: (requested, isSmall) => {
       if (requested && (requested.includes('compound') || isSmall)) {
         return [requested, ...GROQ_COMPOUND_MODELS.filter(m => m !== requested)];
@@ -237,7 +252,7 @@ const TIERS = [
     name: 'cerebras',
     tier: 2,
     key: 'cerebras',
-    endpoint: 'https://api.cerebras.ai/v1/chat/completions',
+    endpoint: '',
     models: () => CEREBRAS_MODELS,
     timeout: 9000,
     skipOnImage: true,
@@ -247,7 +262,7 @@ const TIERS = [
     name: 'groq',
     tier: 3,
     key: 'groq',
-    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    endpoint: '',
     models: () => GROQ_MODELS,
     timeout: 11000,
     skipOnImage: true,
@@ -257,7 +272,7 @@ const TIERS = [
     name: 'nvidia',
     tier: 4,
     key: 'nvidia',
-    endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    endpoint: '',
     models: () => NVIDIA_MODELS,
     timeout: 14000,
     skipOnImage: false,
@@ -267,7 +282,7 @@ const TIERS = [
     name: 'openrouter',
     tier: 5,
     key: 'openrouter',
-    endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+    endpoint: '',
     timeout: 18000,
     skipOnImage: false,
     flatten: false,
@@ -276,6 +291,16 @@ const TIERS = [
       const preferred = requested && requested.includes('/') ? requested : 'openrouter/free';
       return [preferred, ...OPENROUTER_MODELS.filter((m) => m !== preferred)];
     },
+  },
+  {
+    name: 'gemini',
+    tier: 5,
+    key: 'gemini',
+    endpoint: '',
+    models: () => ['gemini-2.0-flash', 'gemini-2.5-flash'],
+    timeout: 12000,
+    skipOnImage: false,
+    flatten: false,
   },
 ];
 
@@ -302,12 +327,17 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
     }
   }
 
+  const bases = providerBases();
+
   for (const tier of TIERS) {
     const apiKey = keys[tier.key];
     if (!apiKey) continue;
     if (withImage && tier.skipOnImage) continue;
     if (tier.onlyForSmall && !small && !isCompoundRequested) continue;
 
+    const endpoint = tier.name === 'gemini'
+      ? `${bases.gemini}/chat/completions`
+      : tier.endpoint || `${bases[tier.key]}/chat/completions`;
     const modelsList = tier.models(model, small);
 
     // For tiny questions, race first 2 models in parallel for speed
@@ -316,7 +346,7 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
         const remaining = CHAT_DEADLINE_MS - (Date.now() - startedAt);
         if (remaining < 2500) throw new Error('deadline');
         const res = await fetchWithTimeout(
-          tier.endpoint,
+          endpoint,
           {
             method: 'POST',
             headers: {
@@ -358,7 +388,7 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
 
       try {
         const res = await fetchWithTimeout(
-          tier.endpoint,
+          endpoint,
           {
             method: 'POST',
             headers: {
@@ -419,7 +449,7 @@ export async function probeProviders() {
         .catch(() => {}),
     keys.cerebras &&
       fetchWithTimeout(
-        'https://api.cerebras.ai/v1/chat/completions',
+        `${providerBases().cerebras}/chat/completions`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.cerebras}`, 'Content-Type': 'application/json' },
@@ -431,7 +461,7 @@ export async function probeProviders() {
         .catch(() => {}),
     keys.openrouter &&
       fetchWithTimeout(
-        'https://openrouter.ai/api/v1/chat/completions',
+        `${providerBases().openrouter}/chat/completions`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.openrouter}`, 'Content-Type': 'application/json' },
@@ -443,7 +473,7 @@ export async function probeProviders() {
         .catch(() => {}),
     keys.nvidia &&
       fetchWithTimeout(
-        'https://integrate.api.nvidia.com/v1/chat/completions',
+        `${providerBases().nvidia}/chat/completions`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.nvidia}`, 'Content-Type': 'application/json' },
@@ -455,7 +485,7 @@ export async function probeProviders() {
         .catch(() => {}),
     keys.groq &&
       fetchWithTimeout(
-        'https://api.groq.com/openai/v1/chat/completions',
+        `${providerBases().groq}/chat/completions`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.groq}`, 'Content-Type': 'application/json' },
@@ -465,6 +495,18 @@ export async function probeProviders() {
       )
         .then((r) => { if (r.ok) verifiedModels.push('groq/compound-mini', 'groq/compound', 'llama-3.3-70b-versatile'); })
         .catch(() => {}),
+    keys.gemini &&
+    fetchWithTimeout(
+      `${providerBases().gemini}/chat/completions`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${keys.gemini}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gemini-2.0-flash', messages: checkMessage, max_tokens: 10 }),
+      },
+      4000
+    )
+      .then((r) => { if (r.ok) verifiedModels.push('gemini-2.0-flash', 'gemini-2.5-flash'); })
+      .catch(() => {}),
   ].filter(Boolean);
 
   await Promise.allSettled(probes);

@@ -660,6 +660,8 @@ export async function sendChatRequest(
     }
 
     let proxyMissing = false;
+    let lastServerError = "";
+    let lastServerCode = "";
     const fastTimeoutMs = tiny ? 8000 : useCompound ? 10000 : 15000;
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => timeoutController.abort(), fastTimeoutMs);
@@ -673,6 +675,13 @@ export async function sendChatRequest(
           return ctrl.signal;
         })()
       : timeoutController.signal;
+
+    const rememberServerError = (result?: { status?: number; data?: any }) => {
+      if (!result) return;
+      const msg = typeof result.data?.error === "string" ? result.data.error.trim() : "";
+      if (msg) lastServerError = msg;
+      if (typeof result.data?.code === "string") lastServerCode = result.data.code;
+    };
 
     try {
       const requestedModel = useCompound ? "groq/compound-mini" : "openrouter/free";
@@ -716,20 +725,46 @@ export async function sendChatRequest(
         return responseText;
       }
 
+      rememberServerError(serverResult);
       proxyMissing = serverResult.status === 404 || serverResult.status === 405;
       if (proxyMissing) {
         console.warn("Server AI proxy unavailable, switching to direct.");
+      } else if (!serverResult.ok) {
+        console.warn("Server AI proxy error:", serverResult.status, lastServerError || serverResult.raw);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (signal?.aborted || err?.name === 'AbortError') {
         if (signal?.aborted) throw err;
         console.warn("Server proxy timed out, trying fallback");
+        lastServerError = lastServerError || "timeout";
       } else {
         proxyMissing = true;
         console.warn("Server proxy failed, trying fallback", err);
       }
     }
+
+    const withTimeoutSignal = (timeoutMs: number): AbortSignal | undefined => {
+      if (!signal) {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+        ctrl.signal.addEventListener('abort', () => clearTimeout(tid), { once: true });
+        return ctrl.signal;
+      }
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+      const onParentAbort = () => ctrl.abort();
+      signal.addEventListener('abort', onParentAbort, { once: true });
+      ctrl.signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(tid);
+          signal.removeEventListener('abort', onParentAbort);
+        },
+        { once: true }
+      );
+      return ctrl.signal;
+    };
 
     if (!proxyMissing || true) {
       const fallbacks = useCompound
@@ -739,21 +774,18 @@ export async function sendChatRequest(
       if (tiny && fallbacks.length >= 2) {
         const raceResults = await Promise.allSettled(
           fallbacks.slice(0, 2).map(async (fbModel) => {
-            const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 7000);
             try {
               const fbResult = await callServerAiProxy(
                 apiMessages,
                 fbModel,
                 0.3,
                 adaptiveMaxTokens,
-                signal ? (() => { const c = new AbortController(); signal.addEventListener('abort', () => c.abort(), { once: true }); ctrl.signal.addEventListener('abort', () => c.abort(), { once: true }); return c.signal; })() : ctrl.signal
+                withTimeoutSignal(7000)
               );
-              clearTimeout(tid);
               if (fbResult.ok && fbResult.data?.content) return fbResult.data.content.trim();
+              rememberServerError(fbResult);
               throw new Error("no content");
             } catch (e) {
-              clearTimeout(tid);
               throw e;
             }
           })
@@ -770,8 +802,9 @@ export async function sendChatRequest(
             fallbackModel,
             useCompound ? 0.3 : info.temperature,
             adaptiveMaxTokens,
-            signal
+            withTimeoutSignal(12000)
           );
+          rememberServerError(fbResult);
           if (fbResult.ok && fbResult.data?.content) {
             const txt = fbResult.data.content.trim();
             saveCachedResponse(latestPrompt, txt, activeModelId, answerLangCode, 0, imageAttachment?.dataUrl);
@@ -801,11 +834,26 @@ export async function sendChatRequest(
       }
     }
 
-    throw new Error(
+    const noKeysHint =
+      lang === "ru"
+        ? "На сервере не настроены ключи AI-провайдеров. Добавьте GEMINI_API_KEY или GROQ_API_KEY в .env (см. .env.example) и перезапустите сервер."
+        : lang === "uk"
+          ? "На сервері не налаштовані ключі AI-провайдерів. Додайте GEMINI_API_KEY або GROQ_API_KEY у .env (див. .env.example) і перезапустіть сервер."
+          : "AI provider keys are not configured on the server. Add GEMINI_API_KEY or GROQ_API_KEY to .env (see .env.example) and restart the server.";
+    const fallbackMsg =
       lang === "ru"
         ? "Не удалось получить ответ от моделей. Пожалуйста, попробуйте еще раз."
-        : "Failed to receive a response from AI models. Please try again."
-    );
+        : lang === "uk"
+          ? "Не вдалося отримати відповідь від моделей. Будь ласка, спробуйте ще раз."
+          : "Failed to receive a response from AI models. Please try again.";
+
+    if (lastServerCode === "no_provider_keys") {
+      throw new Error(noKeysHint);
+    }
+    if (lastServerError && lastServerError !== "timeout") {
+      throw new Error(`${fallbackMsg}\n${lastServerError}`);
+    }
+    throw new Error(fallbackMsg);
   };
 
   const promise = exec().finally(() => {

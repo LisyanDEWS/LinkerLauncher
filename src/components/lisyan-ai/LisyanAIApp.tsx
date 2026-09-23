@@ -21,6 +21,14 @@ function makeId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+
+function formatErrorContent(prefix: string, detail: string): string {
+  const clean = detail.trim();
+  if (!clean) return prefix;
+  if (clean.startsWith(prefix)) return clean;
+  return `${prefix}\n\n${clean}`;
+}
+
 function makeChat(modelId: ModelId = "lnv1", defaultTitle: string = "New Chat"): Chat {
   return { id: makeId(), title: defaultTitle, messages: [], modelId, createdAt: Date.now() };
 }
@@ -229,7 +237,7 @@ function ChatApp() {
         ...c,
         messages: c.messages.map((m) =>
           m.id === assistantId
-            ? { ...m, content: `${t("apiError")}\n\n${message}`, streaming: false }
+            ? { ...m, content: formatErrorContent(t("apiError"), message), streaming: false }
             : m,
         ),
       } : c));
@@ -304,7 +312,7 @@ function ChatApp() {
         setChats((prev) => prev.map((c) => c.id === activeChatId ? {
           ...c,
           messages: c.messages.map((m) =>
-            m.id === assistantId ? { ...m, content: `${t("apiError")}\n\n${errTxt}`, streaming: false } : m
+            m.id === assistantId ? { ...m, content: formatErrorContent(t("apiError"), errTxt), streaming: false } : m
           ),
         } : c));
       }
