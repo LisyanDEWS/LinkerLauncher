@@ -539,10 +539,40 @@ async function startServer() {
   const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
   const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
 
+  // Netlify AI Gateway — zero-config inference (env vars auto-injected at runtime).
+  const AI_GATEWAY_KEY = (process.env.NETLIFY_AI_GATEWAY_KEY || '').trim();
+  const AI_GATEWAY_BASE = (process.env.NETLIFY_AI_GATEWAY_BASE_URL || '').trim().replace(/\/+$/, '');
+  const AI_GATEWAY_URL = AI_GATEWAY_BASE ? `${AI_GATEWAY_BASE}/chat/completions` : '';
+
+  const GATEWAY_MODELS = [
+    'gpt-4.1-mini',
+    'gemini-flash-latest',
+    'gpt-4.1',
+    'deepseek/deepseek-chat-v3.1',
+    'gemini-2.5-flash',
+    'openai/gpt-oss-120b',
+  ];
+  const GATEWAY_FAST_MODELS = ['gpt-4.1-nano', 'gemini-2.5-flash-lite', 'gpt-4.1-mini'];
+  const GATEWAY_VISION_MODELS = ['gpt-4.1-mini', 'gemini-flash-latest', 'meta-llama/llama-4-scout', 'qwen/qwen2.5-vl-72b-instruct'];
+
   app.get('/api/ai/warmup', async (req, res) => {
     const verifiedModels: string[] = [];
     const checkMessage = [{ role: 'user', content: 'Reply YES if you can hear me' }];
     try {
+      const gwProbe = AI_GATEWAY_KEY && AI_GATEWAY_URL
+        ? fetchWithTimeout(AI_GATEWAY_URL, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${AI_GATEWAY_KEY}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ model: 'gpt-4.1-nano', messages: checkMessage, max_tokens: 10 }),
+          }, 5000).then(async (r) => {
+            if (r.ok) verifiedModels.push(...GATEWAY_MODELS);
+          }).catch(() => {})
+        : Promise.resolve();
+
       const cbProbe = CEREBRAS_API_KEY
         ? fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
             method: 'POST',
@@ -595,8 +625,8 @@ async function startServer() {
           }).catch(() => {})
         : Promise.resolve();
 
-      await Promise.allSettled([cbProbe, orProbe, nvProbe, groqProbe]);
-      return res.json({ ok: true, verifiedModels, primaryEngine: 'Lroutev1 + Groq Compound' });
+      await Promise.allSettled([gwProbe, cbProbe, orProbe, nvProbe, groqProbe]);
+      return res.json({ ok: true, verifiedModels, primaryEngine: 'Lroutev1 + AI Gateway' });
     } catch {
       return res.json({ ok: true, verifiedModels: ['groq/compound-mini', 'openrouter/free'], primaryEngine: 'Lroutev1' });
     }
@@ -711,6 +741,54 @@ async function startServer() {
             cached: true,
             latencyMs: Date.now() - start,
           });
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────────────────────
+      // TIER -1: Netlify AI Gateway ⚙️ — zero-config primary engine (auto-injected creds)
+      // ─────────────────────────────────────────────────────────────────────────────
+      if (AI_GATEWAY_KEY && AI_GATEWAY_URL) {
+        const gatewayModels = hasImage
+          ? GATEWAY_VISION_MODELS
+          : smallQuestion || isCompoundRequested
+            ? GATEWAY_FAST_MODELS
+            : GATEWAY_MODELS;
+
+        for (const gm of gatewayModels) {
+          try {
+            const gwRes = await fetchWithTimeout(AI_GATEWAY_URL, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${AI_GATEWAY_KEY}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({
+                model: gm,
+                messages,
+                temperature: smallQuestion ? Math.min(temperature, 0.35) : temperature,
+                max_tokens: Math.min(max_tokens, tinyQuestion ? 512 : smallQuestion ? 1024 : max_tokens),
+              }),
+            }, smallQuestion ? 10000 : 18000);
+            if (gwRes.ok) {
+              const data = await gwRes.json();
+              const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
+              if (text) {
+                setServerCache(computeServerCacheKey(messages), text, gm);
+                return res.json({
+                  success: true,
+                  provider: 'ai-gateway',
+                  model: gm,
+                  tier: -1,
+                  content: text,
+                  usage: data?.usage,
+                  latencyMs: Date.now() - start,
+                });
+              }
+            }
+          } catch (gwErr) {
+            console.warn(`[Tier -1: AI Gateway] Model ${gm} failed, failing over:`, gwErr);
+          }
         }
       }
 
