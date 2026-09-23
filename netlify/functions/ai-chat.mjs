@@ -1,4 +1,4 @@
-import { jsonResponse, preflightResponse, runChatCompletion } from '../lib/aiProviders.mjs';
+import { jsonResponse, preflightResponse, runChatCompletion, hasAnyProviderKey, providerKeys } from '../lib/aiProviders.mjs';
 
 export const config = {
   path: '/api/ai/chat',
@@ -30,8 +30,16 @@ export default async (req) => {
 
     if (result) return jsonResponse(200, { success: true, ...result });
 
+    if (!hasAnyProviderKey(providerKeys())) {
+      return jsonResponse(503, {
+        error: 'AI provider keys are not configured on the server. Set GEMINI_API_KEY, GROQ_API_KEY or OPENROUTER_API_KEY in your host environment (see .env.example).',
+        code: 'no_provider_keys',
+      });
+    }
+
     return jsonResponse(503, {
       error: 'All AI providers and free models are temporarily unavailable. Please try again in a few seconds.',
+      code: 'providers_unavailable',
     });
   } catch (err) {
     console.error('AI chat function fatal error:', err);

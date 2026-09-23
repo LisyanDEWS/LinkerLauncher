@@ -13,6 +13,7 @@ export default defineConfig(() => {
     },
     server: {
       hmr: false,
+      allowedHosts: true as const,
     },
     build: {
       target: 'esnext',
