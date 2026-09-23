@@ -33,6 +33,18 @@ const SMALL_QUESTION_MAX_LEN = 200;
 const TINY_QUESTION_MAX_LEN = 80;
 
 /**
+ * Hints that the user is asking about CURRENT information ("now", "at the moment",
+ * "today", "fresh", "latest news"...). Such queries must go to a model with
+ * built-in web search (Groq Compound) or trigger the web-search integration.
+ */
+export const CURRENT_INFO_PATTERN =
+  /(сейчас|на\s+данный\s+момент|на\s+сегодняшний\s+(день|момент)|сегодня|актуальн|свеж(и|е|ая|ие|ий)|новости|\bnews\b|\bcurrently\b|\bright\s+now\b|\bat\s+the\s+moment\b|\bas\s+of\s+now\b|\blatest\s+news\b|up[\s-]?to[\s-]?date)/i;
+
+export function needsWebSearch(prompt: string): boolean {
+  return CURRENT_INFO_PATTERN.test(prompt.trim());
+}
+
+/**
  * Determines if a prompt qualifies as a small question that should use Groq Compound.
  * Criteria:
  * - Short length (<=200 chars, <=25 words)
@@ -169,14 +181,17 @@ export function routeRequest(
 
   // 2.5 NEW: Small Question -> Groq Compound Mini (fastest, built-in tools)
   // If question is tiny (<80 chars) or small factual (<=200 chars), use compound
-  if (isSmallQuestion(clean) && userSelectedModel !== "lv1pro" && userSelectedModel !== "lvision") {
+  const currentInfo = needsWebSearch(clean);
+  if (userSelectedModel !== "lv1pro" && userSelectedModel !== "lvision" && (isSmallQuestion(clean) || (currentInfo && !isLargeOrCode))) {
     const tokens = calculateAdaptiveMaxTokens(clean, "lnv1", "compound");
     const isTiny = isTinyQuestion(clean);
     return {
       modelId: "lnv1",
       reason: isTiny
         ? "⚡ Крошечный вопрос — Groq Compound Mini (100-300 токенов, мгновенно)"
-        : "⚡ Короткий вопрос — Groq Compound Mini с поиском (быстро + точно)",
+        : currentInfo
+          ? "🌐 Актуальная информация — Groq Compound Mini с поиском в интернете"
+          : "⚡ Короткий вопрос — Groq Compound Mini с поиском (быстро + точно)",
       maxCompletionTokens: tokens,
       isAutomaticRoute: false,
       category: "compound",
@@ -201,12 +216,13 @@ export function routeRequest(
   // But still use adaptive tokens (was fixed 4096, now dynamic)
   const tokens = calculateAdaptiveMaxTokens(clean, "lnv1", "chat");
   const isSmallish = clean.length <= 200;
+  const useCompoundDefault = isSmallish || currentInfo;
   return {
     modelId: "lnv1",
     reason: isSmallish ? "Быстрый ответ — LNv1 Fast (оптимизировано)" : "Быстрый ответ — LNv1 Fast",
     maxCompletionTokens: tokens,
     isAutomaticRoute: false,
     category: isSmallish ? "fact" : "chat",
-    useGroqCompound: isSmallish,
+    useGroqCompound: useCompoundDefault,
   };
 }

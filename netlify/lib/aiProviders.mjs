@@ -218,10 +218,22 @@ function flattenMessages(messages) {
   }));
 }
 
+const CURRENT_INFO_RE = /сейчас|на\s+данный\s+момент|на\s+сегодняшний\s+(день|момент)|сегодня|актуальн|свеж(и|е|ая|ие|ий)|новости|\bnews\b|\bcurrently\b|\bright\s+now\b|\bat\s+the\s+moment\b|\bas\s+of\s+now\b|\blatest\s+news\b|up[\s-]?to[\s-]?date/i;
+
 function hasImageContent(messages) {
   return messages.some(
     (m) => Array.isArray(m.content) && m.content.some((c) => c.type === 'image_url' || c.image_url)
   );
+}
+
+/** True when the last user message hints at CURRENT information (needs web search). */
+function hintsCurrentInfo(messages) {
+  try {
+    const last = messages[messages.length - 1];
+    if (!last || last.role === 'assistant' || last.role === 'system') return false;
+    const content = typeof last?.content === 'string' ? last.content : JSON.stringify(last?.content || '');
+    return CURRENT_INFO_RE.test(content);
+  } catch { return false; }
 }
 
 function isSmallQuestion(messages) {
@@ -264,8 +276,8 @@ const TIERS = [
     tier: 1,
     key: 'groq',
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    models: (requested, isSmall) => {
-      if (requested && (requested.includes('compound') || isSmall)) {
+    models: (requested) => {
+      if (requested && requested.includes('compound')) {
         return [requested, ...GROQ_COMPOUND_MODELS.filter(m => m !== requested)];
       }
       return GROQ_COMPOUND_MODELS;
@@ -274,6 +286,7 @@ const TIERS = [
     skipOnImage: true,
     flatten: true,
     onlyForSmall: true,
+    alsoForCurrentInfo: true,
   },
   {
     name: 'cerebras',
@@ -327,6 +340,7 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
   const withImage = hasImageContent(messages);
   const small = isSmallQuestion(messages);
   const tiny = isTinyQuestion(messages);
+  const currentInfo = hintsCurrentInfo(messages);
   const isCompoundRequested = model && model.includes('compound');
   let lastError = '';
   let triedAny = false;
@@ -346,15 +360,21 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
     }
   }
 
-  for (const tier of TIERS) {
+  // When the user hints at CURRENT information, prefer the Groq Compound tier
+  // (built-in web search) over the plain gateway models.
+  const tierOrder = currentInfo && keys.groq
+    ? [TIERS.find((t) => t.name === 'groq-compound'), ...TIERS.filter((t) => t.name !== 'groq-compound')]
+    : TIERS;
+
+  for (const tier of tierOrder) {
     const apiKey = keys[tier.key];
     if (!apiKey) continue;
     if (withImage && tier.skipOnImage) continue;
-    if (tier.onlyForSmall && !small && !isCompoundRequested) continue;
+    if (tier.onlyForSmall && !small && !isCompoundRequested && !(tier.alsoForCurrentInfo && currentInfo)) continue;
     const endpoint = typeof tier.endpoint === 'function' ? tier.endpoint(keys) : tier.endpoint;
     if (!endpoint) continue;
 
-    const modelsList = tier.models(model, small, withImage);
+    const modelsList = tier.models(model, small, withImage, currentInfo);
     triedAny = true;
 
     // For tiny questions, race first 2 models in parallel for speed
