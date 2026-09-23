@@ -78,6 +78,36 @@ export const NVIDIA_MODELS = [
   'meta/llama-3.1-8b-instruct',
 ];
 
+// Netlify AI Gateway — zero-config inference (env vars auto-injected at runtime).
+// NOTE: the gateway rejects requests without an explicit Accept header.
+const GATEWAY_KEY = (process.env.NETLIFY_AI_GATEWAY_KEY || '').trim();
+const GATEWAY_BASE = (process.env.NETLIFY_AI_GATEWAY_BASE_URL || '').trim().replace(/\/+$/, '');
+export const AI_GATEWAY_URL = GATEWAY_BASE ? `${GATEWAY_BASE}/chat/completions` : '';
+
+export const GATEWAY_MODELS = [
+  'gpt-4.1-mini',
+  'gemini-flash-latest',
+  'gpt-4.1',
+  'deepseek/deepseek-chat-v3.1',
+  'gemini-2.5-flash',
+  'openai/gpt-oss-120b',
+];
+
+export const GATEWAY_FAST_MODELS = [
+  'gpt-4.1-nano',
+  'gemini-2.5-flash-lite',
+  'gpt-4.1-mini',
+];
+
+export const GATEWAY_VISION_MODELS = [
+  'gpt-4.1-mini',
+  'gemini-flash-latest',
+  'meta-llama/llama-4-scout',
+  'qwen/qwen2.5-vl-72b-instruct',
+];
+
+const GATEWAY_HEADERS = { Accept: 'application/json' };
+
 export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -111,6 +141,7 @@ export function cleanModelOutput(text) {
 
 export function providerKeys() {
   return {
+    gateway: AI_GATEWAY_URL && GATEWAY_KEY ? GATEWAY_KEY : '',
     cerebras: (process.env.CEREBRAS_API_KEY || '').trim(),
     groq: (process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '').trim(),
     nvidia: (process.env.NVIDIA_API_KEY || '').trim(),
@@ -187,8 +218,23 @@ function isTinyQuestion(messages) {
 
 const TIERS = [
   {
-    name: 'groq-compound',
+    name: 'ai-gateway',
     tier: 0,
+    key: 'gateway',
+    endpoint: AI_GATEWAY_URL,
+    models: (requested, isSmall) => {
+      if (requested && requested.includes('compound')) return GATEWAY_FAST_MODELS;
+      if (isSmall) return GATEWAY_FAST_MODELS;
+      return GATEWAY_MODELS;
+    },
+    timeout: 18000,
+    skipOnImage: false,
+    flatten: false,
+    headers: GATEWAY_HEADERS,
+  },
+  {
+    name: 'groq-compound',
+    tier: 1,
     key: 'groq',
     endpoint: '',
     models: (requested, isSmall) => {
@@ -204,7 +250,7 @@ const TIERS = [
   },
   {
     name: 'cerebras',
-    tier: 1,
+    tier: 2,
     key: 'cerebras',
     endpoint: '',
     models: () => CEREBRAS_MODELS,
@@ -214,7 +260,7 @@ const TIERS = [
   },
   {
     name: 'groq',
-    tier: 2,
+    tier: 3,
     key: 'groq',
     endpoint: '',
     models: () => GROQ_MODELS,
@@ -224,7 +270,7 @@ const TIERS = [
   },
   {
     name: 'nvidia',
-    tier: 3,
+    tier: 4,
     key: 'nvidia',
     endpoint: '',
     models: () => NVIDIA_MODELS,
@@ -234,7 +280,7 @@ const TIERS = [
   },
   {
     name: 'openrouter',
-    tier: 4,
+    tier: 5,
     key: 'openrouter',
     endpoint: '',
     timeout: 18000,
@@ -389,6 +435,18 @@ export async function probeProviders() {
   const checkMessage = [{ role: 'user', content: 'Reply YES if you can hear me' }];
 
   const probes = [
+    keys.gateway &&
+      fetchWithTimeout(
+        AI_GATEWAY_URL,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${keys.gateway}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ model: 'gpt-4.1-nano', messages: checkMessage, max_tokens: 10 }),
+        },
+        5000
+      )
+        .then((r) => { if (r.ok) verifiedModels.push(...GATEWAY_MODELS); })
+        .catch(() => {}),
     keys.cerebras &&
       fetchWithTimeout(
         `${providerBases().cerebras}/chat/completions`,
