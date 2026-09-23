@@ -85,6 +85,7 @@ import { TelegramRouteApp } from './components/TelegramRouteApp';
 import ServerModal from './components/ServerModal';
 import { AccountManagerModal } from './components/AccountManagerModal';
 import { SpaceProxyCard } from './components/SpaceProxyCard';
+import { InkAppLauncherButton } from './components/InkAppLauncherButton';
 import { M3LoadingIndicator } from './components/m3-loading/M3LoadingIndicator';
 import { LanguageSelector } from './components/LanguageSelector';
 import { LiveWallpaper } from './components/LiveWallpaper';
@@ -437,7 +438,6 @@ export default function App() {
   const [batteryLvl, setBatteryLvl] = useState<number | null>(null);
   const [isCharging, setIsCharging] = useState(false);
   const [userLocation, setUserLocation] = useState<{lat: string, lon: string} | null>(null);
-  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [topbarTemp, setTopbarTemp] = useState<number | null>(null);
 
   // Weather widget states & persistence
@@ -452,6 +452,36 @@ export default function App() {
   });
   const [weatherError, setWeatherError] = useState<boolean>(false);
   const [isWeatherOptionsOpen, setIsWeatherOptionsOpen] = useState<boolean>(false);
+
+  // App tabs state for ink multi-tab launcher across all applications
+  const [appTabs, setAppTabs] = useState<Record<string, { count: number; activeIndex: number }>>(() => {
+    return {
+      space_proxy: { count: 0, activeIndex: 1 },
+      lisyan_ai: { count: 0, activeIndex: 1 },
+      lisyan: { count: 0, activeIndex: 1 },
+      subconvert: { count: 0, activeIndex: 1 },
+    };
+  });
+
+  const handleOpenAppTab = (appId: string, openAction: () => void) => {
+    setAppTabs((prev) => {
+      const cur = prev[appId] || { count: 0, activeIndex: 1 };
+      const nextCount = cur.count + 1;
+      return {
+        ...prev,
+        [appId]: { count: nextCount, activeIndex: nextCount },
+      };
+    });
+    openAction();
+  };
+
+  const handleFocusAppTab = (appId: string, tabIndex: number, focusAction: () => void) => {
+    setAppTabs((prev) => ({
+      ...prev,
+      [appId]: { ...(prev[appId] || { count: 1 }), activeIndex: tabIndex },
+    }));
+    focusAction();
+  };
 
   // App notification permissions state & prompt modal
   const [appNotifPermissions, setAppNotifPermissions] = useState<Record<string, 'allowed' | 'denied'>>(() => {
@@ -478,28 +508,26 @@ export default function App() {
     }
   };
 
-  const handleEnableGeolocation = () => {
+  const handleEnableGeolocation = async () => {
     setWeatherLocationMode('auto');
     localStorage.setItem('linkerru_weather_location_mode', 'auto');
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m`);
-            const data = await res.json();
-            if (data && data.current && data.current.temperature_2m !== undefined) {
-              setTopbarTemp(Math.round(data.current.temperature_2m));
-              setWeatherError(false);
-            } else {
-              setWeatherError(true);
-            }
-          } catch (e) {
-            setWeatherError(true);
+    try {
+      const res = await fetch('/api/geoip');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          setUserLocation({ lat: data.latitude.toString(), lon: data.longitude.toString() });
+          const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${data.latitude}&longitude=${data.longitude}&current=temperature_2m`);
+          const wData = await wRes.json();
+          if (wData?.current?.temperature_2m !== undefined) {
+            setTopbarTemp(Math.round(wData.current.temperature_2m));
+            setWeatherError(false);
+            return;
           }
-        },
-        () => setWeatherError(true)
-      );
-    } else {
+        }
+      }
+      setWeatherError(true);
+    } catch {
       setWeatherError(true);
     }
   };
@@ -559,19 +587,22 @@ export default function App() {
       }
     };
 
-    const loadWeather = () => {
+    const loadWeather = async () => {
       if (weatherLocationMode === 'custom' && weatherCustomCity) {
         fetchTopWeatherByCity(weatherCustomCity);
         return;
       }
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => fetchTopWeather(pos.coords.latitude.toString(), pos.coords.longitude.toString()),
-          () => fetchTopWeatherByCity(weatherCustomCity || 'Москва')
-        );
-      } else {
-        fetchTopWeatherByCity(weatherCustomCity || 'Москва');
-      }
+      try {
+        const ipRes = await fetch('/api/geoip');
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData && ipData.latitude && ipData.longitude) {
+            fetchTopWeather(ipData.latitude.toString(), ipData.longitude.toString());
+            return;
+          }
+        }
+      } catch {}
+      fetchTopWeatherByCity(weatherCustomCity || 'Москва');
     };
 
     loadWeather();
@@ -1312,46 +1343,17 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // --- Geolocation ---
+  // --- Geolocation: Silent IP-based API (no browser prompts) ---
   useEffect(() => {
-    // Check if permission is already granted
-    if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'geolocation' }).then(result => {
-        if (result.state === 'prompt') {
-          const asked = localStorage.getItem('askedLocation');
-          if (!asked) {
-            setShowLocationPrompt(true);
-          }
-        } else if (result.state === 'granted') {
-           navigator.geolocation.getCurrentPosition(
-            (pos) => setUserLocation({ lat: pos.coords.latitude.toString(), lon: pos.coords.longitude.toString() }),
-            () => {}
-          );
+    fetch('/api/geoip')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.latitude && data.longitude) {
+          setUserLocation({ lat: data.latitude.toString(), lon: data.longitude.toString() });
         }
-      }).catch(() => {
-        const asked = localStorage.getItem('askedLocation');
-        if (!asked) {
-          setShowLocationPrompt(true);
-        }
-      });
-    } else {
-      const asked = localStorage.getItem('askedLocation');
-      if (!asked) {
-        setShowLocationPrompt(true);
-      }
-    }
+      })
+      .catch(() => {});
   }, []);
-
-  const handleRequestLocation = () => {
-    localStorage.setItem('askedLocation', 'true');
-    setShowLocationPrompt(false);
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude.toString(), lon: pos.coords.longitude.toString() }),
-        () => {}
-      );
-    }
-  };
 
   // --- Dynamic CSS variables mounting on :root ---
   useEffect(() => {
@@ -1730,6 +1732,34 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const keepsMinimized = isMinimized('keeps');
   const wallpapersMinimized = isMinimized('wallpapers');
   const proxyMinimized = isMinimized('proxy');
+
+  useEffect(() => {
+    setAppTabs((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      const proxyOpen = wm.isOpen('proxy');
+      if (!proxyOpen && next.space_proxy?.count) {
+        next.space_proxy = { count: 0, activeIndex: 1 };
+        changed = true;
+      }
+      const lisyanAiOpen = wm.isOpen('lisyan_ai') || wm.isOpen('agno');
+      if (!lisyanAiOpen && next.lisyan_ai?.count) {
+        next.lisyan_ai = { count: 0, activeIndex: 1 };
+        changed = true;
+      }
+      const lisyanOpen = wm.isOpen('lisyan');
+      if (!lisyanOpen && next.lisyan?.count) {
+        next.lisyan = { count: 0, activeIndex: 1 };
+        changed = true;
+      }
+      const subconvertOpen = wm.isOpen('subconvert');
+      if (!subconvertOpen && next.subconvert?.count) {
+        next.subconvert = { count: 0, activeIndex: 1 };
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [wm.windows]);
 
   const openLisyanAiWindow = () => {
     activeWm.open({
@@ -3115,9 +3145,18 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           theme={theme}
           activePalette={activePalette}
           proxyMinimized={proxyMinimized}
+          openTabsCount={appTabs.space_proxy?.count || 0}
+          activeTabIndex={appTabs.space_proxy?.activeIndex || 1}
+          onFocusTab={(idx) => {
+            playChime('click');
+            handleFocusAppTab('space_proxy', idx, () => {
+              wm.restore('proxy');
+              wm.focus('proxy');
+            });
+          }}
           onOpenHub={(url, serverName) => {
             if (serverName) handleServerSelection(serverName);
-            openLinkerRoute(url);
+            handleOpenAppTab('space_proxy', () => openLinkerRoute(url));
           }}
           playChime={playChime}
         />
@@ -3153,22 +3192,33 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <button
-              onClick={() => {
+            <InkAppLauncherButton
+              appId="lisyan_ai"
+              openTabsCount={appTabs.lisyan_ai?.count || 0}
+              activeTabIndex={appTabs.lisyan_ai?.activeIndex || 1}
+              onOpenNewTab={() => {
                 playChime('click');
-                openLisyanAiWindow();
+                handleOpenAppTab('lisyan_ai', () => openLisyanAiWindow());
               }}
-              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-              style={{
-                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              onFocusTab={(idx) => {
+                playChime('click');
+                handleFocusAppTab('lisyan_ai', idx, () => {
+                  wm.restore('lisyan_ai');
+                  wm.focus('lisyan_ai');
+                });
               }}
-              id="lisyan-ai-card-open-btn"
-            >
-              {lang === 'ru' ? 'Открыть' : lang === 'uk' ? 'Відкрити' : 'Open'}
-            </button>
+              onBackground={() => {
+                playChime('click');
+                if (lisyanAiMinimized) {
+                  wm.restore('lisyan_ai');
+                } else {
+                  wm.minimize('lisyan_ai');
+                }
+              }}
+              lang={lang}
+              theme={theme}
+              accentColor={activePalette.primary}
+            />
           </div>
         </div>
 
@@ -3204,22 +3254,33 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <button
-              onClick={() => {
+            <InkAppLauncherButton
+              appId="lisyan"
+              openTabsCount={appTabs.lisyan?.count || 0}
+              activeTabIndex={appTabs.lisyan?.activeIndex || 1}
+              onOpenNewTab={() => {
                 playChime('click');
-                openLisyanWindow();
+                handleOpenAppTab('lisyan', () => openLisyanWindow());
               }}
-              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-              style={{
-                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+              onFocusTab={(idx) => {
+                playChime('click');
+                handleFocusAppTab('lisyan', idx, () => {
+                  wm.restore('lisyan');
+                  wm.focus('lisyan');
+                });
               }}
-              id="lisyan-connect-card-open-btn"
-            >
-              {lang === 'ru' ? 'Открыть' : lang === 'uk' ? 'Відкрити' : 'Open'}
-            </button>
+              onBackground={() => {
+                playChime('click');
+                if (lisyanMinimized) {
+                  wm.restore('lisyan');
+                } else {
+                  wm.minimize('lisyan');
+                }
+              }}
+              lang={lang}
+              theme={theme}
+              accentColor={activePalette.primary}
+            />
           </div>
         </div>
         {/* WIDGET 4: Nexus Game Box NGB (In Development - Gray state, non-interactive) */}
@@ -3303,18 +3364,33 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             </p>
           </div>
           <div className="mt-4 flex items-end">
-            <button
-              onClick={handleOpenSubConvert}
-              className="w-full py-3 rounded-full text-xs font-extrabold border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm"
-              style={{
-                backgroundColor: theme === 'dark' ? 'var(--btn-bg)' : activePalette.primary,
-                borderColor: theme === 'dark' ? 'var(--btn-border)' : 'transparent',
-                color: theme === 'dark' ? 'var(--on-surface)' : '#ffffff',
-                boxShadow: theme === 'dark' ? undefined : `0 4px 12px ${activePalette.primary}40`
+            <InkAppLauncherButton
+              appId="subconvert"
+              openTabsCount={appTabs.subconvert?.count || 0}
+              activeTabIndex={appTabs.subconvert?.activeIndex || 1}
+              onOpenNewTab={() => {
+                playChime('click');
+                handleOpenAppTab('subconvert', () => handleOpenSubConvert());
               }}
-            >
-              {lang === 'ru' ? 'Открыть' : 'Open'}
-            </button>
+              onFocusTab={(idx) => {
+                playChime('click');
+                handleFocusAppTab('subconvert', idx, () => {
+                  wm.restore('subconvert');
+                  wm.focus('subconvert');
+                });
+              }}
+              onBackground={() => {
+                playChime('click');
+                if (isMinimized('subconvert')) {
+                  wm.restore('subconvert');
+                } else {
+                  wm.minimize('subconvert');
+                }
+              }}
+              lang={lang}
+              theme={theme}
+              accentColor={activePalette.primary}
+            />
           </div>
         </div>
 
@@ -3758,54 +3834,6 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
       {/* Lisyan Connect — now rendered via window manager only */}
 
-      {/* Location Permission Prompt */}
-      <AnimatePresence>
-        {showLocationPrompt && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLocationPrompt(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="relative z-10 w-full max-w-sm rounded-3xl border border-[var(--outline-var)] bg-[var(--surface)] p-6 shadow-2xl flex flex-col items-center text-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-[var(--container)] flex items-center justify-center mb-4 text-[var(--accent)] border border-[var(--outline-var)]">
-                <MapPin size={24} />
-              </div>
-              <h3 className="text-lg font-black text-[var(--on-surface)] mb-2">
-                {lang === 'ru' ? 'Разрешить доступ к геопозиции?' : 'Allow location access?'}
-              </h3>
-              <p className="text-xs text-[var(--on-surface-var)] mb-6">
-                {lang === 'ru' ? 'Это необходимо для более точного отображения погоды в виджете.' : 'This is required to display more accurate weather information in the widget.'}
-              </p>
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => {
-                    localStorage.setItem('askedLocation', 'true');
-                    setShowLocationPrompt(false);
-                  }}
-                  className="flex-1 py-3 rounded-xl border border-[var(--outline-var)] text-xs font-bold text-[var(--on-surface-var)] hover:bg-[var(--container)] transition-colors"
-                >
-                  {lang === 'ru' ? 'Позже' : 'Later'}
-                </button>
-                <button
-                  onClick={handleRequestLocation}
-                  className="flex-1 py-3 rounded-xl text-xs font-bold text-[var(--surface)] transition-all hover:opacity-90 shadow-sm"
-                  style={{ backgroundColor: activePalette.primary }}
-                >
-                  {lang === 'ru' ? 'Разрешить' : 'Allow'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <ClockModal
         isOpen={isClockOpen}

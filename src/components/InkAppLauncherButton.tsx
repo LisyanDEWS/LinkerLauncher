@@ -18,9 +18,9 @@ export interface InkAppLauncherButtonProps {
 
 const springTransition = {
   type: 'spring' as const,
-  stiffness: 450,
-  damping: 28,
-  mass: 0.8,
+  stiffness: 420,
+  damping: 26,
+  mass: 0.75,
 };
 
 export function InkAppLauncherButton({
@@ -39,6 +39,9 @@ export function InkAppLauncherButton({
   const isDark = theme === 'dark';
   const accent = accentColor || 'var(--accent, #6366f1)';
 
+  // Build array of tab numbers to render
+  const tabNumbers = Array.from({ length: Math.min(Math.max(openTabsCount, 2), 6) }, (_, i) => i + 1);
+
   return (
     <div className={`relative flex items-center justify-center w-full min-h-[44px] ${className}`}>
       <AnimatePresence mode="wait" initial={false}>
@@ -48,23 +51,27 @@ export function InkAppLauncherButton({
             key={`${appId}-closed`}
             layoutId={`${appId}-launcher-ink`}
             transition={springTransition}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
+            initial={{ opacity: 0, scale: 0.94, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.94, filter: 'blur(4px)' }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
             onClick={(e) => {
               e.stopPropagation();
               onOpenNewTab();
             }}
-            className="w-full py-3 px-4 rounded-full text-xs font-black border transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer text-center shadow-sm flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 rounded-full text-xs font-black border transition-colors cursor-pointer text-center shadow-sm flex items-center justify-center gap-2 group relative overflow-hidden"
             style={{
               backgroundColor: isDark ? 'var(--btn-bg, #262626)' : accent,
               borderColor: isDark ? 'var(--btn-border, #404040)' : 'transparent',
               color: isDark ? 'var(--on-surface, #ffffff)' : '#ffffff',
-              boxShadow: isDark ? undefined : `0 4px 14px ${accent}40`,
+              boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : `0 4px 14px ${accent}40`,
             }}
           >
-            <span>{isRu ? 'Открыть' : 'Open'}</span>
-            <ChevronRight size={15} />
+            {/* Ripple ink reflection */}
+            <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <span className="tracking-tight">{isRu ? 'Открыть' : 'Open'}</span>
+            <ChevronRight size={15} className="transition-transform group-hover:translate-x-0.5" />
           </motion.button>
         ) : openTabsCount === 1 ? (
           /* STATE 1: SPLIT INTO "NEW TAB" + "IN BACKGROUND" */
@@ -72,49 +79,55 @@ export function InkAppLauncherButton({
             key={`${appId}-single-tab`}
             layoutId={`${appId}-launcher-ink`}
             transition={springTransition}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.95, filter: 'blur(3px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.95, filter: 'blur(3px)' }}
             className="flex items-center gap-1.5 w-full"
           >
             {/* New Tab button */}
             <motion.button
               layout
               transition={springTransition}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenNewTab();
               }}
-              className="flex-1 py-2.5 px-3 rounded-2xl text-[11px] font-black border transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+              className="flex-1 py-2.5 px-3 rounded-2xl text-[11px] font-black border transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm relative overflow-hidden group"
               style={{
                 backgroundColor: isDark ? 'var(--btn-bg, #262626)' : accent,
                 borderColor: isDark ? 'var(--btn-border, #404040)' : 'transparent',
                 color: isDark ? 'var(--on-surface, #ffffff)' : '#ffffff',
+                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : `0 3px 12px ${accent}35`,
               }}
               title={isRu ? 'Открыть новую вкладку' : 'Open new tab'}
             >
+              <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <Plus size={13} className="stroke-[3]" />
-              <span className="truncate">{isRu ? 'Новая вкладка' : 'New Tab'}</span>
+              <span className="truncate tracking-tight">{isRu ? 'Новая вкладка' : 'New Tab'}</span>
             </motion.button>
 
-            {/* In Background / Switch tab 1 button */}
+            {/* In Background button */}
             <motion.button
               layout
               transition={springTransition}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
               onClick={(e) => {
                 e.stopPropagation();
                 onBackground();
               }}
-              className="px-3 py-2.5 rounded-2xl text-[11px] font-bold border transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-1 shrink-0"
+              className="px-3.5 py-2.5 rounded-2xl text-[11px] font-bold border transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 relative overflow-hidden group"
               style={{
                 backgroundColor: isDark ? 'var(--container, #1f1f1f)' : 'var(--container, #f3f4f6)',
                 borderColor: isDark ? 'var(--btn-border, #404040)' : 'var(--outline-var, #e5e7eb)',
                 color: 'var(--on-surface, #e5e7eb)',
               }}
-              title={isRu ? 'Работать в фоне / скрыть' : 'Run in background'}
+              title={isRu ? 'Свернуть в фон' : 'Run in background'}
             >
-              <Eye size={12} />
-              <span>{isRu ? 'В фоне' : 'Background'}</span>
+              <Eye size={12} className="opacity-80" />
+              <span className="tracking-tight">{isRu ? 'В фоне' : 'Background'}</span>
             </motion.button>
           </motion.div>
         ) : (
@@ -123,90 +136,101 @@ export function InkAppLauncherButton({
             key={`${appId}-multi-tabs`}
             layoutId={`${appId}-launcher-ink`}
             transition={springTransition}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.95, filter: 'blur(3px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.95, filter: 'blur(3px)' }}
             className="flex items-center gap-1.5 w-full"
           >
             {/* Plus button to open another new tab */}
             <motion.button
               layout
               transition={springTransition}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenNewTab();
               }}
-              className="h-10 w-10 rounded-2xl border flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer shrink-0 shadow-sm"
+              className="h-10 w-10 rounded-2xl border flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-sm relative overflow-hidden group"
               style={{
                 backgroundColor: isDark ? 'var(--btn-bg, #262626)' : accent,
                 borderColor: isDark ? 'var(--btn-border, #404040)' : 'transparent',
                 color: isDark ? 'var(--on-surface, #ffffff)' : '#ffffff',
+                boxShadow: isDark ? '0 2px 6px rgba(0,0,0,0.25)' : `0 3px 10px ${accent}30`,
               }}
               title={isRu ? 'Открыть ещё вкладку' : 'Open another tab'}
             >
               <Plus size={15} className="stroke-[3]" />
             </motion.button>
 
-            {/* Tab 1 button */}
-            <motion.button
-              layout
-              transition={springTransition}
-              onClick={(e) => {
-                e.stopPropagation();
-                onFocusTab(1);
-              }}
-              className={`flex-1 py-2.5 px-2 rounded-2xl text-xs font-black border transition-transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-1 ${
-                activeTabIndex === 1 ? 'ring-2 ring-[var(--accent)]' : ''
-              }`}
-              style={{
-                backgroundColor: isDark ? 'var(--container, #1f1f1f)' : 'var(--container, #f3f4f6)',
-                borderColor: isDark ? 'var(--btn-border, #404040)' : 'var(--outline-var, #e5e7eb)',
-                color: 'var(--on-surface, #e5e7eb)',
-              }}
-              title={isRu ? 'Перейти во вкладку 1' : 'Switch to Tab 1'}
-            >
-              <span>1</span>
-            </motion.button>
-
-            {/* Tab 2 button */}
-            <motion.button
-              layout
-              transition={springTransition}
-              onClick={(e) => {
-                e.stopPropagation();
-                onFocusTab(2);
-              }}
-              className={`flex-1 py-2.5 px-2 rounded-2xl text-xs font-black border transition-transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-1 ${
-                activeTabIndex === 2 ? 'ring-2 ring-[var(--accent)]' : ''
-              }`}
-              style={{
-                backgroundColor: isDark ? 'var(--container, #1f1f1f)' : 'var(--container, #f3f4f6)',
-                borderColor: isDark ? 'var(--btn-border, #404040)' : 'var(--outline-var, #e5e7eb)',
-                color: 'var(--on-surface, #e5e7eb)',
-              }}
-              title={isRu ? 'Перейти во вкладку 2' : 'Switch to Tab 2'}
-            >
-              <span>2</span>
-            </motion.button>
+            {/* Tab buttons: 1, 2, ... */}
+            <div className="flex-1 flex items-center gap-1 min-w-0">
+              {tabNumbers.map((tabNum) => {
+                const isActive = activeTabIndex === tabNum;
+                return (
+                  <motion.button
+                    key={`${appId}-tab-${tabNum}`}
+                    layout
+                    transition={springTransition}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFocusTab(tabNum);
+                    }}
+                    className={`flex-1 py-2 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer flex items-center justify-center gap-1 relative overflow-hidden ${
+                      isActive ? 'ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--surface)]' : ''
+                    }`}
+                    style={{
+                      backgroundColor: isActive
+                        ? isDark
+                          ? 'var(--surface-high, #333333)'
+                          : 'var(--accent-dim, #e0e7ff)'
+                        : isDark
+                        ? 'var(--container, #1f1f1f)'
+                        : 'var(--container, #f3f4f6)',
+                      borderColor: isActive
+                        ? 'var(--accent)'
+                        : isDark
+                        ? 'var(--btn-border, #404040)'
+                        : 'var(--outline-var, #e5e7eb)',
+                      color: isActive
+                        ? isDark
+                          ? '#ffffff'
+                          : 'var(--accent)'
+                        : 'var(--on-surface, #e5e7eb)',
+                    }}
+                    title={isRu ? `Перейти во вкладку ${tabNum}` : `Switch to Tab ${tabNum}`}
+                  >
+                    <span>{tabNum}</span>
+                    {isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
 
             {/* In Background */}
             <motion.button
               layout
               transition={springTransition}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation();
                 onBackground();
               }}
-              className="px-2.5 py-2.5 rounded-2xl text-[10px] font-bold border transition-transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-1 shrink-0"
+              className="px-2.5 py-2.5 rounded-2xl text-[10px] font-bold border transition-colors cursor-pointer flex items-center justify-center gap-1 shrink-0 relative overflow-hidden"
               style={{
                 backgroundColor: isDark ? 'var(--container, #1f1f1f)' : 'var(--container, #f3f4f6)',
                 borderColor: isDark ? 'var(--btn-border, #404040)' : 'var(--outline-var, #e5e7eb)',
                 color: 'var(--on-surface-var, #9ca3af)',
               }}
-              title={isRu ? 'В фоне' : 'Background'}
+              title={isRu ? 'Свернуть в фон' : 'Background'}
             >
               <Eye size={12} />
-              <span className="hidden sm:inline">{isRu ? 'В фоне' : 'Bg'}</span>
+              <span className="hidden sm:inline tracking-tight">{isRu ? 'В фоне' : 'Bg'}</span>
             </motion.button>
           </motion.div>
         )}

@@ -180,44 +180,63 @@ export async function fetchWebSearch(query: string): Promise<{
 
 async function fetchSubConvertContext(prompt: string, lang: Language): Promise<string | null> {
   const ytMatch = prompt.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
-  if (!ytMatch) return null;
-  const videoId = ytMatch[1];
-  const cacheKey = `${videoId}_${lang}`;
-  const cached = getCachedIntegration(subConvertCache, cacheKey, SUBCONVERT_CACHE_TTL);
-  if (cached) return cached;
+  const isYoutubeMention = /(?:youtube|ютуб|ютубе|видео)/i.test(prompt);
 
-  const url = `https://www.youtube.com/watch?v=${videoId}`;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch('/api/subconvert/fetch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, language: lang }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.transcript) {
-        const text = typeof data.transcript === 'string'
-          ? data.transcript
-          : Array.isArray(data.transcript)
-            ? data.transcript.map((t: any) => t.text || '').join(' ')
-            : '';
-        const result = `[SubConvert: "${data.title || videoId}"]:\n${text.slice(0, 6000)}`;
-        subConvertCache.set(cacheKey, { data: result, ts: Date.now() });
-        return result;
+  if (!ytMatch && !isYoutubeMention) return null;
+
+  if (ytMatch) {
+    const videoId = ytMatch[1];
+    const cacheKey = `${videoId}_${lang}`;
+    const cached = getCachedIntegration(subConvertCache, cacheKey, SUBCONVERT_CACHE_TTL);
+    if (cached) return cached;
+
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6500);
+      const res = await fetch('/api/subconvert/fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, language: lang }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.transcript) {
+          const text = typeof data.transcript === 'string'
+            ? data.transcript
+            : Array.isArray(data.transcript)
+              ? data.transcript.map((t: any) => t.text || '').join(' ')
+              : '';
+          const result = `[Интеграция SubConvert LinkerRu]: Видео "${data.title || videoId}" (URL: ${url}).\nСубтитры и транскрипт:\n${text.slice(0, 6000)}\n(Используйте эти данные SubConvert для подробного анализа видео, таймкодов и ключевых выводов).`;
+          subConvertCache.set(cacheKey, { data: result, ts: Date.now() });
+          return result;
+        }
       }
+    } catch (e) {
+      console.warn('SubConvert fetch failed:', e);
     }
-  } catch (e) {
-    console.warn('SubConvert fetch failed:', e);
+    return `[Интеграция SubConvert LinkerRu]: Обнаружено YouTube-видео ${url}. Сервис SubConvert подключен и готов к анализу.`;
   }
+
   return null;
 }
 
+function getWeatherConditionText(code: number, lang: Language): string {
+  if (code === 0) return lang === 'ru' ? 'Ясно и солнечно' : lang === 'uk' ? 'Ясно та сонячно' : 'Clear sky';
+  if (code >= 1 && code <= 3) return lang === 'ru' ? 'Переменная облачность' : lang === 'uk' ? 'Мінлива хмарність' : 'Partly cloudy';
+  if (code >= 45 && code <= 48) return lang === 'ru' ? 'Туман' : lang === 'uk' ? 'Туман' : 'Foggy';
+  if (code >= 51 && code <= 67) return lang === 'ru' ? 'Дождь' : lang === 'uk' ? 'Дощ' : 'Rain';
+  if (code >= 71 && code <= 77) return lang === 'ru' ? 'Снегопад' : lang === 'uk' ? 'Снігопад' : 'Snowfall';
+  if (code >= 80 && code <= 82) return lang === 'ru' ? 'Ливневый дождь' : lang === 'uk' ? 'Злива' : 'Heavy rain showers';
+  if (code >= 85 && code <= 86) return lang === 'ru' ? 'Снежные ливни' : lang === 'uk' ? 'Снігова злива' : 'Snow showers';
+  if (code >= 95 && code <= 99) return lang === 'ru' ? 'Гроза' : lang === 'uk' ? 'Гроза' : 'Thunderstorm';
+  return lang === 'ru' ? 'Умеренная облачность' : lang === 'uk' ? 'Помірна хмарність' : 'Overcast';
+}
+
 async function fetchWeatherContext(prompt: string, lang: Language): Promise<string | null> {
-  const isWeatherQuery = /погода|температура|forecast|weather|градус|дождь|снег|влажн|ветер/i.test(prompt);
+  const isWeatherQuery = /погода|температура|forecast|weather|градус|дождь|снег|влажн|ветер|холодно|жарко/i.test(prompt);
   if (!isWeatherQuery) return null;
 
   const cacheKey = `weather_${lang}_${(prompt.slice(0, 50))}`;
@@ -229,46 +248,73 @@ async function fetchWeatherContext(prompt: string, lang: Language): Promise<stri
     let lon = 37.6173;
     let cityName = lang === 'ru' ? 'Москва' : lang === 'uk' ? 'Київ' : 'Moscow';
 
-    const customCity = localStorage.getItem('linkerru_weather_custom_city');
-    if (customCity) {
-      cityName = customCity;
+    // 1. Check if user specified a city in the prompt (e.g. "погода в париже", "weather in london")
+    const cityInPromptMatch = prompt.match(/(?:погода|температура|weather|forecast)\s+(?:в|во|in)\s+([a-zA-Zа-яА-ЯёЁ\s-]+?)(?:\?|\.|\,|$|\s+на|\s+сегодня)/i);
+    let explicitCity = cityInPromptMatch ? cityInPromptMatch[1].trim() : null;
+
+    if (explicitCity && explicitCity.length >= 2) {
       try {
-        const controller = new AbortController();
-        setTimeout(() => controller.abort(), 2500);
-        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(customCity)}&count=1`, { signal: controller.signal });
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(explicitCity)}&count=1`);
         if (geoRes.ok) {
           const geoData = await geoRes.json();
           if (geoData?.results?.[0]) {
             lat = geoData.results[0].latitude;
             lon = geoData.results[0].longitude;
+            cityName = geoData.results[0].name || explicitCity;
           }
         }
       } catch {}
     } else {
-      try {
-        const controller = new AbortController();
-        setTimeout(() => controller.abort(), 2000);
-        const ipRes = await fetch('/api/geoip', { signal: controller.signal });
-        if (ipRes.ok) {
-          const ipData = await ipRes.json();
-          if (ipData?.latitude) {
-            lat = ipData.latitude;
-            lon = ipData.longitude;
-            cityName = ipData.city || cityName;
+      // 2. Check custom city in settings or silent IP GeoIP
+      const customCity = localStorage.getItem('linkerru_weather_custom_city');
+      if (customCity) {
+        cityName = customCity;
+        try {
+          const controller = new AbortController();
+          setTimeout(() => controller.abort(), 2500);
+          const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(customCity)}&count=1`, { signal: controller.signal });
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData?.results?.[0]) {
+              lat = geoData.results[0].latitude;
+              lon = geoData.results[0].longitude;
+            }
           }
-        }
-      } catch {}
+        } catch {}
+      } else {
+        try {
+          const controller = new AbortController();
+          setTimeout(() => controller.abort(), 2000);
+          const ipRes = await fetch('/api/geoip', { signal: controller.signal });
+          if (ipRes.ok) {
+            const ipData = await ipRes.json();
+            if (ipData?.latitude) {
+              lat = ipData.latitude;
+              lon = ipData.longitude;
+              cityName = ipData.city || cityName;
+            }
+          }
+        } catch {}
+      }
     }
 
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), 3000);
+    setTimeout(() => controller.abort(), 3500);
     const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`, { signal: controller.signal });
     if (wRes.ok) {
       const wData = await wRes.json();
       const curr = wData?.current;
       const daily = wData?.daily;
       if (curr) {
-        const result = `[Weather ${cityName}]: ${Math.round(curr.temperature_2m)}°C (feels ${Math.round(curr.apparent_temperature)}°C), hum ${curr.relative_humidity_2m}%, wind ${Math.round(curr.wind_speed_10m)} km/h, today max ${daily?.temperature_2m_max?.[0] ?? '--'}°C min ${daily?.temperature_2m_min?.[0] ?? '--'}°C.`;
+        const condition = getWeatherConditionText(curr.weather_code ?? 0, lang);
+        const temp = Math.round(curr.temperature_2m);
+        const feels = Math.round(curr.apparent_temperature);
+        const wind = Math.round(curr.wind_speed_10m);
+        const humidity = curr.relative_humidity_2m;
+        const max = daily?.temperature_2m_max?.[0] !== undefined ? Math.round(daily.temperature_2m_max[0]) : '--';
+        const min = daily?.temperature_2m_min?.[0] !== undefined ? Math.round(daily.temperature_2m_min[0]) : '--';
+
+        const result = `[Данные из встроенного сервиса Погода LinkerRu]:\nГород: ${cityName}\nТекущая температура: ${temp}°C (ощущается как ${feels}°C)\nСостояние: ${condition}\nВлажность: ${humidity}%\nВетер: ${wind} км/ч\nДневной максимум: ${max}°C, ночной минимум: ${min}°C.\n(Обязательно сообщите пользователю точные данные из сервиса Погода LinkerRu).`;
         weatherCache.set(cacheKey, { data: result, ts: Date.now() });
         return result;
       }
@@ -467,10 +513,24 @@ export async function sendChatRequest(
     const activeModelId = routing.modelId;
     const info = getModel(activeModelId);
     const vision = Boolean(info.vision || activeModelId === "lvision");
-    const useCompound = Boolean(routing.useGroqCompound || routing.category === "compound" || (routing.category === "fact" && isSmallQuestion(latestPrompt)));
-    const tiny = isTinyQuestion(latestPrompt) && !vision && attachments.length === 0;
+    const isYoutubeQuery =
+      /(?:youtube\.com|youtu\.be)/i.test(latestPrompt) ||
+      /\b(проанализируй видео|посмотри видео|субтитры youtube|краткое содержание видео|выжимка видео|видео на ютуб|видео в ютуб|youtube video)\b/i.test(latestPrompt);
+    const isWeatherQuery =
+      /погода|температура|forecast|weather|градус|дождь|снег|влажн|ветер|холодно|жарко/i.test(latestPrompt);
 
-    if (routing.isAutomaticRoute && onNotice) {
+    const useCompound = Boolean(
+      (routing.useGroqCompound || routing.category === "compound" || (routing.category === "fact" && isSmallQuestion(latestPrompt))) &&
+      !isYoutubeQuery &&
+      !isWeatherQuery
+    );
+    const tiny = isTinyQuestion(latestPrompt) && !vision && attachments.length === 0 && !isYoutubeQuery && !isWeatherQuery;
+
+    if (isYoutubeQuery && onNotice) {
+      onNotice(lang === "ru" ? "🔌 Подключаюсь к SubConvert..." : lang === "uk" ? "🔌 Підключаюся до SubConvert..." : "🔌 Connecting to SubConvert...");
+    } else if (isWeatherQuery && onNotice) {
+      onNotice(lang === "ru" ? "🌤️ Подключаюсь к сервису Погода..." : lang === "uk" ? "🌤️ Підключаюся до сервісу Погода..." : "🌤️ Connecting to Weather service...");
+    } else if (routing.isAutomaticRoute && onNotice) {
       onNotice(routing.reason);
     } else if (useCompound && onNotice) {
       onNotice(routing.reason);

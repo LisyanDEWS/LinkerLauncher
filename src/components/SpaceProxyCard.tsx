@@ -54,11 +54,11 @@ export function SpaceProxyCard({
 }: SpaceProxyCardProps) {
   const isRu = lang === 'ru';
   const [isSelectingServer, setIsSelectingServer] = useState(false);
-  const [hasExplicitlySelected, setHasExplicitlySelected] = useState<boolean>(() => {
-    return localStorage.getItem('linkerru_has_selected_proxy_server') === 'true';
+  const [lastOpenedServerId, setLastOpenedServerId] = useState<string | null>(() => {
+    return localStorage.getItem('linkerru_explicit_proxy_opened');
   });
   const [lastSelectedUrl, setLastSelectedUrl] = useState<string>(() => {
-    return localStorage.getItem('linkerru_server_url') || '';
+    return localStorage.getItem('linkerru_server_url') || DEFAULT_SERVERS[0].url;
   });
   const [clickCounts, setClickCounts] = useState<Record<string, number>>(() => {
     try {
@@ -138,10 +138,10 @@ export function SpaceProxyCard({
       [server.id]: (clickCounts[server.id] || 0) + 1,
     };
     setClickCounts(updated);
+    setLastOpenedServerId(server.id);
     setLastSelectedUrl(server.url);
-    setHasExplicitlySelected(true);
     try {
-      localStorage.setItem('linkerru_has_selected_proxy_server', 'true');
+      localStorage.setItem('linkerru_explicit_proxy_opened', server.id);
       localStorage.setItem('linkerru_proxy_server_clicks', JSON.stringify(updated));
       localStorage.setItem('linkerru_server_url', server.url);
       localStorage.setItem('linkerru_server', isRu ? server.nameRu : server.nameEn);
@@ -274,7 +274,11 @@ export function SpaceProxyCard({
             <div className="flex flex-col gap-2 my-auto">
               {DEFAULT_SERVERS.map((server) => {
                 const style = getShadingStyle(server.id);
-                const isSelectedPreviously = hasExplicitlySelected && lastSelectedUrl === server.url;
+                const isSelectedPreviously = Boolean(
+                  lastOpenedServerId &&
+                  lastOpenedServerId === server.id &&
+                  (clickCounts[server.id] || 0) > 0
+                );
 
                 return (
                   <button

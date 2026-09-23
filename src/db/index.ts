@@ -63,6 +63,44 @@ function initDatabase(): Database.Database {
   }
 }
 
-const sqliteInstance = initDatabase();
-export const db = drizzle(sqliteInstance, { schema });
+let db: any;
+try {
+  const sqliteInstance = initDatabase();
+  if (sqliteInstance) {
+    db = drizzle(sqliteInstance, { schema });
+  } else {
+    throw new Error('SQLite instance unavailable');
+  }
+} catch (e) {
+  console.warn('[AI Studio] Database not connected — using in-memory mock');
+  const inMemoryTranscripts: any[] = [];
+  let nextId = 1;
+  db = {
+    select: () => ({
+      from: () => ({
+        where: (condition: any) => ({
+          get: async () => {
+            return inMemoryTranscripts.find((t) => (condition?.val ? t.videoId === condition.val : true)) || null;
+          },
+        }),
+        orderBy: () => ({
+          limit: async (n: number) => inMemoryTranscripts.slice(-n).reverse(),
+        }),
+      }),
+    }),
+    insert: () => ({
+      values: (record: any) => ({
+        returning: () => ({
+          get: async () => {
+            const item = { ...record, id: nextId++ };
+            inMemoryTranscripts.push(item);
+            return item;
+          },
+        }),
+      }),
+    }),
+  };
+}
+
+export { db };
 

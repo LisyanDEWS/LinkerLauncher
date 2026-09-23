@@ -180,6 +180,162 @@ export function detectInstantRuleResponse(
     return { handled: true, content: getReply(replies), source: "courtesy" };
   }
 
+  const farewellPatterns = [
+    /^(пока|до свидания|до встречи|до скорого|бай|спокойной ночи|до завтра|увидимся|прощай)$/i,
+    /^(бувай|до побачення|до зустрічі|до завтра|на добраніч|бувай здорова|прощавай)$/i,
+    /^(bye|goodbye|see you|see ya|cya|good night|farewell|take care|adios|au revoir|tschüss|tchau|ciao)$/i,
+  ];
+  if (farewellPatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "До скорой встречи! Было приятно пообщаться. Всегда буду рад помочь вам снова! 👋✨",
+      uk: "До скорої зустрічі! Було приємно поспілкуватися. Завжди радий допомогти знову! 👋✨",
+      en: "Goodbye! It was a pleasure chatting with you. Feel free to return anytime! 👋✨",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const praisePatterns = [
+    /^(молодец|умница|красавчик|ты лучший|ты супер|отличная работа|хорошая работа|круто|супер|класс|топ|красава|умничка)$/i,
+    /^(молодець|ти найкращий|ти супер|чудова робота|круто|красень)$/i,
+    /^(good job|well done|you are the best|awesome|great job|you rock|bravo|nice work|fantastic)$/i,
+  ];
+  if (praisePatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "Большое спасибо! Очень приятно слышать. Всегда стараюсь делать всё на высшем уровне для вас! 🌟",
+      uk: "Щиро дякую! Дуже приємно чути. Завжди намагаюся робити все якнайкраще для вас! 🌟",
+      en: "Thank you so much! That means a lot. Always here doing my absolute best for you! 🌟",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const creatorPatterns = [
+    /^(кто твой создатель|кто тебя создал|чей ты проект|кто автор|кто разработчик|кто сделал|кто твой автор)$/i,
+    /^(хто твій творець|хто тебе створив|чий ти проект|хто автор|хто розробник)$/i,
+    /^(who made you|who created you|who is your creator|who developed you|who is your developer)$/i,
+  ];
+  if (creatorPatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "Я создан в рамках проекта **LinkerRu :Re** инженером и разработчиком Даниилом Кожевниковым и командой Linker. Я объединяю лучшие современные модели с мгновенной обработкой запросов, интеграцией с SubConvert, сервисом погоды и удобным веб-окружением!",
+      uk: "Я створений у рамках проекту **LinkerRu :Re** інженером та розробником Даниїлом Кожевніковим і командою Linker. Я поєдную найкращі сучасні нейромережі з миттєвою обробкою запитів, інтеграцією з SubConvert, погодою та веб-системою!",
+      en: "I was created as part of the **LinkerRu :Re** platform by developer Daniil Kozhevnikov and the Linker team. I combine the best modern models with instant smart caching, SubConvert video analysis, real-time weather, and seamless OS tools!",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const botIdentityPatterns = [
+    /^(ты человек|ты робот|ты ии|ты бот|ты искусственный интеллект|ты настоящий)$/i,
+    /^(ти людина|ти робот|ти ші|ти бот|ти справжній)$/i,
+    /^(are you human|are you a robot|are you ai|are you a bot|are you real)$/i,
+  ];
+  if (botIdentityPatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "Я — искусственный интеллект **Lisyan AI**, виртуальный ассистент операционной системы LinkerRu. У меня нет физического тела, но я обладаю глубокими знаниями в программировании, аналитике, языках и готов решать любые задачи вместе с вами!",
+      uk: "Я — штучний інтелект **Lisyan AI**, віртуальний асистент операційної системи LinkerRu. У мене немає фізичного тіла, але я маю глибокі знання в кодингу, аналітиці та готовий вирішувати будь-які завдання!",
+      en: "I am **Lisyan AI**, an artificial intelligence and personal assistant in LinkerRu. While I don't have a physical body, I have deep capabilities in programming, text, video analysis, and daily workflows!",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const jokePatterns = [
+    /^(расскажи анекдот|пошути|знаешь шутку|расскажи шутку|анекдот|шутка|рассмеши|рассмеши меня)$/i,
+    /^(розкажи анекдот|пожартуй|знаєш жарт|розкажи жарт|жарт|розсміши мене)$/i,
+    /^(tell me a joke|tell a joke|make me laugh|joke|funny joke)$/i,
+  ];
+  if (jokePatterns.some((p) => p.test(clean))) {
+    const jokesRu = [
+      "— Почему программисты путают Хэллоуин и Рождество?\n— Потому что 31 OCT = 25 DEC! 😄",
+      "— В чём разница между багом и фичей?\n— Баг — это неожиданная проблема, а фича — неожиданная проблема, документированная в релизе!",
+      "— Доктор, у меня не получается заснуть!\n— Попробуйте считать овечек.\n— Считаю, но где-то на сотой овечке ловлю Off-by-one error и начинаю заново!",
+    ];
+    const jokesUk = [
+      "— Чому програмісти плутають Хелловін та Різдво?\n— Бо 31 OCT = 25 DEC! 😄",
+      "— Яка різниця між багом і фічею?\n— Баг — це несподівана проблема, а фіча — несподівана проблема, описана в релізі!",
+    ];
+    const jokesEn = [
+      "— Why do programmers confuse Halloween and Christmas?\n— Because 31 OCT = 25 DEC! 😄",
+      "— There are 10 types of people in the world: those who understand binary, and those who don't!",
+      "— A programmer goes to the store: 'Buy a loaf of bread. If they have eggs, buy a dozen.'\nHe comes back with 12 loaves of bread.",
+    ];
+    const pickedRu = jokesRu[Math.floor(Math.random() * jokesRu.length)];
+    const pickedUk = jokesUk[Math.floor(Math.random() * jokesUk.length)];
+    const pickedEn = jokesEn[Math.floor(Math.random() * jokesEn.length)];
+    const replies: Record<string, string> = { ru: pickedRu, uk: pickedUk, en: pickedEn };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const coinPatterns = [
+    /^(брось монетку|подбрось монетку|орел или решка|подкинь монетку|кинь монетку|монетка)$/i,
+    /^(підкинь монетку|кинь монетку|орел чи решка|монетка)$/i,
+    /^(flip a coin|coin flip|heads or tails|toss a coin)$/i,
+  ];
+  if (coinPatterns.some((p) => p.test(clean))) {
+    const isHeads = Math.random() > 0.5;
+    const replies: Record<string, string> = {
+      ru: `🪙 Монетка взлетает в воздух... и выпадает: **${isHeads ? 'Орёл 🦅' : 'Решка 👑'}**!`,
+      uk: `🪙 Монетка злітає в повітря... і випадає: **${isHeads ? 'Орел 🦅' : 'Решка 👑'}**!`,
+      en: `🪙 The coin flips through the air... and lands on: **${isHeads ? 'Heads 🦅' : 'Tails 👑'}**!`,
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const dicePatterns = [
+    /^(брось кубик|кинь кубик|подкинь кубик|кубик|дай число от 1 до 6)$/i,
+    /^(кинь кубик|підкинь кубик|кубик)$/i,
+    /^(roll a die|roll a dice|roll dice)$/i,
+  ];
+  if (dicePatterns.some((p) => p.test(clean))) {
+    const val = Math.floor(Math.random() * 6) + 1;
+    const diceIcons = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    const icon = diceIcons[val - 1];
+    const replies: Record<string, string> = {
+      ru: `🎲 Бросаю кубик... Выпало: **${val}** ${icon}!`,
+      uk: `🎲 Кидаю кубик... Випало: **${val}** ${icon}!`,
+      en: `🎲 Rolling the die... It landed on: **${val}** ${icon}!`,
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const lifeMeaningPatterns = [
+    /^(в чем смысл жизни|какой смысл жизни|смысл жизни|в чём смысл жизни)$/i,
+    /^(в чому сенс життя|який сенс життя|сенс життя)$/i,
+    /^(what is the meaning of life|meaning of life)$/i,
+  ];
+  if (lifeMeaningPatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "По версии суперкомпьютера Deep Thought — **42**! 🌌\n\nА если серьезно: смысл жизни в том, чтобы познавать мир, создавать что-то ценное, развиваться, помогать близким и находить радость в каждом моменте.",
+      uk: "За версією комп'ютера Deep Thought — **42**! 🌌\n\nА якщо серйозно: сенс життя в тому, щоб відкривати світ, творити, розвиватися, підтримувати близьких та знаходити радість у кожному дні.",
+      en: "According to the supercomputer Deep Thought — **42**! 🌌\n\nMore realistically: the meaning of life is discovering the world, creating value, learning continuously, helping others, and enjoying the journey.",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const linkerruPatterns = [
+    /^(что такое linkerru|что такое линкер|что за сайт|расскажи про linkerru|что такое linker os)$/i,
+    /^(що таке linkerru|що таке лінкер|що за сайт|розкажи про linkerru)$/i,
+    /^(what is linkerru|what is linker os|about linkerru)$/i,
+  ];
+  if (linkerruPatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "**LinkerRu :Re** — это веб-ориентированная операционная среда нового поколения. В неё встроены:\n• 🌐 **Space Proxy Hub** — быстрый доступ к распределённым серверам\n• ⚡ **Lisyan AI** — умный ассистент с мгновенным кэшированием\n• 🎬 **SubConvert** — извлечение и анализ YouTube-субтитров\n• 🌤️ **Погода M3 Expressive** — точный прогноз без запроса геолокации\n• 🪟 Полноценный оконный менеджер с поддержкой вкладок и фоновой работы.",
+      uk: "**LinkerRu :Re** — це веб-орієнтована операційна система нового покоління. До неї входять:\n• 🌐 **Space Proxy Hub** — швидкий доступ до серверів\n• ⚡ **Lisyan AI** — розумний асистент з миттєвим кешуванням\n• 🎬 **SubConvert** — аналіз субтитрів YouTube\n• 🌤️ **Погода M3 Expressive** — точний прогноз без зайвих дозволів\n• 🪟 Віконний менеджер з вкладками та роботою у фоні.",
+      en: "**LinkerRu :Re** is a next-generation web operating environment featuring:\n• 🌐 **Space Proxy Hub** — fast distributed proxy servers\n• ⚡ **Lisyan AI** — smart assistant with instant caching\n• 🎬 **SubConvert** — YouTube subtitles extraction & analysis\n• 🌤️ **M3 Expressive Weather** — instant live forecast with zero permission prompts\n• 🪟 Full window manager with multi-tab launch & background support.",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
+  const helpPatterns = [
+    /^(помоги|помощь|нужна помощь|помоги мне|чем можешь помочь|sos|help|help me)$/i,
+    /^(допоможи|допомога|потрібна допомога|допоможи мені)$/i,
+  ];
+  if (helpPatterns.some((p) => p.test(clean))) {
+    const replies: Record<string, string> = {
+      ru: "Я готов помочь! Напишите, что именно вам нужно:\n\n• 🎬 Анализ или выжимка видео с YouTube (просто отправьте ссылку)\n• 🌤️ Погода в любом городе или сейчас\n• 💻 Написание, исправление или объяснение кода\n• 📝 Составление текста, статьи или письма\n• ⚡ Ответ на любой быстрый или сложный вопрос!",
+      uk: "Я готовий допомогти! Напишіть, що саме потрібно:\n\n• 🎬 Аналіз або вижимка відео з YouTube (надішліть посилання)\n• 🌤️ Погода в будь-якому місті або зараз\n• 💻 Написання або виправлення коду\n• 📝 Текст, лист або переклад\n• ⚡ Відповідь на будь-яке запитання!",
+      en: "I'm ready to help! Let me know what you need:\n\n• 🎬 YouTube video summary (just paste a link)\n• 🌤️ Weather forecast for any city or current location\n• 💻 Writing, troubleshooting, or explaining code\n• 📝 Writing drafts, emails, or translations\n• ⚡ Instant answers to any question!",
+    };
+    return { handled: true, content: getReply(replies), source: "courtesy" };
+  }
+
   const timeDatePatterns = [
     /^(сколько сейчас времени|который час|точное время|текущее время|time|what time is it|котра година|сколько времени|qué hora es|quelle heure est-il|wie spät ist es|que horas são|che ora è)$/i,
     /^(какой сегодня день|какое сегодня число|какая сегодня дата|текущая дата|date|what day is today|яке сьогодні число|какой день|qué día es hoy|quel jour sommes-nous)$/i,
