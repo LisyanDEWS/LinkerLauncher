@@ -122,25 +122,33 @@ export function openRouterCredentials() {
 export const AI_GATEWAY_URL = '';
 
 export const GATEWAY_MODELS = [
-  'gpt-4.1-mini',
-  'gemini-flash-latest',
-  'gpt-4.1',
-  'deepseek/deepseek-chat-v3.1',
-  'gemini-2.5-flash',
-  'openai/gpt-oss-120b',
+  'gpt-5.5',
+  'claude-sonnet-5',
+  'gemini-3.8-flash',
+  'gpt-5.4',
+  'claude-opus-4-8',
+  'deepseek/deepseek-v3.2',
 ];
 
 export const GATEWAY_FAST_MODELS = [
-  'gpt-4.1-nano',
-  'gemini-2.5-flash-lite',
-  'gpt-4.1-mini',
+  'gpt-5.4-nano',
+  'gpt-5.4-mini',
+  'gemini-3.8-flash',
+  'gemini-flash-lite-latest',
 ];
 
 export const GATEWAY_VISION_MODELS = [
-  'gpt-4.1-mini',
-  'gemini-flash-latest',
+  'gpt-5.4-mini',
+  'gemini-3.8-flash',
+  'qwen/qwen3-vl-235b-a22b-instruct',
   'meta-llama/llama-4-scout',
-  'qwen/qwen2.5-vl-72b-instruct',
+];
+
+// Live-web-search models (Perplexity Sonar via the gateway) for current-info queries.
+export const GATEWAY_SEARCH_MODELS = [
+  'perplexity/sonar-pro-search',
+  'perplexity/sonar',
+  'perplexity/sonar-pro',
 ];
 
 const GATEWAY_HEADERS = { Accept: 'application/json' };
@@ -260,8 +268,9 @@ const TIERS = [
     tier: 0,
     key: 'gateway',
     endpoint: (keys) => keys.gatewayUrl,
-    models: (requested, isSmall, withImage) => {
+    models: (requested, isSmall, withImage, currentInfo) => {
       if (withImage) return GATEWAY_VISION_MODELS;
+      if (currentInfo) return GATEWAY_SEARCH_MODELS;
       if (requested && requested.includes('compound')) return GATEWAY_FAST_MODELS;
       if (isSmall) return GATEWAY_FAST_MODELS;
       return GATEWAY_MODELS;
@@ -488,7 +497,7 @@ export async function probeProviders() {
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.gateway}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ model: 'gpt-4.1-nano', messages: checkMessage, max_tokens: 10 }),
+          body: JSON.stringify({ model: 'gpt-5.4-nano', messages: checkMessage, max_tokens: 10 }),
         },
         5000
       )
