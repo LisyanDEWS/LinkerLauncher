@@ -540,9 +540,25 @@ async function startServer() {
   const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
 
   // Netlify AI Gateway — zero-config inference (env vars auto-injected at runtime).
-  const AI_GATEWAY_KEY = (process.env.NETLIFY_AI_GATEWAY_KEY || '').trim();
-  const AI_GATEWAY_BASE = (process.env.NETLIFY_AI_GATEWAY_BASE_URL || '').trim().replace(/\/+$/, '');
-  const AI_GATEWAY_URL = AI_GATEWAY_BASE ? `${AI_GATEWAY_BASE}/chat/completions` : '';
+  // The gateway key is a short-lived per-request JWT, so resolve credentials lazily.
+  const envTrim = (name: string) => (process.env[name] || '').trim();
+  const getGatewayCreds = (): { url: string; key: string } | null => {
+    const openaiBase = envTrim('OPENAI_BASE_URL');
+    const openaiKey = envTrim('OPENAI_API_KEY');
+    const explicitBase = envTrim('NETLIFY_AI_GATEWAY_URL') || envTrim('NETLIFY_AI_GATEWAY_BASE_URL');
+    const explicitKey = envTrim('NETLIFY_AI_GATEWAY_KEY');
+    let base = explicitBase || (openaiKey ? openaiBase : '');
+    const key = explicitKey || (openaiBase ? openaiKey : '');
+    if (!base || !key) return null;
+    base = base.replace(/\/+$/, '');
+    const url = /\/v1$/.test(base) ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
+    return { url, key };
+  };
+  const getOpenRouterUrl = () => {
+    const base = envTrim('OPENROUTER_BASE_URL').replace(/\/+$/, '');
+    if (!base) return 'https://openrouter.ai/api/v1/chat/completions';
+    return /\/v1$/.test(base) ? `${base}/chat/completions` : `${base}/chat/completions`;
+  };
 
   const GATEWAY_MODELS = [
     'gpt-4.1-mini',
@@ -559,11 +575,12 @@ async function startServer() {
     const verifiedModels: string[] = [];
     const checkMessage = [{ role: 'user', content: 'Reply YES if you can hear me' }];
     try {
-      const gwProbe = AI_GATEWAY_KEY && AI_GATEWAY_URL
-        ? fetchWithTimeout(AI_GATEWAY_URL, {
+      const gw = getGatewayCreds();
+      const gwProbe = gw
+        ? fetchWithTimeout(gw.url, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${AI_GATEWAY_KEY}`,
+              'Authorization': `Bearer ${gw.key}`,
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
@@ -587,7 +604,7 @@ async function startServer() {
         : Promise.resolve();
 
       const orProbe = OPENROUTER_API_KEY
-        ? fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        ? fetchWithTimeout(getOpenRouterUrl(), {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -747,7 +764,8 @@ async function startServer() {
       // ─────────────────────────────────────────────────────────────────────────────
       // TIER -1: Netlify AI Gateway ⚙️ — zero-config primary engine (auto-injected creds)
       // ─────────────────────────────────────────────────────────────────────────────
-      if (AI_GATEWAY_KEY && AI_GATEWAY_URL) {
+      const gw = getGatewayCreds();
+      if (gw) {
         const gatewayModels = hasImage
           ? GATEWAY_VISION_MODELS
           : smallQuestion || isCompoundRequested
@@ -756,10 +774,10 @@ async function startServer() {
 
         for (const gm of gatewayModels) {
           try {
-            const gwRes = await fetchWithTimeout(AI_GATEWAY_URL, {
+            const gwRes = await fetchWithTimeout(gw.url, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${AI_GATEWAY_KEY}`,
+                'Authorization': `Bearer ${gw.key}`,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
               },
@@ -770,6 +788,10 @@ async function startServer() {
                 max_tokens: Math.min(max_tokens, tinyQuestion ? 512 : smallQuestion ? 1024 : max_tokens),
               }),
             }, smallQuestion ? 10000 : 18000);
+            if (!gwRes.ok) {
+              const errText = (await gwRes.text().catch(() => '')).slice(0, 300);
+              console.warn(`[Tier -1: AI Gateway] ${gm} -> HTTP ${gwRes.status} ${errText}`);
+            }
             if (gwRes.ok) {
               const data = await gwRes.json();
               const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
@@ -1073,7 +1095,7 @@ async function startServer() {
         ];
         for (const m of modelsToTry) {
           try {
-            const orRes = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+            const orRes = await fetchWithTimeout(getOpenRouterUrl(), {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -1105,8 +1127,14 @@ async function startServer() {
         }
       }
 
+      const configured = [gw && 'ai-gateway', GROQ_API_KEY && 'groq', CEREBRAS_API_KEY && 'cerebras', NVIDIA_API_KEY && 'nvidia', OPENROUTER_API_KEY && 'openrouter'].filter(Boolean);
+      const detail = configured.length
+        ? `Providers tried: ${configured.join(', ')}`
+        : 'No AI provider configured: set GROQ_API_KEY / CEREBRAS_API_KEY / NVIDIA_API_KEY / OPENROUTER_API_KEY (or deploy on Netlify with AI Gateway).';
+      console.error('[ai-chat] all providers failed:', detail);
       return res.status(503).json({
         error: 'All AI providers and free models are temporarily unavailable. Please try again in a few seconds.',
+        detail,
       });
     } catch (e: any) {
       console.error('AI chat endpoint fatal error:', e);

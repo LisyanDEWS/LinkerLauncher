@@ -30,8 +30,11 @@ export default async (req) => {
 
     if (result) return jsonResponse(200, { success: true, ...result });
 
+    const detail = runChatCompletion.lastError || '';
+    console.error('[ai-chat] all providers failed:', detail);
     return jsonResponse(503, {
       error: 'All AI providers and free models are temporarily unavailable. Please try again in a few seconds.',
+      detail,
     });
   } catch (err) {
     console.error('AI chat function fatal error:', err);
