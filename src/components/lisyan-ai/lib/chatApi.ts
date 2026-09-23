@@ -660,6 +660,7 @@ export async function sendChatRequest(
     }
 
     let proxyMissing = false;
+    let lastServerError = "";
     const fastTimeoutMs = tiny ? 8000 : useCompound ? 10000 : 15000;
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => timeoutController.abort(), fastTimeoutMs);
@@ -719,6 +720,9 @@ export async function sendChatRequest(
       proxyMissing = serverResult.status === 404 || serverResult.status === 405;
       if (proxyMissing) {
         console.warn("Server AI proxy unavailable, switching to direct.");
+      } else if (!serverResult.ok) {
+        lastServerError = serverResult.data?.detail || serverResult.data?.error || `HTTP ${serverResult.status}`;
+        console.warn("Server AI proxy returned error:", lastServerError);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -801,11 +805,11 @@ export async function sendChatRequest(
       }
     }
 
-    throw new Error(
+    const baseMsg =
       lang === "ru"
         ? "Не удалось получить ответ от моделей. Пожалуйста, попробуйте еще раз."
-        : "Failed to receive a response from AI models. Please try again."
-    );
+        : "Failed to receive a response from AI models. Please try again.";
+    throw new Error(lastServerError ? `${baseMsg}\n(${lastServerError})` : baseMsg);
   };
 
   const promise = exec().finally(() => {

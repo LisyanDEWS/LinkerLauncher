@@ -79,10 +79,47 @@ export const NVIDIA_MODELS = [
 ];
 
 // Netlify AI Gateway — zero-config inference (env vars auto-injected at runtime).
+// IMPORTANT: the gateway key is a short-lived JWT (~60s) injected per request, so
+// credentials MUST be resolved at request time — never cached at module scope.
 // NOTE: the gateway rejects requests without an explicit Accept header.
-const GATEWAY_KEY = (process.env.NETLIFY_AI_GATEWAY_KEY || '').trim();
-const GATEWAY_BASE = (process.env.NETLIFY_AI_GATEWAY_BASE_URL || '').trim().replace(/\/+$/, '');
-export const AI_GATEWAY_URL = GATEWAY_BASE ? `${GATEWAY_BASE}/chat/completions` : '';
+function envTrim(name) {
+  return (process.env[name] || '').trim();
+}
+
+function joinUrl(base, path) {
+  return `${base.replace(/\/+$/, '')}${path}`;
+}
+
+/** OpenAI-compatible chat/completions endpoint on the Netlify AI Gateway (if available). */
+export function gatewayCredentials() {
+  const openaiBase = envTrim('OPENAI_BASE_URL');
+  const openaiKey = envTrim('OPENAI_API_KEY');
+  const explicitBase = envTrim('NETLIFY_AI_GATEWAY_URL') || envTrim('NETLIFY_AI_GATEWAY_BASE_URL');
+  const explicitKey = envTrim('NETLIFY_AI_GATEWAY_KEY');
+
+  let base = explicitBase || (openaiKey ? openaiBase : '');
+  const key = explicitKey || (openaiBase ? openaiKey : '');
+  if (!base || !key) return null;
+
+  base = base.replace(/\/+$/, '');
+  // The OpenAI-compatible route lives under /v1. Tolerate bases that already end in /v1.
+  const url = /\/v1$/.test(base) ? `${base}/chat/completions` : joinUrl(base, '/v1/chat/completions');
+  return { url, key };
+}
+
+/** OpenRouter endpoint: Netlify may inject a gateway-issued key + base URL; never send that key to openrouter.ai. */
+export function openRouterCredentials() {
+  const key = envTrim('OPENROUTER_API_KEY');
+  if (!key) return null;
+  const base = envTrim('OPENROUTER_BASE_URL');
+  const url = base
+    ? (/\/v1$/.test(base) ? `${base}/chat/completions` : joinUrl(base, '/chat/completions'))
+    : 'https://openrouter.ai/api/v1/chat/completions';
+  return { url, key, viaGateway: Boolean(base) };
+}
+
+// Kept for backwards compatibility with existing imports (resolved lazily).
+export const AI_GATEWAY_URL = '';
 
 export const GATEWAY_MODELS = [
   'gpt-4.1-mini',
@@ -140,12 +177,16 @@ export function cleanModelOutput(text) {
 }
 
 export function providerKeys() {
+  const gw = gatewayCredentials();
+  const or = openRouterCredentials();
   return {
-    gateway: AI_GATEWAY_URL && GATEWAY_KEY ? GATEWAY_KEY : '',
-    cerebras: (process.env.CEREBRAS_API_KEY || '').trim(),
-    groq: (process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '').trim(),
-    nvidia: (process.env.NVIDIA_API_KEY || '').trim(),
-    openrouter: (process.env.OPENROUTER_API_KEY || '').trim(),
+    gateway: gw ? gw.key : '',
+    gatewayUrl: gw ? gw.url : '',
+    cerebras: envTrim('CEREBRAS_API_KEY'),
+    groq: envTrim('GROQ_API_KEY') || envTrim('VITE_GROQ_API_KEY'),
+    nvidia: envTrim('NVIDIA_API_KEY'),
+    openrouter: or ? or.key : '',
+    openrouterUrl: or ? or.url : '',
   };
 }
 
@@ -206,8 +247,9 @@ const TIERS = [
     name: 'ai-gateway',
     tier: 0,
     key: 'gateway',
-    endpoint: AI_GATEWAY_URL,
-    models: (requested, isSmall) => {
+    endpoint: (keys) => keys.gatewayUrl,
+    models: (requested, isSmall, withImage) => {
+      if (withImage) return GATEWAY_VISION_MODELS;
       if (requested && requested.includes('compound')) return GATEWAY_FAST_MODELS;
       if (isSmall) return GATEWAY_FAST_MODELS;
       return GATEWAY_MODELS;
@@ -267,7 +309,7 @@ const TIERS = [
     name: 'openrouter',
     tier: 5,
     key: 'openrouter',
-    endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+    endpoint: (keys) => keys.openrouterUrl,
     timeout: 18000,
     skipOnImage: false,
     flatten: false,
@@ -286,6 +328,8 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
   const small = isSmallQuestion(messages);
   const tiny = isTinyQuestion(messages);
   const isCompoundRequested = model && model.includes('compound');
+  let lastError = '';
+  let triedAny = false;
 
   // Server-side cache check — instant
   if (!withImage) {
@@ -307,8 +351,11 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
     if (!apiKey) continue;
     if (withImage && tier.skipOnImage) continue;
     if (tier.onlyForSmall && !small && !isCompoundRequested) continue;
+    const endpoint = typeof tier.endpoint === 'function' ? tier.endpoint(keys) : tier.endpoint;
+    if (!endpoint) continue;
 
-    const modelsList = tier.models(model, small);
+    const modelsList = tier.models(model, small, withImage);
+    triedAny = true;
 
     // For tiny questions, race first 2 models in parallel for speed
     if (tiny && modelsList.length >= 2 && tier.tier <= 1) {
@@ -316,7 +363,7 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
         const remaining = CHAT_DEADLINE_MS - (Date.now() - startedAt);
         if (remaining < 2500) throw new Error('deadline');
         const res = await fetchWithTimeout(
-          tier.endpoint,
+          endpoint,
           {
             method: 'POST',
             headers: {
@@ -358,7 +405,7 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
 
       try {
         const res = await fetchWithTimeout(
-          tier.endpoint,
+          endpoint,
           {
             method: 'POST',
             headers: {
@@ -376,7 +423,12 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
           Math.min(tier.timeout, remaining)
         );
 
-        if (!res.ok) continue;
+        if (!res.ok) {
+          const errText = (await res.text().catch(() => '')).slice(0, 300);
+          lastError = `${tier.name}/${modelName}: HTTP ${res.status} ${errText}`;
+          console.warn(`[Tier ${tier.tier}: ${tier.name}] ${modelName} -> ${lastError}`);
+          continue;
+        }
 
         const data = await res.json();
         const text = cleanModelOutput(data?.choices?.[0]?.message?.content || '');
@@ -391,11 +443,16 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
           };
         }
       } catch (err) {
+        lastError = `${tier.name}/${modelName}: ${err?.message || err}`;
         console.warn(`[Tier ${tier.tier}: ${tier.name}] ${modelName} failed, failing over:`, err?.message || err);
       }
     }
   }
 
+  if (!triedAny) {
+    lastError = 'No AI provider configured: set NETLIFY AI Gateway (auto) or GROQ_API_KEY / CEREBRAS_API_KEY / NVIDIA_API_KEY / OPENROUTER_API_KEY.';
+  }
+  runChatCompletion.lastError = lastError;
   return null;
 }
 
@@ -407,7 +464,7 @@ export async function probeProviders() {
   const probes = [
     keys.gateway &&
       fetchWithTimeout(
-        AI_GATEWAY_URL,
+        keys.gatewayUrl,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.gateway}`, 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -431,7 +488,7 @@ export async function probeProviders() {
         .catch(() => {}),
     keys.openrouter &&
       fetchWithTimeout(
-        'https://openrouter.ai/api/v1/chat/completions',
+        keys.openrouterUrl,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${keys.openrouter}`, 'Content-Type': 'application/json' },
