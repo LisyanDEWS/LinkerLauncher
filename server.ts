@@ -3,8 +3,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { db } from './src/db/index';
-import { transcripts } from './src/db/schema';
+import { db } from './src/db/index.ts';
+import { transcripts } from './src/db/schema.ts';
 import { desc, eq } from 'drizzle-orm';
 
 const DEFAULT_LANGUAGES = ['ru', 'en'];

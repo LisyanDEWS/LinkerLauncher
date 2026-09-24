@@ -463,26 +463,6 @@ export default function App() {
     };
   });
 
-  const handleOpenAppTab = (appId: string, openAction: () => void) => {
-    setAppTabs((prev) => {
-      const cur = prev[appId] || { count: 0, activeIndex: 1 };
-      const nextCount = cur.count + 1;
-      return {
-        ...prev,
-        [appId]: { count: nextCount, activeIndex: nextCount },
-      };
-    });
-    openAction();
-  };
-
-  const handleFocusAppTab = (appId: string, tabIndex: number, focusAction: () => void) => {
-    setAppTabs((prev) => ({
-      ...prev,
-      [appId]: { ...(prev[appId] || { count: 1 }), activeIndex: tabIndex },
-    }));
-    focusAction();
-  };
-
   // App notification permissions state & prompt modal
   const [appNotifPermissions, setAppNotifPermissions] = useState<Record<string, 'allowed' | 'denied'>>(() => {
     try {
@@ -1734,34 +1714,52 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   const proxyMinimized = isMinimized('proxy');
 
   useEffect(() => {
-    setAppTabs((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      const proxyOpen = wm.isOpen('proxy');
-      if (!proxyOpen && next.space_proxy?.count) {
-        next.space_proxy = { count: 0, activeIndex: 1 };
-        changed = true;
-      }
-      const lisyanAiOpen = wm.isOpen('lisyan_ai') || wm.isOpen('agno');
-      if (!lisyanAiOpen && next.lisyan_ai?.count) {
-        next.lisyan_ai = { count: 0, activeIndex: 1 };
-        changed = true;
-      }
-      const lisyanOpen = wm.isOpen('lisyan');
-      if (!lisyanOpen && next.lisyan?.count) {
-        next.lisyan = { count: 0, activeIndex: 1 };
-        changed = true;
-      }
-      const subconvertOpen = wm.isOpen('subconvert');
-      if (!subconvertOpen && next.subconvert?.count) {
-        next.subconvert = { count: 0, activeIndex: 1 };
-        changed = true;
-      }
-      return changed ? next : prev;
+    setAppTabs(() => {
+      const getWinInfo = (winId: string) => {
+        const win = wm.windows.find((w) => w.id === winId);
+        if (!win) return { count: 0, activeIndex: 1 };
+        const count = win.tabs && win.tabs.length > 0 ? win.tabs.length : 1;
+        const activeIdx =
+          win.tabs && win.activeTabId
+            ? Math.max(1, win.tabs.findIndex((t) => t.id === win.activeTabId) + 1)
+            : 1;
+        return { count, activeIndex: activeIdx };
+      };
+
+      return {
+        space_proxy: getWinInfo('proxy'),
+        lisyan_ai: getWinInfo('lisyan_ai'),
+        lisyan: getWinInfo('lisyan'),
+        subconvert: getWinInfo('subconvert'),
+      };
     });
   }, [wm.windows]);
 
-  const openLisyanAiWindow = () => {
+  const openLisyanAiWindow = (newTab = false) => {
+    const existing = wm.windows.find((w) => w.id === 'lisyan_ai');
+    if (existing && newTab) {
+      const tabNum = (existing.tabs?.length || 1) + 1;
+      const tabId = `lisyan_ai_tab_${Date.now()}`;
+      wm.addTab('lisyan_ai', {
+        id: tabId,
+        title: `${lang === 'ru' ? 'Вкладка' : lang === 'uk' ? 'Вкладка' : 'Tab'} ${tabNum}`,
+        icon: <LisyanLogo className="w-3.5 h-3.5" variant="raw" />,
+        render: () => (
+          <LisyanAIApp
+            key={tabId}
+            lang={lang}
+            onLangChange={setLang}
+            theme={theme}
+          />
+        ),
+        closable: true,
+      });
+      wm.restore('lisyan_ai');
+      wm.focus('lisyan_ai');
+      return;
+    }
+
+    const tab1Id = 'lisyan_ai_tab_1';
     activeWm.open({
       id: 'lisyan_ai',
       title: 'Lisyan AI',
@@ -1771,6 +1769,26 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 640,
       minWidth: 440,
       minHeight: 380,
+      tabs: [
+        {
+          id: tab1Id,
+          title: `${lang === 'ru' ? 'Вкладка' : lang === 'uk' ? 'Вкладка' : 'Tab'} 1`,
+          icon: <LisyanLogo className="w-3.5 h-3.5" variant="raw" />,
+          render: () => (
+            <LisyanAIApp
+              key={tab1Id}
+              lang={lang}
+              onLangChange={setLang}
+              theme={theme}
+            />
+          ),
+          closable: true,
+        },
+      ],
+      activeTabId: tab1Id,
+      onNewTabClick: () => {
+        openLisyanAiWindow(true);
+      },
       render: () => (
         <LisyanAIApp
           lang={lang}
@@ -1911,8 +1929,35 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
-  const handleOpenSubConvert = () => {
+  const handleOpenSubConvert = (newTab = false) => {
     playChime('click');
+    const existing = wm.windows.find((w) => w.id === 'subconvert');
+    if (existing && newTab) {
+      const tabNum = (existing.tabs?.length || 1) + 1;
+      const tabId = `subconvert_tab_${Date.now()}`;
+      wm.addTab('subconvert', {
+        id: tabId,
+        title: `${lang === 'ru' ? 'Вкладка' : lang === 'uk' ? 'Вкладка' : 'Tab'} ${tabNum}`,
+        icon: <Subtitles size={14} className="text-[var(--on-surface)]" />,
+        render: () => (
+          <SubConvertApp
+            key={tabId}
+            lang={lang}
+            theme={theme}
+            activePalette={activePalette}
+            playChime={playChime}
+            triggerToast={triggerToast}
+            openAgnoGPT={openAgnoWindow}
+          />
+        ),
+        closable: true,
+      });
+      wm.restore('subconvert');
+      wm.focus('subconvert');
+      return;
+    }
+
+    const tab1Id = 'subconvert_tab_1';
     activeWm.open({
       id: 'subconvert',
       title: 'SubConvert',
@@ -1922,6 +1967,29 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 640,
       minWidth: 420,
       minHeight: 380,
+      tabs: [
+        {
+          id: tab1Id,
+          title: `${lang === 'ru' ? 'Вкладка' : lang === 'uk' ? 'Вкладка' : 'Tab'} 1`,
+          icon: <Subtitles size={14} className="text-[var(--on-surface)]" />,
+          render: () => (
+            <SubConvertApp
+              key={tab1Id}
+              lang={lang}
+              theme={theme}
+              activePalette={activePalette}
+              playChime={playChime}
+              triggerToast={triggerToast}
+              openAgnoGPT={openAgnoWindow}
+            />
+          ),
+          closable: true,
+        },
+      ],
+      activeTabId: tab1Id,
+      onNewTabClick: () => {
+        handleOpenSubConvert(true);
+      },
       render: () => (
         <SubConvertApp
           lang={lang}
@@ -1936,7 +2004,37 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   };
 
 
-  const openLisyanWindow = (initialRoomId?: string) => {
+  const openLisyanWindow = (initialRoomId?: string, newTab = false) => {
+    const existing = wm.windows.find((w) => w.id === 'lisyan');
+    if (existing && newTab) {
+      const tabNum = (existing.tabs?.length || 1) + 1;
+      const tabId = `lisyan_tab_${Date.now()}`;
+      wm.addTab('lisyan', {
+        id: tabId,
+        title: `${lang === 'ru' ? 'Комната' : lang === 'uk' ? 'Кімната' : 'Room'} ${tabNum}`,
+        icon: <LisyanConnectLogo className="w-3.5 h-3.5" variant="raw" theme={theme} />,
+        render: () => (
+          <div className="wm-embedded h-full w-full">
+            <LisyanConnectModal
+              key={tabId}
+              isOpen={true}
+              onClose={() => { wm.removeTab('lisyan', tabId); }}
+              lang={lang}
+              theme={theme}
+              activePalette={activePalette}
+              isMobileLayout={isMobileLayout}
+              initialRoomId={initialRoomId}
+            />
+          </div>
+        ),
+        closable: true,
+      });
+      wm.restore('lisyan');
+      wm.focus('lisyan');
+      return;
+    }
+
+    const tab1Id = 'lisyan_tab_1';
     activeWm.open({
       id: 'lisyan',
       title: 'Lisyan Connect',
@@ -1946,6 +2044,32 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 680,
       minWidth: 420,
       minHeight: 380,
+      tabs: [
+        {
+          id: tab1Id,
+          title: `${lang === 'ru' ? 'Комната' : lang === 'uk' ? 'Кімната' : 'Room'} 1`,
+          icon: <LisyanConnectLogo className="w-3.5 h-3.5" variant="raw" theme={theme} />,
+          render: () => (
+            <div className="wm-embedded h-full w-full">
+              <LisyanConnectModal
+                key={tab1Id}
+                isOpen={true}
+                onClose={() => { wm.close('lisyan'); setClassicModalState(null); }}
+                lang={lang}
+                theme={theme}
+                activePalette={activePalette}
+                isMobileLayout={isMobileLayout}
+                initialRoomId={initialRoomId}
+              />
+            </div>
+          ),
+          closable: true,
+        },
+      ],
+      activeTabId: tab1Id,
+      onNewTabClick: () => {
+        openLisyanWindow(undefined, true);
+      },
       render: () => (
         <div className="wm-embedded h-full w-full">
           <LisyanConnectModal
@@ -1994,9 +2118,31 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
     });
   };
 
-  const openLinkerRoute = (url?: string) => {
+  const openLinkerRoute = (url?: string, newTab = false) => {
     if (url) setProxyInitialUrl(url);
     const activeUrl = url || proxyInitialUrl;
+    const existing = wm.windows.find((w) => w.id === 'proxy');
+    if (existing && newTab) {
+      const tabNum = (existing.tabs?.length || 1) + 1;
+      const tabId = `proxy_tab_${Date.now()}`;
+      wm.addTab('proxy', {
+        id: tabId,
+        title: `${lang === 'ru' ? 'Вкладка' : lang === 'uk' ? 'Вкладка' : 'Tab'} ${tabNum}`,
+        icon: <Globe size={14} className="text-[var(--on-surface)]" />,
+        render: () => (
+          <LinkerRouteApp
+            key={tabId}
+            initialUrl={activeUrl}
+          />
+        ),
+        closable: true,
+      });
+      wm.restore('proxy');
+      wm.focus('proxy');
+      return;
+    }
+
+    const tab1Id = 'proxy_tab_1';
     activeWm.open({
       id: 'proxy',
       title: 'Space Proxy Hub',
@@ -2006,12 +2152,56 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
       initialHeight: 650,
       minWidth: 480,
       minHeight: 380,
+      tabs: [
+        {
+          id: tab1Id,
+          title: `${lang === 'ru' ? 'Вкладка' : lang === 'uk' ? 'Вкладка' : 'Tab'} 1`,
+          icon: <Globe size={14} className="text-[var(--on-surface)]" />,
+          render: () => (
+            <LinkerRouteApp
+              key={tab1Id}
+              initialUrl={activeUrl}
+            />
+          ),
+          closable: true,
+        },
+      ],
+      activeTabId: tab1Id,
+      onNewTabClick: () => {
+        openLinkerRoute(undefined, true);
+      },
       render: () => (
         <LinkerRouteApp
           initialUrl={activeUrl}
         />
       ),
     });
+  };
+
+  const handleOpenAppTab = (appId: string, openAction: () => void) => {
+    const winId = appId === 'space_proxy' ? 'proxy' : appId;
+    const isAppOpen = wm.isOpen(winId);
+    if (isAppOpen) {
+      if (appId === 'lisyan_ai') {
+        openLisyanAiWindow(true);
+      } else if (appId === 'lisyan') {
+        openLisyanWindow(undefined, true);
+      } else if (appId === 'space_proxy') {
+        openLinkerRoute(undefined, true);
+      } else if (appId === 'subconvert') {
+        handleOpenSubConvert(true);
+      } else {
+        openAction();
+      }
+    } else {
+      openAction();
+    }
+  };
+
+  const handleFocusAppTab = (appId: string, tabIndex: number, focusAction: () => void) => {
+    const winId = appId === 'space_proxy' ? 'proxy' : appId;
+    wm.setActiveTabByIndex(winId, tabIndex);
+    focusAction();
   };
 
   const openTelegramRouteWindow = () => {

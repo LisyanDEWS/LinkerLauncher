@@ -1,24 +1,17 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw, Trash2 } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw, Trash2, Plus } from 'lucide-react';
 import { Language } from '../types';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
+import { DockTabsLadder } from './DockTabsLadder';
 
-/**
- * WindowManager — OS-style window system for LinkerRu apps.
- *
- * Features:
- *  - Apps open as floating popup windows
- *  - Resizable (drag bottom-right corner)
- *  - Draggable (drag title bar; double-click to maximize)
- *  - Maximize / restore (also via double-click on title bar)
- *  - Minimize to a persistent taskbar (app keeps running in background)
- *  - Persistent taskbar at the bottom shows ALL open windows
- *  - Minimized apps are highlighted with a gradient "steel" indicator
- *  - Restore from taskbar; click active app to minimize back
- *  - Close terminates the app
- *  - Focus z-stacking
- */
+export interface WindowTabItem {
+  id: string;
+  title: string;
+  icon?: React.ReactNode;
+  render: () => React.ReactNode;
+  closable?: boolean;
+}
 
 export interface WindowInstance {
   id: string;
@@ -47,6 +40,9 @@ export interface WindowInstance {
   disableReload?: boolean;
   loadingDuration?: number;
   loaderTitle?: string;
+  tabs?: WindowTabItem[];
+  activeTabId?: string;
+  onNewTabClick?: () => void;
 }
 
 export interface OpenWindowOptions {
@@ -67,6 +63,9 @@ export interface OpenWindowOptions {
   disableReload?: boolean;
   loadingDuration?: number;
   loaderTitle?: string;
+  tabs?: WindowTabItem[];
+  activeTabId?: string;
+  onNewTabClick?: () => void;
 }
 
 export interface WindowManager {
@@ -81,6 +80,12 @@ export interface WindowManager {
   isOpen: (id: string) => boolean;
   /** Reload just the app content (re-mount) without closing/reopening the window. */
   reload: (id: string) => void;
+  addTab: (windowId: string, tab: WindowTabItem) => void;
+  removeTab: (windowId: string, tabId: string) => void;
+  setActiveTab: (windowId: string, tabId: string) => void;
+  setActiveTabByIndex: (windowId: string, tabIndex: number) => void;
+  getTabs: (windowId: string) => WindowTabItem[];
+  getActiveTabId: (windowId: string) => string | undefined;
 }
 
 const MAX_Z = 200;
@@ -121,6 +126,9 @@ export function useWindows(): WindowManager {
                   disableReload: opts.disableReload,
                   loadingDuration: opts.loadingDuration,
                   loaderTitle: opts.loaderTitle,
+                  tabs: opts.tabs ?? w.tabs,
+                  activeTabId: opts.activeTabId ?? (opts.tabs && opts.tabs.length > 0 ? opts.tabs[0].id : w.activeTabId),
+                  onNewTabClick: opts.onNewTabClick ?? w.onNewTabClick,
                 }
               : w,
           );
@@ -180,6 +188,9 @@ export function useWindows(): WindowManager {
         disableReload: opts.disableReload,
         loadingDuration: opts.loadingDuration,
         loaderTitle: opts.loaderTitle,
+        tabs: opts.tabs,
+        activeTabId: opts.activeTabId ?? (opts.tabs && opts.tabs.length > 0 ? opts.tabs[0].id : undefined),
+        onNewTabClick: opts.onNewTabClick,
       };
       return [...prev, instance];
     });
@@ -224,6 +235,134 @@ export function useWindows(): WindowManager {
     setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, renderKey: w.renderKey + 1 } : w)));
   }, []);
 
+  const addTab = useCallback((windowId: string, tab: WindowTabItem) => {
+    setWindows((prev) => {
+      const win = prev.find((w) => w.id === windowId);
+      if (!win) return prev;
+      zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
+      const nextZ = zCounter.current;
+
+      const existingTabs: WindowTabItem[] =
+        win.tabs && win.tabs.length > 0
+          ? win.tabs
+          : [
+              {
+                id: `${windowId}_tab_1`,
+                title: win.title,
+                icon: win.icon,
+                render: win.render,
+                closable: true,
+              },
+            ];
+
+      const safeTabId = existingTabs.some((t) => t.id === tab.id)
+        ? `${tab.id}_${Date.now()}`
+        : tab.id;
+      const safeTab = { ...tab, id: safeTabId };
+      const updatedTabs = [...existingTabs, safeTab];
+
+      return prev.map((w) =>
+        w.id === windowId
+          ? {
+              ...w,
+              tabs: updatedTabs,
+              activeTabId: safeTab.id,
+              isMinimized: false,
+              zIndex: nextZ,
+            }
+          : w,
+      );
+    });
+    window.dispatchEvent(new CustomEvent('linkerru_tab_changed', { detail: { windowId } }));
+  }, []);
+
+  const removeTab = useCallback((windowId: string, tabId: string) => {
+    setWindows((prev) => {
+      const win = prev.find((w) => w.id === windowId);
+      if (!win || !win.tabs) return prev;
+      const remainingTabs = win.tabs.filter((t) => t.id !== tabId);
+      if (remainingTabs.length === 0) {
+        return prev.filter((w) => w.id !== windowId);
+      }
+      let nextActiveId = win.activeTabId;
+      if (win.activeTabId === tabId) {
+        const removedIdx = win.tabs.findIndex((t) => t.id === tabId);
+        const nextIdx = Math.max(0, removedIdx - 1);
+        nextActiveId = remainingTabs[nextIdx]?.id || remainingTabs[0].id;
+      }
+      return prev.map((w) =>
+        w.id === windowId
+          ? {
+              ...w,
+              tabs: remainingTabs,
+              activeTabId: nextActiveId,
+            }
+          : w,
+      );
+    });
+    window.dispatchEvent(new CustomEvent('linkerru_tab_changed', { detail: { windowId } }));
+  }, []);
+
+  const setActiveTab = useCallback((windowId: string, tabId: string) => {
+    setWindows((prev) => {
+      zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
+      const nextZ = zCounter.current;
+      return prev.map((w) =>
+        w.id === windowId
+          ? {
+              ...w,
+              activeTabId: tabId,
+              isMinimized: false,
+              zIndex: nextZ,
+            }
+          : w,
+      );
+    });
+    window.dispatchEvent(new CustomEvent('linkerru_tab_changed', { detail: { windowId } }));
+  }, []);
+
+  const setActiveTabByIndex = useCallback((windowId: string, tabIndex: number) => {
+    setWindows((prev) => {
+      const win = prev.find((w) => w.id === windowId);
+      if (!win || !win.tabs || win.tabs.length === 0) return prev;
+      const target = win.tabs[tabIndex - 1] || win.tabs[0];
+      if (!target) return prev;
+      zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
+      const nextZ = zCounter.current;
+      return prev.map((w) =>
+        w.id === windowId
+          ? {
+              ...w,
+              activeTabId: target.id,
+              isMinimized: false,
+              zIndex: nextZ,
+            }
+          : w,
+      );
+    });
+    window.dispatchEvent(new CustomEvent('linkerru_tab_changed', { detail: { windowId } }));
+  }, []);
+
+  const getTabs = useCallback((windowId: string): WindowTabItem[] => {
+    const win = windows.find((w) => w.id === windowId);
+    if (!win) return [];
+    if (win.tabs && win.tabs.length > 0) return win.tabs;
+    return [
+      {
+        id: `${win.id}_tab_1`,
+        title: win.title,
+        icon: win.icon,
+        render: win.render,
+        closable: true,
+      },
+    ];
+  }, [windows]);
+
+  const getActiveTabId = useCallback((windowId: string): string | undefined => {
+    const win = windows.find((w) => w.id === windowId);
+    return win?.activeTabId;
+  }, [windows]);
+
   const updateGeometry = useCallback((id: string, patch: Partial<WindowInstance>) => {
     setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
   }, []);
@@ -239,6 +378,12 @@ export function useWindows(): WindowManager {
     focus,
     isOpen,
     reload,
+    addTab,
+    removeTab,
+    setActiveTab,
+    setActiveTabByIndex,
+    getTabs,
+    getActiveTabId,
   };
   (manager as any).__updateGeometry = updateGeometry;
   return manager;
@@ -278,6 +423,35 @@ export function WindowManagerLayer({
 
   // Right-click context menu state for taskbar pills
   const [ctxMenu, setCtxMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  // Hover & hold state for the tabs ladder ("лесенка")
+  const [ladderAppId, setLadderAppId] = useState<string | null>(null);
+  const hoverLadderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeLadderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openLadder = (id: string) => {
+    if (closeLadderTimeoutRef.current) clearTimeout(closeLadderTimeoutRef.current);
+    if (hoverLadderTimeoutRef.current) clearTimeout(hoverLadderTimeoutRef.current);
+    setLadderAppId(id);
+  };
+
+  const scheduleOpenLadder = (id: string) => {
+    if (closeLadderTimeoutRef.current) clearTimeout(closeLadderTimeoutRef.current);
+    hoverLadderTimeoutRef.current = setTimeout(() => {
+      setLadderAppId(id);
+    }, 180);
+  };
+
+  const scheduleCloseLadder = () => {
+    if (hoverLadderTimeoutRef.current) clearTimeout(hoverLadderTimeoutRef.current);
+    closeLadderTimeoutRef.current = setTimeout(() => {
+      setLadderAppId(null);
+    }, 320);
+  };
+
+  const cancelCloseLadder = () => {
+    if (closeLadderTimeoutRef.current) clearTimeout(closeLadderTimeoutRef.current);
+  };
 
   // Close context menu on any click elsewhere or Escape
   useEffect(() => {
@@ -350,6 +524,9 @@ export function WindowManagerLayer({
               onReload={() => wm.reload(win.id)}
               onFocus={() => wm.focus(win.id)}
               onGeometryChange={(patch) => updateGeometry(win.id, patch)}
+              onSelectTab={(tabId) => wm.setActiveTab(win.id, tabId)}
+              onCloseTab={(tabId) => wm.removeTab(win.id, tabId)}
+              onNewTab={() => win.onNewTabClick?.()}
               isOptimizedEngine={isOptimizedEngine}
               isMobileLayout={isMobileLayout}
               renderWindowContent={renderWindowContent}
@@ -392,103 +569,178 @@ export function WindowManagerLayer({
               {taskbarItems.map((w, idx) => {
                 const isActive = activeWin?.id === w.id;
                 const isMinimized = w.isMinimized;
+                const tabsCount = w.tabs && w.tabs.length > 0 ? w.tabs.length : 1;
                 return (
                   <React.Fragment key={w.id}>
                     {/* Divider between items */}
                     {idx > 0 && (
                       <div className="h-6 w-px shrink-0" style={{ background: 'var(--outline-var)' }} />
                     )}
-                  <motion.button
-                    whileHover={{ scaleX: 1.08, scaleY: 1.02 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                    onClick={() => {
-                      if (isMinimized) {
-                        wm.restore(w.id);
-                      } else if (isActive) {
-                        // Active window → minimize (Windows-style toggle)
-                        wm.minimize(w.id);
-                      } else {
-                        // Background window → focus it
-                        wm.focus(w.id);
-                      }
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCtxMenu({ id: w.id, x: e.clientX, y: e.clientY });
-                    }}
-                    onTouchStart={(e) => {
-                      const touch = e.touches[0];
-                      if (!touch) return;
-                      const timer = setTimeout(() => {
-                        try { navigator.vibrate?.(35); } catch {}
-                        setCtxMenu({ id: w.id, x: touch.clientX, y: Math.max(10, touch.clientY - 120) });
-                      }, 480);
-                      (e.currentTarget as any).__lpTimer = timer;
-                    }}
-                    onTouchMove={(e) => {
-                      const timer = (e.currentTarget as any).__lpTimer;
-                      if (timer) clearTimeout(timer);
-                    }}
-                    onTouchEnd={(e) => {
-                      const timer = (e.currentTarget as any).__lpTimer;
-                      if (timer) clearTimeout(timer);
-                    }}
-                    className="relative flex items-center gap-2 rounded-[0.85rem] px-2.5 py-1.5 text-[11px] font-bold transition-colors cursor-pointer overflow-hidden select-none"
-                    style={{
-                      background: isActive
-                        ? 'var(--container-high)'
-                        : isMinimized
-                          ? 'color-mix(in srgb, var(--accent) 12%, var(--container))'
-                          : 'transparent',
-                      color: 'var(--on-surface)',
-                    }}
-                    title={isMinimized
-                      ? (isRu ? `Восстановить: ${w.title}` : `Restore: ${w.title}`)
-                      : isActive
-                        ? (isRu ? `Свернуть: ${w.title}` : `Minimize: ${w.title}`)
-                        : (isRu ? `Активировать: ${w.title}` : `Focus: ${w.title}`)}
+                  <div
+                    className="relative flex items-center"
+                    onMouseEnter={() => scheduleOpenLadder(w.id)}
+                    onMouseLeave={scheduleCloseLadder}
                   >
-                    {/* Gradient steel indicator for minimized apps */}
-                    {isMinimized && (
-                      <span
-                        className="absolute inset-0 opacity-50"
-                        style={{
-                          background:
-                            'linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, transparent 60%)',
-                        }}
-                      />
-                    )}
-                    {/* Active indicator bar (left accent stripe) */}
-                    {isActive && !isMinimized && (
-                      <motion.span
-                        layoutId={`active-stripe-${w.id}`}
-                        className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
-                        style={{ background: 'var(--accent)' }}
-                      />
-                    )}
-
-                    {/* Bottom status bar with wave fill */}
-                    {(isActive || isMinimized) && (
-                      <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full overflow-hidden">
+                    {/* Cascading Tabs Ladder ("Лесенка") on hover/hold */}
+                    <AnimatePresence>
+                      {ladderAppId === w.id && (
                         <div
-                          className="h-full w-full rounded-full transition-all duration-300"
+                          onMouseEnter={cancelCloseLadder}
+                          onMouseLeave={scheduleCloseLadder}
+                        >
+                          <DockTabsLadder
+                            appId={w.id}
+                            appTitle={w.title}
+                            appIcon={w.icon}
+                            tabs={
+                              w.tabs && w.tabs.length > 0
+                                ? w.tabs.map((t) => ({
+                                    id: t.id,
+                                    title: t.title,
+                                    icon: t.icon,
+                                    isActive: w.activeTabId ? w.activeTabId === t.id : false,
+                                  }))
+                                : [
+                                    {
+                                      id: `${w.id}_tab_1`,
+                                      title: w.title,
+                                      icon: w.icon,
+                                      isActive: true,
+                                    },
+                                  ]
+                            }
+                            activeTabId={w.activeTabId}
+                            onSelectTab={(tabId) => {
+                              wm.setActiveTab(w.id, tabId);
+                              wm.restore(w.id);
+                              wm.focus(w.id);
+                              setLadderAppId(null);
+                            }}
+                            onCloseTab={(tabId) => {
+                              wm.removeTab(w.id, tabId);
+                            }}
+                            onNewTab={
+                              w.onNewTabClick
+                                ? () => {
+                                    w.onNewTabClick!();
+                                    setLadderAppId(null);
+                                  }
+                                : undefined
+                            }
+                            onClose={() => setLadderAppId(null)}
+                            lang={lang}
+                            theme={'dark'}
+                            accentColor={'var(--accent)'}
+                          />
+                        </div>
+                      )}
+                    </AnimatePresence>
+
+                    <motion.button
+                      whileHover={{ scaleX: 1.08, scaleY: 1.02 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      onMouseDown={() => openLadder(w.id)}
+                      onClick={() => {
+                        if (isMinimized) {
+                          wm.restore(w.id);
+                        } else if (isActive) {
+                          // Active window → minimize (Windows-style toggle)
+                          wm.minimize(w.id);
+                        } else {
+                          // Background window → focus it
+                          wm.focus(w.id);
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCtxMenu({ id: w.id, x: e.clientX, y: e.clientY });
+                      }}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        if (!touch) return;
+                        const timer = setTimeout(() => {
+                          try { navigator.vibrate?.(35); } catch {}
+                          openLadder(w.id);
+                        }, 380);
+                        (e.currentTarget as any).__lpTimer = timer;
+                      }}
+                      onTouchMove={(e) => {
+                        const timer = (e.currentTarget as any).__lpTimer;
+                        if (timer) clearTimeout(timer);
+                      }}
+                      onTouchEnd={(e) => {
+                        const timer = (e.currentTarget as any).__lpTimer;
+                        if (timer) clearTimeout(timer);
+                      }}
+                      className="relative flex items-center gap-2 rounded-[0.85rem] px-2.5 py-1.5 text-[11px] font-bold transition-colors cursor-pointer overflow-hidden select-none"
+                      style={{
+                        background: isActive
+                          ? 'var(--container-high)'
+                          : isMinimized
+                            ? 'color-mix(in srgb, var(--accent) 12%, var(--container))'
+                            : 'transparent',
+                        color: 'var(--on-surface)',
+                      }}
+                      title={isMinimized
+                        ? (isRu ? `Восстановить: ${w.title}` : `Restore: ${w.title}`)
+                        : isActive
+                          ? (isRu ? `Свернуть: ${w.title}` : `Minimize: ${w.title}`)
+                          : (isRu ? `Активировать: ${w.title}` : `Focus: ${w.title}`)}
+                    >
+                      {/* Gradient steel indicator for minimized apps */}
+                      {isMinimized && (
+                        <span
+                          className="absolute inset-0 opacity-50"
                           style={{
-                            background: isActive
-                              ? 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 50%, white) 50%, var(--accent) 100%)'
-                              : 'color-mix(in srgb, var(--accent) 40%, transparent)',
-                            backgroundSize: '200% 100%',
-                            animation: isActive ? 'shimmerWave 2.5s ease-in-out infinite' : undefined,
+                            background:
+                              'linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, transparent 60%)',
                           }}
                         />
-                      </div>
-                    )}
-                    <span className="relative z-10 flex items-center gap-2">
-                      {w.icon}
-                      <span>{w.title}</span>
-                    </span>
-                  </motion.button>
+                      )}
+                      {/* Active indicator bar (left accent stripe) */}
+                      {isActive && !isMinimized && (
+                        <motion.span
+                          layoutId={`active-stripe-${w.id}`}
+                          className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
+                          style={{ background: 'var(--accent)' }}
+                        />
+                      )}
+
+                      {/* Bottom status bar with wave fill */}
+                      {(isActive || isMinimized) && (
+                        <div className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full overflow-hidden">
+                          <div
+                            className="h-full w-full rounded-full transition-all duration-300"
+                            style={{
+                              background: isActive
+                                ? 'linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 50%, white) 50%, var(--accent) 100%)'
+                                : 'color-mix(in srgb, var(--accent) 40%, transparent)',
+                              backgroundSize: '200% 100%',
+                              animation: isActive ? 'shimmerWave 2.5s ease-in-out infinite' : undefined,
+                            }}
+                          />
+                        </div>
+                      )}
+                      <span className="relative z-10 flex items-center gap-2">
+                        {w.icon}
+                        <span>{w.title}</span>
+                        {tabsCount > 1 && (
+                          <span
+                            className="px-1.5 py-0.5 rounded-full text-[9px] font-black leading-none border"
+                            style={{
+                              backgroundColor: 'color-mix(in srgb, var(--accent) 18%, transparent)',
+                              borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)',
+                              color: 'var(--accent)',
+                            }}
+                          >
+                            {tabsCount}
+                          </span>
+                        )}
+                      </span>
+                    </motion.button>
+                  </div>
                   </React.Fragment>
                 );
               })}
@@ -642,6 +894,9 @@ interface WindowFrameProps {
   onReload: () => void;
   onFocus: () => void;
   onGeometryChange: (patch: Partial<WindowInstance>) => void;
+  onSelectTab?: (tabId: string) => void;
+  onCloseTab?: (tabId: string) => void;
+  onNewTab?: () => void;
   isOptimizedEngine?: boolean;
   isMobileLayout?: boolean;
   renderWindowContent?: (id: string) => React.ReactNode;
@@ -657,6 +912,9 @@ function WindowFrame({
   onReload,
   onFocus,
   onGeometryChange,
+  onSelectTab,
+  onCloseTab,
+  onNewTab,
   isOptimizedEngine = false,
   isMobileLayout = false,
   renderWindowContent,
@@ -1005,12 +1263,67 @@ function WindowFrame({
                 : 'var(--surface)',
             }}
           >
-            <div className="flex items-center gap-2">
-              {win.icon}
-              <span className={`${isMobileLayout ? 'text-xs font-black' : 'text-[11px] font-bold'} text-[var(--on-surface)] tracking-tight`}>
-                {win.title}
-              </span>
-            </div>
+            {win.tabs && win.tabs.length > 0 ? (
+              <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-2 overflow-x-auto custom-scrollbar-none py-0.5">
+                {win.icon && (
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0 opacity-80 mr-0.5">
+                    {win.icon}
+                  </div>
+                )}
+                {win.tabs.map((tab, idx) => {
+                  const isTabActive = win.activeTabId ? win.activeTabId === tab.id : idx === 0;
+                  return (
+                    <div
+                      key={tab.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectTab?.(tab.id);
+                      }}
+                      className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none max-w-[160px] shrink-0 border ${
+                        isTabActive
+                          ? 'bg-[var(--surface-high)] text-[var(--on-surface)] shadow-xs border-[var(--outline)]'
+                          : 'border-transparent text-[var(--on-surface-var)] hover:bg-[var(--container)] hover:text-[var(--on-surface)]'
+                      }`}
+                      title={tab.title}
+                    >
+                      {tab.icon && <span className="shrink-0 w-3 h-3 opacity-80">{tab.icon}</span>}
+                      <span className="truncate text-[11px]">{tab.title || `${isRu ? 'Вкладка' : isUk ? 'Вкладка' : 'Tab'} ${idx + 1}`}</span>
+                      {win.tabs!.length > 1 && tab.closable !== false && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCloseTab?.(tab.id);
+                          }}
+                          className="w-4 h-4 rounded-full flex items-center justify-center opacity-50 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-500 transition-all ml-0.5 cursor-pointer"
+                          title={isRu ? 'Закрыть вкладку' : isUk ? 'Закрити вкладку' : 'Close tab'}
+                        >
+                          <X size={10} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {win.onNewTabClick && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNewTab?.();
+                    }}
+                    className="w-6 h-6 rounded-lg border border-dashed border-[var(--outline)] flex items-center justify-center text-[var(--on-surface-var)] hover:bg-[var(--container-high)] hover:text-[var(--on-surface)] hover:border-[var(--accent)] transition-all cursor-pointer shrink-0"
+                    title={isRu ? 'Новая вкладка' : isUk ? 'Нова вкладка' : 'New tab'}
+                  >
+                    <Plus size={12} />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {win.icon}
+                <span className={`${isMobileLayout ? 'text-xs font-black' : 'text-[11px] font-bold'} text-[var(--on-surface)] tracking-tight`}>
+                  {win.title}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               {win.headerActions}
               {!isMobileLayout && (
@@ -1095,7 +1408,26 @@ function WindowFrame({
 
       {/* Content */}
       <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
-        {renderWindowContent ? (renderWindowContent(win.id) ?? win.render()) : win.render()}
+        {win.tabs && win.tabs.length > 0 ? (
+          win.tabs.map((tab, idx) => {
+            const isTabActive = win.activeTabId ? win.activeTabId === tab.id : idx === 0;
+            return (
+              <div
+                key={tab.id}
+                className="w-full h-full"
+                style={{
+                  display: isTabActive ? 'block' : 'none',
+                }}
+              >
+                {tab.render()}
+              </div>
+            );
+          })
+        ) : renderWindowContent ? (
+          renderWindowContent(win.id) ?? win.render()
+        ) : (
+          win.render()
+        )}
       </div>
 
       {/* Material You M3 Window Launching Loader (covers entire window full-page) */}
