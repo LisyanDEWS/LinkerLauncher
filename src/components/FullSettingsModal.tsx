@@ -2178,8 +2178,12 @@ export default function FullSettingsModal({
                           </div>
                           <p className="text-xs text-[var(--on-surface-var)] max-w-md font-semibold leading-relaxed">
                             {lang === 'ru' 
-                              ? 'LinkerRu :Re — экспрессивная веб-операционная система Material 3 с интеграцией приложений, гибкой многооконной средой и возможностью кастомизации.' 
-                              : 'LinkerRu :Re — Material 3 Expressive web operating system featuring windowed app manager, modular homes, and seamless customization.'}
+                              ? (isMobileLayout
+                                  ? 'LinkerRu :Re — экспрессивная среда Material 3 с интеграцией приложений и файлообменником Lisyan Connect.'
+                                  : 'LinkerRu :Re — экспрессивная веб-операционная система Material 3 с интеграцией приложений, гибкой многооконной средой и возможностью кастомизации.')
+                              : (isMobileLayout
+                                  ? 'LinkerRu :Re — Material 3 Expressive mobile environment featuring Lisyan Connect file sharing and seamless customization.'
+                                  : 'LinkerRu :Re — Material 3 Expressive web operating system featuring windowed app manager, modular homes, and seamless customization.')}
                           </p>
 
                           {/* GitHub Auto-Update Card */}

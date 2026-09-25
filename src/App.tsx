@@ -153,6 +153,7 @@ export default function App() {
   });
 
   const [showAppModePrompt, setShowAppModePrompt] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return false;
     const saved = localStorage.getItem('linkerru_app_mode');
     return !saved;
   });
@@ -1663,6 +1664,16 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
   // --- Window manager helpers (popup apps) ---
   const rawWmOpen = wm.open;
   const openAppWithMode = (opts: Parameters<typeof wm.open>[0]) => {
+    if (isMobileLayout) {
+      // In mobile mode: never launch in about:blank, never attach PC window tabs
+      rawWmOpen({
+        ...opts,
+        tabs: undefined,
+        activeTabId: undefined,
+        onNewTabClick: undefined,
+      });
+      return;
+    }
     if (appMode === 'classic') {
       if (opts.id === 'lisyan_ai' || opts.id === 'agno') {
         const lisyanUrl = `${window.location.origin}${window.location.pathname}?standalone=lisyan_ai`;
@@ -2005,6 +2016,31 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
 
 
   const openLisyanWindow = (initialRoomId?: string, newTab = false) => {
+    if (isMobileLayout) {
+      // Mobile version: pure single-view modal, no tabs, no multi-room tab bar
+      rawWmOpen({
+        id: 'lisyan',
+        title: 'Lisyan Connect',
+        icon: <LisyanConnectLogo className="w-3.5 h-3.5" variant="raw" theme={theme} />,
+        singleton: true,
+        render: () => (
+          <div className="wm-embedded h-full w-full">
+            <LisyanConnectModal
+              key="lisyan_mobile"
+              isOpen={true}
+              onClose={() => wm.close('lisyan')}
+              lang={lang}
+              theme={theme}
+              activePalette={activePalette}
+              isMobileLayout={true}
+              initialRoomId={initialRoomId}
+            />
+          </div>
+        ),
+      });
+      return;
+    }
+
     const existing = wm.windows.find((w) => w.id === 'lisyan');
     if (existing && newTab) {
       const tabNum = (existing.tabs?.length || 1) + 1;
@@ -4450,18 +4486,20 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         {classicModalState?.content}
       </ClassicPopupModal>
 
-      {/* App Mode First-Launch Prompt Modal */}
-      <AppModePromptModal
-        isOpen={showAppModePrompt}
-        onClose={() => setShowAppModePrompt(false)}
-        onSelectMode={(mode) => {
-          handleAppModeChange(mode);
-          setShowAppModePrompt(false);
-        }}
-        currentMode={appMode}
-        lang={lang}
-        activePalette={activePalette}
-      />
+      {/* App Mode First-Launch Prompt Modal (PC only) */}
+      {!isMobileLayout && (
+        <AppModePromptModal
+          isOpen={showAppModePrompt}
+          onClose={() => setShowAppModePrompt(false)}
+          onSelectMode={(mode) => {
+            handleAppModeChange(mode);
+            setShowAppModePrompt(false);
+          }}
+          currentMode={appMode}
+          lang={lang}
+          activePalette={activePalette}
+        />
+      )}
 
       {/* Background Preloader for Telegram Route App */}
       <iframe

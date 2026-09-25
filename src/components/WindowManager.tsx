@@ -1322,7 +1322,7 @@ function WindowFrame({
 
   const isFullScreen = win.isMaximized || isMobileLayout;
   const frameStyle: React.CSSProperties = isFullScreen
-    ? { left: 0, top: 0, width: '100vw', height: '100vh' }
+    ? { left: 0, top: 0, width: '100dvw', height: '100dvh' }
     : {
         left: Math.round(win.x),
         top: Math.round(win.y),
@@ -1402,8 +1402,8 @@ function WindowFrame({
         pointerEvents: win.isMinimized ? 'none' : 'auto',
       }}
     >
-      {/* Floating island to restore header (only in maximized mode when header is hidden) */}
-      {isHeaderHidden && !win.hideTitleBar && win.isMaximized && (
+      {/* Floating island to restore header (only in maximized mode when header is hidden on desktop) */}
+      {isHeaderHidden && !win.hideTitleBar && win.isMaximized && !isMobileLayout && (
         <motion.button
           initial={{ opacity: 0, y: -16, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1426,7 +1426,7 @@ function WindowFrame({
 
       {/* Header bar */}
       <AnimatePresence>
-        {!win.hideTitleBar && (!isHeaderHidden || !win.isMaximized) && (
+        {!win.hideTitleBar && (!isHeaderHidden || !win.isMaximized || isMobileLayout) && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: isMobileLayout ? 48 : 34, opacity: 1 }}
@@ -1450,7 +1450,7 @@ function WindowFrame({
                 : 'var(--surface)',
             }}
           >
-            {win.tabs && win.tabs.length > 0 ? (
+            {!isMobileLayout && win.tabs && win.tabs.length > 0 ? (
               <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-2 overflow-x-auto custom-scrollbar-none py-0.5">
                 {win.icon && (
                   <div className="w-4 h-4 flex items-center justify-center shrink-0 opacity-80 mr-0.5">
@@ -1519,9 +1519,13 @@ function WindowFrame({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                {win.icon}
-                <span className={`${isMobileLayout ? 'text-xs font-black' : 'text-[11px] font-bold'} text-[var(--on-surface)] tracking-tight`}>
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {win.icon && (
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0 opacity-80">
+                    {win.icon}
+                  </div>
+                )}
+                <span className={`${isMobileLayout ? 'text-sm font-black' : 'text-[11px] font-bold'} text-[var(--on-surface)] tracking-tight truncate`}>
                   {win.title}
                 </span>
               </div>
@@ -1610,7 +1614,7 @@ function WindowFrame({
 
       {/* Content */}
       <div className="relative flex-1 overflow-y-auto overscroll-y-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] wm-content" key={win.renderKey}>
-        {win.tabs && win.tabs.length > 0 ? (
+        {!isMobileLayout && win.tabs && win.tabs.length > 0 ? (
           win.tabs.map((tab, idx) => {
             const isTabActive = win.activeTabId ? win.activeTabId === tab.id : idx === 0;
             return (
@@ -1626,9 +1630,9 @@ function WindowFrame({
             );
           })
         ) : renderWindowContent ? (
-          renderWindowContent(win.id) ?? win.render()
+          renderWindowContent(win.id) ?? (win.render ? win.render() : (win.tabs?.find((t) => t.id === win.activeTabId)?.render() || win.tabs?.[0]?.render?.()))
         ) : (
-          win.render()
+          win.render ? win.render() : (win.tabs?.find((t) => t.id === win.activeTabId)?.render() || win.tabs?.[0]?.render?.())
         )}
       </div>
 
