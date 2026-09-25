@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw, Trash2, Plus } from 'lucide-react';
+import { X, Minus, Square, Copy, Eye, XCircle, ChevronUp, ChevronDown, RotateCw, Trash2, Plus, ExternalLink } from 'lucide-react';
 import { Language } from '../types';
 import { M3LoadingIndicator } from './m3-loading/M3LoadingIndicator';
 import { DockTabsLadder } from './DockTabsLadder';
@@ -42,6 +42,7 @@ export interface WindowInstance {
   loaderTitle?: string;
   tabs?: WindowTabItem[];
   activeTabId?: string;
+  tabGeometries?: Record<string, { width: number; height: number; x: number; y: number; isMaximized: boolean }>;
   onNewTabClick?: () => void;
 }
 
@@ -86,6 +87,7 @@ export interface WindowManager {
   setActiveTabByIndex: (windowId: string, tabIndex: number) => void;
   getTabs: (windowId: string) => WindowTabItem[];
   getActiveTabId: (windowId: string) => string | undefined;
+  detachTab: (windowId: string, tabId: string) => void;
 }
 
 const MAX_Z = 200;
@@ -261,6 +263,20 @@ export function useWindows(): WindowManager {
       const safeTab = { ...tab, id: safeTabId };
       const updatedTabs = [...existingTabs, safeTab];
 
+      const currentTabId = win.activeTabId || existingTabs[0]?.id;
+      const currentGeom = {
+        width: win.width,
+        height: win.height,
+        x: win.x,
+        y: win.y,
+        isMaximized: win.isMaximized,
+      };
+      const updatedTabGeometries = {
+        ...(win.tabGeometries || {}),
+        ...(currentTabId ? { [currentTabId]: currentGeom } : {}),
+        [safeTab.id]: currentGeom,
+      };
+
       return prev.map((w) =>
         w.id === windowId
           ? {
@@ -269,6 +285,7 @@ export function useWindows(): WindowManager {
               activeTabId: safeTab.id,
               isMinimized: false,
               zIndex: nextZ,
+              tabGeometries: updatedTabGeometries,
             }
           : w,
       );
@@ -290,12 +307,22 @@ export function useWindows(): WindowManager {
         const nextIdx = Math.max(0, removedIdx - 1);
         nextActiveId = remainingTabs[nextIdx]?.id || remainingTabs[0].id;
       }
+      const nextGeom = nextActiveId && win.tabGeometries ? win.tabGeometries[nextActiveId] : undefined;
       return prev.map((w) =>
         w.id === windowId
           ? {
               ...w,
               tabs: remainingTabs,
               activeTabId: nextActiveId,
+              ...(nextGeom
+                ? {
+                    width: nextGeom.width,
+                    height: nextGeom.height,
+                    x: nextGeom.x,
+                    y: nextGeom.y,
+                    isMaximized: nextGeom.isMaximized,
+                  }
+                : {}),
             }
           : w,
       );
@@ -305,8 +332,24 @@ export function useWindows(): WindowManager {
 
   const setActiveTab = useCallback((windowId: string, tabId: string) => {
     setWindows((prev) => {
+      const win = prev.find((w) => w.id === windowId);
+      if (!win) return prev;
       zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
       const nextZ = zCounter.current;
+      const currentTabId = win.activeTabId || (win.tabs && win.tabs[0]?.id);
+      const currentGeom = {
+        width: win.width,
+        height: win.height,
+        x: win.x,
+        y: win.y,
+        isMaximized: win.isMaximized,
+      };
+      const updatedTabGeometries = {
+        ...(win.tabGeometries || {}),
+        ...(currentTabId ? { [currentTabId]: currentGeom } : {}),
+      };
+      const nextGeom = updatedTabGeometries[tabId];
+
       return prev.map((w) =>
         w.id === windowId
           ? {
@@ -314,6 +357,16 @@ export function useWindows(): WindowManager {
               activeTabId: tabId,
               isMinimized: false,
               zIndex: nextZ,
+              tabGeometries: updatedTabGeometries,
+              ...(nextGeom
+                ? {
+                    width: nextGeom.width,
+                    height: nextGeom.height,
+                    x: nextGeom.x,
+                    y: nextGeom.y,
+                    isMaximized: nextGeom.isMaximized,
+                  }
+                : {}),
             }
           : w,
       );
@@ -329,6 +382,20 @@ export function useWindows(): WindowManager {
       if (!target) return prev;
       zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
       const nextZ = zCounter.current;
+      const currentTabId = win.activeTabId || win.tabs[0]?.id;
+      const currentGeom = {
+        width: win.width,
+        height: win.height,
+        x: win.x,
+        y: win.y,
+        isMaximized: win.isMaximized,
+      };
+      const updatedTabGeometries = {
+        ...(win.tabGeometries || {}),
+        ...(currentTabId ? { [currentTabId]: currentGeom } : {}),
+      };
+      const nextGeom = updatedTabGeometries[target.id];
+
       return prev.map((w) =>
         w.id === windowId
           ? {
@@ -336,9 +403,103 @@ export function useWindows(): WindowManager {
               activeTabId: target.id,
               isMinimized: false,
               zIndex: nextZ,
+              tabGeometries: updatedTabGeometries,
+              ...(nextGeom
+                ? {
+                    width: nextGeom.width,
+                    height: nextGeom.height,
+                    x: nextGeom.x,
+                    y: nextGeom.y,
+                    isMaximized: nextGeom.isMaximized,
+                  }
+                : {}),
             }
           : w,
       );
+    });
+    window.dispatchEvent(new CustomEvent('linkerru_tab_changed', { detail: { windowId } }));
+  }, []);
+
+  const detachTab = useCallback((windowId: string, tabId: string) => {
+    setWindows((prev) => {
+      const win = prev.find((w) => w.id === windowId);
+      if (!win || !win.tabs) return prev;
+      const tabToDetach = win.tabs.find((t) => t.id === tabId);
+      if (!tabToDetach) return prev;
+
+      zCounter.current = Math.min(zCounter.current + 1, MAX_Z);
+      const nextZ = zCounter.current;
+
+      const remainingTabs = win.tabs.filter((t) => t.id !== tabId);
+      let nextActiveId = win.activeTabId;
+      if (win.activeTabId === tabId) {
+        const removedIdx = win.tabs.findIndex((t) => t.id === tabId);
+        const nextIdx = Math.max(0, removedIdx - 1);
+        nextActiveId = remainingTabs[nextIdx]?.id || remainingTabs[0]?.id;
+      }
+
+      const geom = win.tabGeometries?.[tabId] || {
+        width: win.width,
+        height: win.height,
+        x: win.x,
+        y: win.y,
+        isMaximized: win.isMaximized,
+      };
+
+      const detachedWindowId = `${windowId}_detached_${tabId}_${Date.now()}`;
+      const detachedInstance: WindowInstance = {
+        id: detachedWindowId,
+        title: tabToDetach.title,
+        icon: tabToDetach.icon || win.icon,
+        render: tabToDetach.render,
+        initialWidth: geom.width,
+        initialHeight: geom.height,
+        minWidth: win.minWidth,
+        minHeight: win.minHeight,
+        width: geom.width,
+        height: geom.height,
+        x: Math.max(8, Math.min(geom.x + 36, window.innerWidth - geom.width - 16)),
+        y: Math.max(8, Math.min(geom.y + 36, window.innerHeight - geom.height - 48)),
+        isMaximized: false,
+        isMinimized: false,
+        zIndex: nextZ,
+        renderKey: 0,
+        disableLoader: true,
+        disableReload: win.disableReload,
+        allowMaximize: win.allowMaximize,
+        tabs: [
+          {
+            id: tabToDetach.id,
+            title: tabToDetach.title,
+            icon: tabToDetach.icon,
+            render: tabToDetach.render,
+            closable: true,
+          },
+        ],
+        activeTabId: tabToDetach.id,
+        tabGeometries: {
+          [tabToDetach.id]: {
+            width: geom.width,
+            height: geom.height,
+            x: Math.max(8, Math.min(geom.x + 36, window.innerWidth - geom.width - 16)),
+            y: Math.max(8, Math.min(geom.y + 36, window.innerHeight - geom.height - 48)),
+            isMaximized: false,
+          },
+        },
+        onNewTabClick: win.onNewTabClick,
+      };
+
+      if (remainingTabs.length === 0) {
+        return prev.map((w) => (w.id === windowId ? detachedInstance : w));
+      }
+
+      const updatedOriginal = {
+        ...win,
+        tabs: remainingTabs,
+        activeTabId: nextActiveId,
+      };
+
+      return [...prev.map((w) => (w.id === windowId ? updatedOriginal : w)), detachedInstance];
     });
     window.dispatchEvent(new CustomEvent('linkerru_tab_changed', { detail: { windowId } }));
   }, []);
@@ -364,7 +525,26 @@ export function useWindows(): WindowManager {
   }, [windows]);
 
   const updateGeometry = useCallback((id: string, patch: Partial<WindowInstance>) => {
-    setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+    setWindows((prev) =>
+      prev.map((w) => {
+        if (w.id !== id) return w;
+        const updated = { ...w, ...patch };
+        if (updated.tabs && updated.tabs.length > 0 && updated.activeTabId) {
+          const currentGeom = {
+            width: updated.width,
+            height: updated.height,
+            x: updated.x,
+            y: updated.y,
+            isMaximized: updated.isMaximized,
+          };
+          updated.tabGeometries = {
+            ...(updated.tabGeometries || {}),
+            [updated.activeTabId]: currentGeom,
+          };
+        }
+        return updated;
+      }),
+    );
   }, []);
 
   const manager: WindowManager = {
@@ -384,6 +564,7 @@ export function useWindows(): WindowManager {
     setActiveTabByIndex,
     getTabs,
     getActiveTabId,
+    detachTab,
   };
   (manager as any).__updateGeometry = updateGeometry;
   return manager;
@@ -526,6 +707,7 @@ export function WindowManagerLayer({
               onGeometryChange={(patch) => updateGeometry(win.id, patch)}
               onSelectTab={(tabId) => wm.setActiveTab(win.id, tabId)}
               onCloseTab={(tabId) => wm.removeTab(win.id, tabId)}
+              onDetachTab={(tabId) => wm.detachTab(win.id, tabId)}
               onNewTab={() => win.onNewTabClick?.()}
               isOptimizedEngine={isOptimizedEngine}
               isMobileLayout={isMobileLayout}
@@ -618,6 +800,9 @@ export function WindowManagerLayer({
                             }}
                             onCloseTab={(tabId) => {
                               wm.removeTab(w.id, tabId);
+                            }}
+                            onDetachTab={(tabId) => {
+                              wm.detachTab(w.id, tabId);
                             }}
                             onNewTab={
                               w.onNewTabClick
@@ -896,6 +1081,7 @@ interface WindowFrameProps {
   onGeometryChange: (patch: Partial<WindowInstance>) => void;
   onSelectTab?: (tabId: string) => void;
   onCloseTab?: (tabId: string) => void;
+  onDetachTab?: (tabId: string) => void;
   onNewTab?: () => void;
   isOptimizedEngine?: boolean;
   isMobileLayout?: boolean;
@@ -914,6 +1100,7 @@ function WindowFrame({
   onGeometryChange,
   onSelectTab,
   onCloseTab,
+  onDetachTab,
   onNewTab,
   isOptimizedEngine = false,
   isMobileLayout = false,
@@ -1288,6 +1475,21 @@ function WindowFrame({
                     >
                       {tab.icon && <span className="shrink-0 w-3 h-3 opacity-80">{tab.icon}</span>}
                       <span className="truncate text-[11px]">{tab.title || `${isRu ? 'Вкладка' : isUk ? 'Вкладка' : 'Tab'} ${idx + 1}`}</span>
+
+                      {/* Detach tab into separate overlapping window on top */}
+                      {win.tabs!.length > 1 && onDetachTab && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDetachTab(tab.id);
+                          }}
+                          className="w-4 h-4 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-[var(--accent)]/20 hover:text-[var(--accent)] transition-all ml-0.5 cursor-pointer"
+                          title={isRu ? 'Открыть поверх (отдельным окном)' : isUk ? 'Відкрити окремим вікном поверх' : 'Open on top (overlapping window)'}
+                        >
+                          <ExternalLink size={9} />
+                        </button>
+                      )}
+
                       {win.tabs!.length > 1 && tab.closable !== false && (
                         <button
                           onClick={(e) => {
@@ -1407,7 +1609,7 @@ function WindowFrame({
       </AnimatePresence>
 
       {/* Content */}
-      <div className="relative flex-1 overflow-auto wm-content" key={win.renderKey}>
+      <div className="relative flex-1 overflow-y-auto overscroll-y-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] wm-content" key={win.renderKey}>
         {win.tabs && win.tabs.length > 0 ? (
           win.tabs.map((tab, idx) => {
             const isTabActive = win.activeTabId ? win.activeTabId === tab.id : idx === 0;

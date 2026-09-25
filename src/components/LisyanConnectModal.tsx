@@ -23,6 +23,9 @@ import {
   Camera,
   RefreshCw,
   Link2,
+  Share2,
+  Globe,
+  Lock,
 } from 'lucide-react';
 import { useP2P } from './lisyanconnect-useP2P';
 import { useContainerSize } from '../hooks/useContainerSize';
@@ -221,6 +224,7 @@ export function LisyanConnectModal({
   const [deviceName, setDeviceName] = useState('');
   const [isCopiedPin, setIsCopiedPin] = useState(false);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
@@ -243,12 +247,17 @@ export function LisyanConnectModal({
         ? 'ПК'
         : 'PC';
 
-  const [artificialProgress, setArtificialProgress] = useState<{ percent: number; name: string } | null>(null);
-  const [isTransferring, setIsTransferring] = useState(false);
-  const transferStartTime = useRef<number>(0);
-  const transferTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const { status, createRoom, joinRoom, sendFiles, receivedFiles, sentFiles, progress, disconnect } = useP2P();
+  const {
+    status,
+    createRoom,
+    joinRoom,
+    sendFiles,
+    receivedFiles,
+    sentFiles,
+    progress,
+    receiveProgress,
+    disconnect,
+  } = useP2P();
 
   const resetState = () => {
     disconnect();
@@ -286,22 +295,6 @@ export function LisyanConnectModal({
       }
     } catch {}
   }, [initialRoomId]);
-
-  useEffect(() => {
-    if (progress) {
-      setArtificialProgress({
-        percent: progress.percent,
-        name: progress.name,
-      });
-      setIsTransferring(true);
-      if (progress.percent >= 100) {
-        setTimeout(() => {
-          setArtificialProgress(null);
-          setIsTransferring(false);
-        }, 1000);
-      }
-    }
-  }, [progress]);
 
   const handleCreateRoom = async () => {
     try {
@@ -403,6 +396,30 @@ export function LisyanConnectModal({
     }
   };
 
+  const handleShare = async () => {
+    if (!roomId) return;
+    const shareData = {
+      title: 'Lisyan Connect',
+      text: isRu
+        ? `Подключение к Lisyan Connect: код PIN ${roomId}`
+        : isUk
+          ? `Підключення до Lisyan Connect: код PIN ${roomId}`
+          : `Connect to Lisyan Connect: PIN code ${roomId}`,
+      url: qrTargetUrl,
+    };
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        setIsShared(true);
+        setTimeout(() => setIsShared(false), 2000);
+        return;
+      } catch {
+        // Fallback to copy link
+      }
+    }
+    handleCopyLink();
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(true);
@@ -422,20 +439,6 @@ export function LisyanConnectModal({
 
   const handleSendFiles = (files: File[]) => {
     if (files.length === 0) return;
-    const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
-    transferStartTime.current = Date.now();
-    setIsTransferring(true);
-    setArtificialProgress({ percent: 1, name: files[0].name });
-
-    let p = 0;
-    transferTimer.current = setInterval(() => {
-      p += Math.random() * 15 + 5;
-      if (p >= 95) {
-        if (transferTimer.current) clearInterval(transferTimer.current);
-      }
-      setArtificialProgress({ percent: Math.min(Math.round(p), 95), name: files[0].name });
-    }, 150);
-
     sendFiles(files);
   };
 
@@ -444,7 +447,7 @@ export function LisyanConnectModal({
   // Responsive QR sizing
   const qrDimension = Math.min(
     220,
-    Math.max(120, Math.floor(Math.min(width > 0 ? width * 0.34 : 180, height > 0 ? height * 0.35 : 180))),
+    Math.max(140, Math.floor(Math.min(width > 0 ? (isMobile ? width * 0.48 : width * 0.35) : 180, height > 0 ? height * 0.35 : 180))),
   );
 
   // Link for the QR code that opens LinkerRu launcher directly on mobile phones
@@ -453,10 +456,10 @@ export function LisyanConnectModal({
   return (
     <div
       ref={containerRef}
-      className="flex h-full w-full flex-col overflow-hidden bg-[var(--surface)] text-[var(--on-surface)] select-none font-sans relative"
+      className="flex h-full w-full flex-col overflow-hidden bg-[var(--surface)] text-[var(--on-surface)] select-none font-sans relative [touch-action:manipulation]"
     >
       {/* Top Header Bar */}
-      <header className="flex items-center justify-between gap-3 border-b border-[var(--outline-var)] bg-[var(--surface)] px-4 py-2.5 shrink-0">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--outline-var)] bg-[var(--surface)] px-4 py-2.5 shrink-0 z-20 pointer-events-auto [touch-action:manipulation]">
         <div className="flex items-center gap-2.5">
           <LisyanConnectLogo className="h-7 w-7" variant="squircle" theme={theme} />
           <div className="flex items-center gap-2">
@@ -513,7 +516,7 @@ export function LisyanConnectModal({
       </header>
 
       {/* View Switcher */}
-      <main className="flex-1 overflow-hidden relative flex flex-col">
+      <main className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar relative flex flex-col min-h-0 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
         <AnimatePresence mode="wait">
           {/* --- LANDING VIEW --- */}
           {view === 'landing' && (
@@ -523,7 +526,7 @@ export function LisyanConnectModal({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="flex h-full w-full flex-col overflow-y-auto custom-scrollbar p-4 md:p-8"
+              className="flex-1 w-full flex flex-col overflow-y-auto overscroll-y-contain custom-scrollbar p-4 md:p-8 min-h-0 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
             >
               {/* 1. STAGE: INSTRUCTIONS FIRST */}
               {landingStage === 'instructions' ? (
@@ -726,87 +729,192 @@ export function LisyanConnectModal({
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              className="flex h-full w-full flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto"
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 w-full flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6 overflow-y-auto overscroll-y-contain custom-scrollbar min-h-0 [touch-action:pan-y] [-webkit-overflow-scrolling:touch] space-y-6"
             >
-              <div className="max-w-md w-full flex flex-col items-center text-center space-y-5">
+              <div className="max-w-2xl w-full flex flex-col items-center text-center space-y-5 my-auto">
+                {/* Connection Status Telemetry Badge */}
                 <div className="flex flex-col items-center">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 text-xs font-bold mb-3 animate-pulse">
-                    <Radio size={14} className="animate-spin" />
-                    <span>{isRu ? 'Ожидание подключения...' : 'Waiting for connection...'}</span>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-xs font-bold mb-3 shadow-xs">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                    </span>
+                    <span className="text-[var(--on-surface)] font-bold">
+                      {isRu ? 'Ожидание входящего подключения...' : isUk ? 'Очікування вхідного підключення...' : 'Waiting for connection...'}
+                    </span>
+                    <span aria-hidden="true" className="opacity-40">·</span>
+                    <span className="font-mono text-[var(--accent)] font-semibold">P2P Mesh</span>
                   </div>
+
                   <h3 className="text-2xl sm:text-3xl font-black text-[var(--on-surface)] tracking-tight">
-                    {isRu ? 'Сканируйте для передачи' : 'Scan to Connect'}
+                    {isRu ? 'Сканируйте для передачи' : isUk ? 'Скануйте для передачі' : 'Scan to Connect'}
                   </h3>
-                  <p className="text-xs sm:text-sm text-[var(--on-surface-var)] font-medium max-w-sm mt-1">
+                  <p className="text-xs sm:text-sm text-[var(--on-surface-var)] font-medium max-w-md mt-1 leading-relaxed">
                     {isRu
-                      ? 'Наведите камеру смартфона на QR-код для открытия linkerrulauncher.netlify.app'
-                      : 'Point your phone camera at the QR code to open linkerrulauncher.netlify.app'}
+                      ? 'Откройте камеру любого смартфона и наведите на QR-код для мгновенной передачи без облака и ограничений.'
+                      : isUk
+                        ? 'Відкрийте камеру будь-якого смартфона та наведіть на QR-код для прямої передачі без хмари.'
+                        : 'Point any smartphone camera at the QR code for instant direct transfer without cloud limits.'}
                   </p>
                 </div>
 
-                {/* Main QR Card */}
-                <div className="bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-3xl p-6 sm:p-8 w-full shadow-md flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8">
-                  {/* Scalable QR Code Box with Direct Web Link */}
-                  <div className="bg-white p-3.5 rounded-2xl shadow-xs border border-[var(--outline-var)] flex items-center justify-center shrink-0">
-                    <QRCode value={qrTargetUrl} size={qrDimension} className="rounded-lg" />
+                {/* Redesigned High-Tech QR & PIN Cockpit Card */}
+                <div className="w-full bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-3xl p-5 sm:p-7 shadow-lg flex flex-col md:flex-row items-center md:items-stretch gap-6 sm:gap-8 relative overflow-hidden backdrop-blur-md">
+                  {/* Subtle ambient accent glow */}
+                  <div className="absolute -top-24 -left-24 w-60 h-60 bg-[var(--accent)]/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 -right-24 w-60 h-60 bg-[var(--accent)]/8 rounded-full blur-3xl pointer-events-none" />
+
+                  {/* Left Column: Optical QR Scanner Frame */}
+                  <div className="relative p-4 sm:p-5 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] shadow-sm flex flex-col items-center justify-center shrink-0 w-full md:w-auto">
+                    {/* Viewfinder corner brackets */}
+                    <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-[var(--accent)] rounded-tl-sm pointer-events-none" />
+                    <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-[var(--accent)] rounded-tr-sm pointer-events-none" />
+                    <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-[var(--accent)] rounded-bl-sm pointer-events-none" />
+                    <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-[var(--accent)] rounded-br-sm pointer-events-none" />
+
+                    {/* QR Code Container with High Contrast & Subtle Scanning Laser */}
+                    <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-xs border border-black/10 flex items-center justify-center relative overflow-hidden">
+                      <QRCode
+                        value={qrTargetUrl}
+                        size={qrDimension}
+                        bgColor="#FFFFFF"
+                        fgColor="#0A0A0E"
+                        level="M"
+                        className="rounded-md"
+                      />
+                      {/* Animated Laser Scan Sweep */}
+                      <motion.div
+                        animate={{ y: [0, qrDimension, 0] }}
+                        transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute left-1 right-1 h-0.5 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent pointer-events-none opacity-75 shadow-[0_0_8px_var(--accent)]"
+                      />
+                    </div>
+
+                    {/* Direct URL caption */}
+                    <div className="mt-3.5 flex items-center gap-1.5 text-[11px] font-semibold text-[var(--on-surface-var)] select-text">
+                      <Globe size={13} className="text-[var(--accent)] shrink-0" />
+                      <span className="truncate max-w-[210px]">linkerrulauncher.netlify.app</span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left flex-1 min-w-0">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)] mb-1">
-                      {isRu ? 'Код подключения' : 'Connection PIN'}
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="text-3xl sm:text-4xl font-mono font-black text-[var(--on-surface)] tracking-widest bg-[var(--surface)] px-4 py-2 rounded-xl border border-[var(--outline-var)] shadow-inner">
-                        {roomId}
+                  {/* Right Column: Segmented PIN Code & Instant Controls */}
+                  <div className="flex flex-col justify-between items-center md:items-start text-center md:text-left flex-1 min-w-0 w-full">
+                    <div className="w-full space-y-3">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">
+                          {isRu ? 'PIN-КОД ПОДКЛЮЧЕНИЯ' : isUk ? 'PIN-КОД ПІДКЛЮЧЕННЯ' : 'PAIRING PIN CODE'}
+                        </span>
+                        <span className="text-[11px] text-[var(--on-surface-var)] font-medium">
+                          {isRu ? 'Нажмите для копирования' : isUk ? 'Натисніть для копіювання' : 'Tap to copy'}
+                        </span>
                       </div>
-                      <button
+
+                      {/* Interactive Segmented PIN Tiles */}
+                      <div
                         onClick={handleCopyPin}
-                        className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] hover:text-[var(--accent)] text-[var(--on-surface)] transition active:scale-90 cursor-pointer shadow-xs"
-                        title={isRu ? 'Скопировать PIN' : 'Copy PIN'}
+                        className="group/pin flex items-center justify-center md:justify-start gap-1.5 sm:gap-2 p-2 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] transition-all cursor-pointer shadow-xs active:scale-[0.98] w-full"
+                        title={isRu ? 'Скопировать PIN' : isUk ? 'Скопіювати PIN' : 'Copy PIN'}
                       >
-                        {isCopiedPin ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
-                      </button>
+                        {(roomId || '------').split('').map((char, idx) => (
+                          <div
+                            key={idx}
+                            className="flex-1 max-w-[46px] h-11 sm:h-13 rounded-xl bg-[var(--surface-dim)] border border-[var(--outline-var)] flex items-center justify-center text-xl sm:text-2xl font-mono font-black text-[var(--on-surface)] group-hover/pin:text-[var(--accent)] group-hover/pin:border-[var(--accent)]/50 transition-colors shadow-inner"
+                          >
+                            {char}
+                          </div>
+                        ))}
+                        <div className="p-2.5 rounded-xl bg-[var(--surface-dim)] text-[var(--on-surface-var)] group-hover/pin:text-[var(--accent)] shrink-0 transition-colors">
+                          {isCopiedPin ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                        </div>
+                      </div>
+
+                      {/* Feedback banner on copy */}
+                      {isCopiedPin && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs font-bold text-emerald-500 flex items-center justify-center md:justify-start gap-1.5"
+                        >
+                          <Check size={14} />
+                          <span>{isRu ? 'PIN скопирован в буфер обмена!' : isUk ? 'PIN скопійовано в буфер!' : 'PIN copied to clipboard!'}</span>
+                        </motion.div>
+                      )}
+
+                      {/* Instant Action Buttons Row */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full pt-1">
+                        <button
+                          onClick={handleCopyPin}
+                          className="py-2.5 px-3 rounded-xl bg-[var(--surface)] hover:bg-[var(--container)] border border-[var(--outline-var)] hover:border-[var(--accent)] text-xs font-bold text-[var(--on-surface)] flex items-center justify-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer"
+                        >
+                          {isCopiedPin ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} className="text-[var(--accent)]" />}
+                          <span>{isCopiedPin ? (isRu ? 'Скопирован' : 'Copied') : (isRu ? 'Код PIN' : 'PIN Code')}</span>
+                        </button>
+
+                        <button
+                          onClick={handleCopyLink}
+                          className="py-2.5 px-3 rounded-xl bg-[var(--surface)] hover:bg-[var(--container)] border border-[var(--outline-var)] hover:border-[var(--accent)] text-xs font-bold text-[var(--on-surface)] flex items-center justify-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer"
+                        >
+                          {isCopiedLink ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} className="text-[var(--accent)]" />}
+                          <span>{isCopiedLink ? (isRu ? 'Скопирована' : 'Copied') : (isRu ? 'Ссылка' : 'Link')}</span>
+                        </button>
+
+                        <button
+                          onClick={handleShare}
+                          className="col-span-2 sm:col-span-1 py-2.5 px-3 rounded-xl bg-[var(--surface)] hover:bg-[var(--container)] border border-[var(--outline-var)] hover:border-[var(--accent)] text-xs font-bold text-[var(--on-surface)] flex items-center justify-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer"
+                          title={isRu ? 'Поделиться ссылкой подключения' : 'Share connection link'}
+                        >
+                          <Share2 size={14} className="text-[var(--accent)]" />
+                          <span>{isShared ? (isRu ? 'Отправлено' : 'Shared') : (isRu ? 'Поделиться' : 'Share')}</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-3">
-                      <button
-                        onClick={handleCopyLink}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] text-[11px] font-bold text-[var(--on-surface)] transition active:scale-95 cursor-pointer shadow-xs"
-                      >
-                        {isCopiedLink ? (
-                          <>
-                            <Check size={13} className="text-emerald-500" />
-                            <span className="text-emerald-500">
-                              {isRu ? 'Ссылка скопирована' : 'Link copied'}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Link2 size={13} className="text-[var(--accent)]" />
-                            <span>{isRu ? 'Скопировать ссылку' : 'Copy link'}</span>
-                          </>
-                        )}
-                      </button>
+                    {/* Security & Direct Transfer Info */}
+                    <div className="w-full mt-4 pt-3 border-t border-[var(--outline-var)] flex items-center gap-2.5 text-left text-[11px] text-[var(--on-surface-var)]">
+                      <div className="w-7 h-7 rounded-lg bg-[var(--surface)] border border-[var(--outline-var)] flex items-center justify-center text-emerald-500 shrink-0">
+                        <ShieldCheck size={15} />
+                      </div>
+                      <div className="min-w-0 flex-1 leading-snug">
+                        <span className="font-bold text-[var(--on-surface)] block">
+                          {isRu ? 'Прямой P2P канал WebRTC (E2EE)' : isUk ? 'Прямий P2P канал WebRTC' : 'Direct WebRTC P2P'}
+                        </span>
+                        <span className="text-[10px] text-[var(--on-surface-var)]">
+                          {isRu
+                            ? 'Без облачных серверов. Сессия завершится при закрытии окна.'
+                            : isUk
+                              ? 'Без хмарних серверів. Сесія завершиться після закриття.'
+                              : 'Zero cloud intermediaries. Session terminates upon close.'}
+                        </span>
+                      </div>
                     </div>
-
-                    {isCopiedPin && (
-                      <span className="text-[11px] font-bold text-emerald-500 mb-2">
-                        {isRu ? 'PIN скопирован в буфер' : 'PIN copied to clipboard'}
-                      </span>
-                    )}
-                    <p className="text-[11px] text-[var(--on-surface-var)] font-medium leading-relaxed">
-                      {isRu
-                        ? 'Сессия завершится автоматически после отключения.'
-                        : 'Session will terminate when either device disconnects.'}
-                    </p>
                   </div>
                 </div>
 
+                {/* 3 Step Instructions */}
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-[var(--on-surface-var)] font-medium max-w-xl text-center px-2">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[10px] font-black flex items-center justify-center text-[var(--accent)]">1</span>
+                    {isRu ? 'Откройте камеру телефона' : isUk ? 'Відкрийте камеру' : 'Open phone camera'}
+                  </span>
+                  <span aria-hidden="true" className="opacity-40">·</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[10px] font-black flex items-center justify-center text-[var(--accent)]">2</span>
+                    {isRu ? 'Наведите на QR или введите PIN' : isUk ? 'Наведіть на QR або PIN' : 'Scan QR or type PIN'}
+                  </span>
+                  <span aria-hidden="true" className="opacity-40">·</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] text-[10px] font-black flex items-center justify-center text-[var(--accent)]">3</span>
+                    {isRu ? 'Передавайте файлы без ограничений' : isUk ? 'Передавайте файли без обмежень' : 'Transfer at full network speed'}
+                  </span>
+                </div>
+
+                {/* Cancel Button */}
                 <button
                   onClick={resetState}
                   className="px-6 py-2.5 rounded-full bg-[var(--surface-dim)] border border-[var(--outline-var)] hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 text-xs font-bold text-[var(--on-surface-var)] transition active:scale-95 cursor-pointer shadow-xs"
                 >
-                  {isRu ? 'Отменить ожидание' : 'Cancel waiting'}
+                  {isRu ? 'Отменить ожидание' : isUk ? 'Скасувати очікування' : 'Cancel waiting'}
                 </button>
               </div>
             </motion.div>
@@ -819,9 +927,9 @@ export function LisyanConnectModal({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="flex h-full w-full flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto"
+              className="flex-1 w-full flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6 overflow-y-auto overscroll-y-contain custom-scrollbar min-h-0 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
             >
-              <div className="max-w-sm w-full flex flex-col items-center space-y-4">
+              <div className="max-w-sm w-full flex flex-col items-center space-y-4 my-auto">
                 <div className="w-full flex items-center justify-between">
                   <button
                     onClick={() => setView('landing')}
@@ -830,7 +938,7 @@ export function LisyanConnectModal({
                     <ArrowLeft size={18} />
                   </button>
                   <h3 className="text-xl font-black text-[var(--on-surface)] tracking-tight">
-                    {isRu ? 'Подключение к комнате' : 'Connect to Room'}
+                    {isRu ? 'Подключение к комнате' : isUk ? 'Підключення до кімнати' : 'Connect to Room'}
                   </h3>
                   <div className="w-10 h-10 shrink-0" />
                 </div>
@@ -862,7 +970,9 @@ export function LisyanConnectModal({
                     <p className="text-xs font-medium text-[var(--on-surface-var)]">
                       {isRu
                         ? 'Введите 6-значный PIN с экрана принимающего устройства'
-                        : 'Enter the 6-character PIN shown on the other device'}
+                        : isUk
+                          ? 'Введіть 6-значний PIN з екрана приймаючого пристрою'
+                          : 'Enter the 6-character PIN shown on the other device'}
                     </p>
                   </div>
 
@@ -880,7 +990,7 @@ export function LisyanConnectModal({
                     disabled={!roomId || roomId.length < 3}
                     className="w-full py-4 rounded-2xl bg-[var(--accent)] hover:opacity-90 disabled:opacity-40 text-[var(--on-accent)] font-extrabold text-sm shadow-sm transition active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    <span>{isRu ? 'Подключиться' : 'Connect'}</span>
+                    <span>{isRu ? 'Подключиться' : isUk ? 'Підключитися' : 'Connect'}</span>
                     <ArrowRight size={16} />
                   </button>
                 </form>
@@ -895,10 +1005,10 @@ export function LisyanConnectModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex h-full w-full flex-col overflow-hidden"
+              className="flex flex-1 flex-col min-h-0 overflow-y-auto overscroll-y-contain custom-scrollbar [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
             >
               {/* Channel Status Bar */}
-              <header className="px-4 py-2.5 bg-[var(--surface-dim)] border-b border-[var(--outline-var)] flex items-center justify-between gap-3 shrink-0">
+              <header className="px-4 py-2.5 bg-[var(--surface-dim)] border-b border-[var(--outline-var)] flex items-center justify-between gap-3 shrink-0 z-10 pointer-events-auto [touch-action:manipulation]">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                   <div className="min-w-0">
@@ -922,142 +1032,185 @@ export function LisyanConnectModal({
               </header>
 
               {/* Transfer Workspace */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 overflow-hidden">
-                {/* Send Box */}
-                <div className="flex flex-col rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline-var)] p-4 overflow-hidden shadow-xs">
-                  <div className="flex items-center gap-2 pb-3 border-b border-[var(--outline-var)] px-1 shrink-0">
-                    <Upload size={16} className="text-[var(--accent)]" />
-                    <h4 className="text-xs font-black uppercase tracking-wider text-[var(--on-surface)]">
-                      {isRu ? 'Отправка файлов' : 'Send files'}
-                    </h4>
+              <div className="flex-1 p-3 sm:p-4 overflow-y-auto overscroll-y-contain custom-scrollbar [touch-action:pan-y] [-webkit-overflow-scrolling:touch] min-h-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
+                  {/* Send Box */}
+                  <div className="flex flex-col rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline-var)] p-4 shadow-xs min-h-[320px]">
+                    <div className="flex items-center gap-2 pb-3 border-b border-[var(--outline-var)] px-1 shrink-0">
+                      <Upload size={16} className="text-[var(--accent)]" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-[var(--on-surface)]">
+                        {isRu ? 'Отправка файлов' : 'Send files'}
+                      </h4>
+                    </div>
+
+                    <div className="flex-1 flex flex-col justify-center my-3 relative min-h-[150px]">
+                      <label
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`flex-1 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-4 sm:p-6 group cursor-pointer transition-all ${
+                          isDraggingOver
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 scale-[0.99]'
+                            : 'border-[var(--outline-var)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-dim)]'
+                        } ${progress ? 'opacity-40 pointer-events-none' : ''}`}
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-[var(--surface-dim)] group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] text-[var(--accent)] border border-[var(--outline-var)] flex items-center justify-center mb-3 transition-colors shadow-xs">
+                          <Upload size={24} />
+                        </div>
+                        <span className="font-bold text-sm text-[var(--on-surface)] mb-1 text-center">
+                          {isRu ? 'Выберите или перетащите файлы' : 'Select or drop files'}
+                        </span>
+                        <span className="text-[11px] text-[var(--on-surface-var)] font-medium text-center">
+                          {isRu ? 'Без ограничений по размеру' : 'Zero size limits, full Wi-Fi speed'}
+                        </span>
+                        <input
+                          type="file"
+                          multiple
+                          onChange={(e) => e.target.files && handleSendFiles(Array.from(e.target.files))}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* Real Progress Overlay for Sender */}
+                      {progress && (
+                        <div className="absolute inset-0 bg-[var(--surface)]/95 backdrop-blur-xs rounded-2xl p-4 flex flex-col items-center justify-center text-center border border-[var(--outline-var)] shadow-md z-10">
+                          {progress.percent >= 100 ? (
+                            <CheckCircle2 size={32} className="text-emerald-500 mb-2 animate-bounce" />
+                          ) : (
+                            <Zap size={28} className="text-[var(--accent)] mb-2 animate-pulse" />
+                          )}
+                          <span className="font-black text-sm text-[var(--on-surface)] truncate max-w-[90%]">
+                            {progress.percent >= 100
+                              ? (isRu ? 'Файл отправлен!' : 'File sent!')
+                              : (isRu ? 'Отправка файла...' : 'Transferring file...')}
+                          </span>
+                          <span className="text-xs text-[var(--on-surface-var)] truncate max-w-[85%] mt-0.5 font-medium">
+                            {progress.name}
+                          </span>
+                          <div className="w-48 sm:w-56 bg-[var(--surface-dim)] h-2 rounded-full mt-3 overflow-hidden border border-[var(--outline-var)]">
+                            <div
+                              className="bg-[var(--accent)] h-full transition-all duration-150 rounded-full"
+                              style={{ width: `${progress.percent}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-mono text-[var(--accent)] font-black mt-2">
+                            {progress.percent}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Sent Files Log */}
+                    <div className="max-h-36 overflow-y-auto overscroll-y-contain space-y-1.5 custom-scrollbar pr-1 shrink-0 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
+                      <span className="text-[10px] font-black uppercase text-[var(--on-surface-var)] tracking-wider">
+                        {isRu ? 'Отправлено в этой сессии' : 'Sent in this session'} ({sentFiles.length})
+                      </span>
+                      {sentFiles.length === 0 ? (
+                        <div className="text-xs text-[var(--on-surface-var)] opacity-50 italic py-2 text-center">
+                          {isRu ? 'Файлы пока не отправлялись' : 'No files sent yet'}
+                        </div>
+                      ) : (
+                        sentFiles.map((f, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between text-xs p-2 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)]"
+                          >
+                            <div className="flex items-center gap-2 truncate min-w-0 pr-2">
+                              <FileText size={14} className="text-[var(--accent)] shrink-0" />
+                              <span className="truncate font-medium text-[var(--on-surface)]">{f.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 text-emerald-500 font-bold text-[11px]">
+                              <CheckCircle2 size={13} />
+                              <span>{(f.size / (1024 * 1024)).toFixed(1)} MB</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex-1 flex flex-col justify-center my-3 relative min-h-[140px]">
-                    <label
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      className={`flex-1 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-4 sm:p-6 group cursor-pointer transition-all ${
-                        isDraggingOver
-                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 scale-[0.99]'
-                          : 'border-[var(--outline-var)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-dim)]'
-                      } ${artificialProgress ? 'opacity-50 pointer-events-none' : ''}`}
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-[var(--surface-dim)] group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] text-[var(--accent)] border border-[var(--outline-var)] flex items-center justify-center mb-3 transition-colors shadow-xs">
-                        <Upload size={24} />
-                      </div>
-                      <span className="font-bold text-sm text-[var(--on-surface)] mb-1 text-center">
-                        {isRu ? 'Выберите или перетащите файлы' : 'Select or drop files'}
-                      </span>
-                      <span className="text-[11px] text-[var(--on-surface-var)] font-medium text-center">
-                        {isRu ? 'Без ограничений по размеру' : 'Zero size limits, full Wi-Fi speed'}
-                      </span>
-                      <input
-                        type="file"
-                        multiple
-                        onChange={(e) => e.target.files && handleSendFiles(Array.from(e.target.files))}
-                        className="hidden"
-                      />
-                    </label>
+                  {/* Received Box */}
+                  <div className="flex flex-col rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline-var)] p-4 shadow-xs min-h-[320px]">
+                    <div className="flex items-center gap-2 pb-3 border-b border-[var(--outline-var)] px-1 shrink-0">
+                      <Download size={16} className="text-[var(--accent)]" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-[var(--on-surface)]">
+                        {isRu ? 'Полученные файлы' : 'Received files'}
+                      </h4>
+                    </div>
 
-                    {/* Progress Overlay */}
-                    {artificialProgress && (
-                      <div className="absolute inset-0 bg-[var(--surface)]/90 backdrop-blur-xs rounded-2xl p-4 flex flex-col items-center justify-center text-center border border-[var(--outline-var)]">
-                        <Zap size={28} className="text-[var(--accent)] mb-2 animate-bounce" />
-                        <span className="font-black text-sm text-[var(--on-surface)]">
-                          {isRu ? 'Передача файла...' : 'Transferring file...'}
+                    {/* Real Incoming Receive Progress Bar */}
+                    {receiveProgress && (
+                      <div className="p-3 my-2 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/30 flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {receiveProgress.percent >= 100 ? (
+                              <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                            ) : (
+                              <Download size={14} className="text-[var(--accent)] animate-bounce shrink-0" />
+                            )}
+                            <span className="font-bold text-[var(--on-surface)] truncate">
+                              {receiveProgress.percent >= 100
+                                ? (isRu ? 'Файл принят!' : 'File received!')
+                                : (isRu ? 'Приём файла...' : 'Receiving file...')}
+                            </span>
+                          </div>
+                          <span className="font-mono font-black text-[var(--accent)] shrink-0">
+                            {receiveProgress.percent}%
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-[var(--on-surface-var)] truncate font-medium">
+                          {receiveProgress.name}
                         </span>
-                        <div className="w-48 bg-[var(--surface-dim)] h-2 rounded-full mt-3 overflow-hidden border border-[var(--outline-var)]">
+                        <div className="w-full bg-[var(--surface)] h-2 rounded-full overflow-hidden border border-[var(--outline-var)]">
                           <div
                             className="bg-[var(--accent)] h-full transition-all duration-150 rounded-full"
-                            style={{ width: `${artificialProgress.percent}%` }}
+                            style={{ width: `${receiveProgress.percent}%` }}
                           />
                         </div>
-                        <span className="text-xs font-mono text-[var(--accent)] font-bold mt-2">
-                          {artificialProgress.percent}%
-                        </span>
                       </div>
                     )}
-                  </div>
 
-                  {/* Sent Files Log */}
-                  <div className="h-28 overflow-y-auto space-y-1.5 custom-scrollbar pr-1 shrink-0">
-                    <span className="text-[10px] font-black uppercase text-[var(--on-surface-var)] tracking-wider">
-                      {isRu ? 'Отправлено в этой сессии' : 'Sent in this session'} ({sentFiles.length})
-                    </span>
-                    {sentFiles.length === 0 ? (
-                      <div className="text-xs text-[var(--on-surface-var)] opacity-50 italic py-2 text-center">
-                        {isRu ? 'Файлы пока не отправлялись' : 'No files sent yet'}
-                      </div>
-                    ) : (
-                      sentFiles.map((f, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between text-xs p-2 rounded-xl bg-[var(--surface)] border border-[var(--outline-var)]"
-                        >
-                          <div className="flex items-center gap-2 truncate min-w-0 pr-2">
-                            <FileText size={14} className="text-[var(--accent)] shrink-0" />
-                            <span className="truncate font-medium text-[var(--on-surface)]">{f.name}</span>
+                    <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar my-2 space-y-2 pr-1 relative min-h-[120px] [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
+                      {receivedFiles.length === 0 && !receiveProgress ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--on-surface-var)] opacity-60 p-4">
+                          <div className="w-14 h-14 border-2 border-dashed border-[var(--outline-var)] rounded-2xl flex items-center justify-center mb-2 animate-pulse">
+                            <Download size={22} className="text-[var(--accent)]" />
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0 text-emerald-500 font-bold text-[11px]">
-                            <CheckCircle2 size={13} />
-                            <span>{(f.size / (1024 * 1024)).toFixed(1)} MB</span>
-                          </div>
+                          <span className="text-xs font-semibold text-center">
+                            {isRu ? 'Ожидание файлов от собеседника...' : 'Waiting for incoming files...'}
+                          </span>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Received Box */}
-                <div className="flex flex-col rounded-3xl bg-[var(--surface-dim)] border border-[var(--outline-var)] p-4 overflow-hidden shadow-xs">
-                  <div className="flex items-center gap-2 pb-3 border-b border-[var(--outline-var)] px-1 shrink-0">
-                    <Download size={16} className="text-[var(--accent)]" />
-                    <h4 className="text-xs font-black uppercase tracking-wider text-[var(--on-surface)]">
-                      {isRu ? 'Полученные файлы' : 'Received files'}
-                    </h4>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto custom-scrollbar my-2 space-y-2 pr-1 relative">
-                    {receivedFiles.length === 0 ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--on-surface-var)] opacity-60 p-4">
-                        <div className="w-14 h-14 border-2 border-dashed border-[var(--outline-var)] rounded-2xl flex items-center justify-center mb-2 animate-pulse">
-                          <Download size={22} className="text-[var(--accent)]" />
-                        </div>
-                        <span className="text-xs font-semibold">
-                          {isRu ? 'Ожидание файлов от собеседника...' : 'Waiting for incoming files...'}
-                        </span>
-                      </div>
-                    ) : (
-                      receivedFiles.map((f, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between p-3 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] transition-colors group shadow-xs"
-                        >
-                          <div className="flex items-center gap-2.5 truncate min-w-0 pr-2">
-                            <div className="w-8 h-8 rounded-xl bg-[var(--surface-dim)] flex items-center justify-center text-[var(--accent)] shrink-0">
-                              <FileText size={16} />
-                            </div>
-                            <div className="min-w-0">
-                              <span className="block text-xs font-bold text-[var(--on-surface)] truncate">
-                                {f.name}
-                              </span>
-                              <span className="block text-[10px] text-[var(--on-surface-var)] font-medium">
-                                {(f.size / (1024 * 1024)).toFixed(2)} MB
-                              </span>
-                            </div>
-                          </div>
-                          <a
-                            href={f.url}
-                            download={f.name}
-                            className="w-9 h-9 bg-[var(--surface-dim)] group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] text-[var(--on-surface)] rounded-xl flex items-center justify-center transition-colors shrink-0 border border-[var(--outline-var)] group-hover:border-transparent active:scale-95 shadow-xs"
-                            title={isRu ? 'Скачать' : 'Download'}
+                      ) : (
+                        receivedFiles.map((f, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between p-3 rounded-2xl bg-[var(--surface)] border border-[var(--outline-var)] hover:border-[var(--accent)] transition-colors group shadow-xs"
                           >
-                            <Download size={16} />
-                          </a>
-                        </div>
-                      ))
-                    )}
+                            <div className="flex items-center gap-2.5 truncate min-w-0 pr-2">
+                              <div className="w-8 h-8 rounded-xl bg-[var(--surface-dim)] flex items-center justify-center text-[var(--accent)] shrink-0">
+                                <FileText size={16} />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="block text-xs font-bold text-[var(--on-surface)] truncate">
+                                  {f.name}
+                                </span>
+                                <span className="block text-[10px] text-[var(--on-surface-var)] font-medium">
+                                  {(f.size / (1024 * 1024)).toFixed(2)} MB
+                                </span>
+                              </div>
+                            </div>
+                            <a
+                              href={f.url}
+                              download={f.name}
+                              className="w-9 h-9 bg-[var(--surface-dim)] group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] text-[var(--on-surface)] rounded-xl flex items-center justify-center transition-colors shrink-0 border border-[var(--outline-var)] group-hover:border-transparent active:scale-95 shadow-xs cursor-pointer"
+                              title={isRu ? 'Скачать' : 'Download'}
+                            >
+                              <Download size={16} />
+                            </a>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

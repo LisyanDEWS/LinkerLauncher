@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, X, Layers } from 'lucide-react';
+import { Plus, X, Layers, ExternalLink } from 'lucide-react';
 import { Language, ThemeMode } from '../types';
 
 export interface DockTabItem {
@@ -18,6 +18,7 @@ export interface DockTabsLadderProps {
   activeTabId?: string;
   onSelectTab: (tabId: string) => void;
   onCloseTab?: (tabId: string) => void;
+  onDetachTab?: (tabId: string) => void;
   onNewTab?: () => void;
   onClose: () => void;
   lang: Language;
@@ -39,6 +40,7 @@ export function DockTabsLadder({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  onDetachTab,
   onNewTab,
   onClose,
   lang,
@@ -239,19 +241,36 @@ export function DockTabsLadder({
                 </div>
               </div>
 
-              {/* Close button for tab (if more than 1 tab) */}
-              {onCloseTab && displayTabs.length > 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseTab(tab.id);
-                  }}
-                  className="w-5 h-5 rounded-full flex items-center justify-center opacity-40 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-500 transition-all shrink-0 cursor-pointer z-10"
-                  title={isRu ? 'Закрыть вкладку' : isUk ? 'Закрити вкладку' : 'Close tab'}
-                >
-                  <X size={11} />
-                </button>
-              )}
+              <div className="flex items-center gap-1 shrink-0 z-10">
+                {/* Detach tab into separate overlapping window */}
+                {onDetachTab && displayTabs.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDetachTab(tab.id);
+                      onClose();
+                    }}
+                    className="w-5 h-5 rounded-full flex items-center justify-center opacity-40 group-hover:opacity-100 hover:bg-[var(--accent)]/20 hover:text-[var(--accent)] transition-all shrink-0 cursor-pointer"
+                    title={isRu ? 'Открыть поверх (отдельным окном)' : isUk ? 'Відкрити окремим вікном поверх' : 'Open on top (overlapping window)'}
+                  >
+                    <ExternalLink size={11} />
+                  </button>
+                )}
+
+                {/* Close button for tab (if more than 1 tab) */}
+                {onCloseTab && displayTabs.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseTab(tab.id);
+                    }}
+                    className="w-5 h-5 rounded-full flex items-center justify-center opacity-40 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-500 transition-all shrink-0 cursor-pointer"
+                    title={isRu ? 'Закрыть вкладку' : isUk ? 'Закрити вкладку' : 'Close tab'}
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
 
               {/* Active ambient glow reflection */}
               {isActive && (

@@ -2890,7 +2890,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className={`min-h-screen text-[var(--on-surface)] ${isMobileLayout ? 'p-0' : 'p-5 md:p-8'} transition-colors duration-300 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white`}
+        className={`${isMobileLayout ? 'h-[100dvh] max-h-[100dvh] overflow-hidden p-0' : 'min-h-screen p-5 md:p-8'} text-[var(--on-surface)] transition-colors duration-300 flex flex-col justify-between font-sans selection:bg-[var(--accent)] selection:text-white`}
         id="root-launcher-app"
       >
       <div className="fixed top-6 right-6 z-[100] pointer-events-auto flex flex-col items-end">
@@ -2978,45 +2978,47 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
           </button>
         </div>
       ) : isMobileLayout ? (
-        <div className="flex flex-col flex-1 w-full bg-[var(--surface)] text-[var(--on-surface)] relative overflow-x-hidden font-sans select-none min-h-screen">
+        <div className="flex flex-col flex-1 w-full h-[100dvh] max-h-[100dvh] bg-[var(--surface)] text-[var(--on-surface)] relative overflow-hidden font-sans select-none [touch-action:manipulation]">
           {/* Mobile Top Bar */}
-          <div className="w-full max-w-2xl mx-auto flex justify-between items-center px-6 pt-6 pb-4 relative z-10 border-b border-[var(--outline-var)]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] p-2 shadow-sm flex items-center justify-center">
-                <img
-                  src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206"
-                  alt="LinkerRu Logo"
-                  className={`w-full h-full object-contain ${theme === 'light' ? 'brightness-0' : 'brightness-0 invert'}`}
-                />
+          <header className="shrink-0 w-full z-20 bg-[var(--surface)]/95 backdrop-blur-md border-b border-[var(--outline-var)] pointer-events-auto [touch-action:manipulation]">
+            <div className="w-full max-w-2xl mx-auto flex justify-between items-center px-6 pt-5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[var(--surface-dim)] border border-[var(--outline)] p-2 shadow-sm flex items-center justify-center">
+                  <img
+                    src="https://github.com/user-attachments/assets/0964c230-e7dc-4cab-9983-1c2abe689206"
+                    alt="LinkerRu Logo"
+                    className={`w-full h-full object-contain ${theme === 'light' ? 'brightness-0' : 'brightness-0 invert'}`}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xl font-black tracking-tight text-[var(--on-surface)]">
+                    LinkerRu
+                  </span>
+                  <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
+                    LISYAN X LINKERRU
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight text-[var(--on-surface)]">
-                  LinkerRu
-                </span>
-                <span className="text-[10px] font-bold text-[var(--on-surface-var)] uppercase tracking-wider">
-                  LISYAN X LINKERRU
-                </span>
-              </div>
-            </div>
 
-            {/* Top Bar Quick Language Switcher */}
-            <button
-              onClick={() => {
-                playChime('click');
-                const nextLang: Language = lang === 'ru' ? 'en' : 'ru';
-                setLang(nextLang);
-                localStorage.setItem('linkerru_lang', nextLang);
-              }}
-              className="px-3.5 py-2 rounded-2xl bg-[var(--surface-dim)] hover:bg-[var(--container)] border border-[var(--outline)] flex items-center gap-2 text-xs font-black text-[var(--on-surface)] transition-all active:scale-95 shadow-xs cursor-pointer"
-              title={lang === 'ru' ? 'Сменить язык' : 'Switch language'}
-            >
-              <Languages size={16} style={{ color: activePalette.primary }} />
-              <span className="uppercase">{lang === 'ru' ? 'RU' : 'EN'}</span>
-            </button>
-          </div>
+              {/* Top Bar Quick Language Switcher */}
+              <button
+                onClick={() => {
+                  playChime('click');
+                  const nextLang: Language = lang === 'ru' ? 'en' : 'ru';
+                  setLang(nextLang);
+                  localStorage.setItem('linkerru_lang', nextLang);
+                }}
+                className="px-3.5 py-2 rounded-2xl bg-[var(--surface-dim)] hover:bg-[var(--container)] border border-[var(--outline)] flex items-center gap-2 text-xs font-black text-[var(--on-surface)] transition-all active:scale-95 shadow-xs cursor-pointer"
+                title={lang === 'ru' ? 'Сменить язык' : 'Switch language'}
+              >
+                <Languages size={16} style={{ color: activePalette.primary }} />
+                <span className="uppercase">{lang === 'ru' ? 'RU' : 'EN'}</span>
+              </button>
+            </div>
+          </header>
 
           {/* Mobile Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 max-w-2xl mx-auto w-full flex flex-col gap-6 scrollbar-hide pb-28 relative z-10">
+          <main className="flex-1 overflow-y-auto overscroll-y-contain px-6 py-6 max-w-2xl mx-auto w-full flex flex-col gap-6 scrollbar-hide pb-32 relative z-10 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
             
             {/* Hero Card: Lisyan Connect */}
             <div
@@ -3098,10 +3100,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               </div>
             </div>
 
-          </div>
+          </main>
 
           {/* Bottom Navigation Bar */}
-          <div className="fixed bottom-0 left-0 right-0 h-20 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--outline)] flex items-center justify-around px-6 z-50">
+          <nav className="fixed bottom-0 left-0 right-0 h-20 bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--outline)] flex items-center justify-around px-6 z-30 pointer-events-auto [touch-action:manipulation]">
             <button
               onClick={() => {
                 playChime('click');
@@ -3122,7 +3124,7 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
               <User size={18} style={{ color: activePalette.primary }} />
               <span>{lang === 'ru' ? 'Аккаунт' : 'Account'}</span>
             </button>
-          </div>
+          </nav>
 
         </div>
       ) : (
