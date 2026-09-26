@@ -379,7 +379,7 @@ function ChatApp() {
               title={lang === "ru" ? "Статистика оптимизации" : lang === "uk" ? "Статистика оптимізації" : "Optimization Stats"}
             >
               <Zap className="h-3.5 w-3.5 fill-current" />
-              <span className="hidden sm:inline">Lroutev1 ⚡ Compound</span>
+              <span className="hidden sm:inline">Lroutev1 ⚡ Multi-Engine</span>
             </button>
             <button
               onClick={() => setSettingsOpen(true)}

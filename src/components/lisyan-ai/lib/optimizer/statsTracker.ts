@@ -9,7 +9,6 @@ export interface OptimizationMetrics {
   ragChunksOptimized: number;
   averageLatencyMsSaved: number;
   overallEfficiencyPercentage: number;
-  compoundHits?: number;
   smallQuestionsOptimized?: number;
 }
 
@@ -35,7 +34,6 @@ export function loadOptimizationStats(): OptimizationMetrics {
         ragChunksOptimized: parsed.ragChunksOptimized || 0,
         averageLatencyMsSaved: parsed.averageLatencyMsSaved || 0,
         overallEfficiencyPercentage: calculateEfficiency(parsed),
-        compoundHits: parsed.compoundHits || 0,
         smallQuestionsOptimized: parsed.smallQuestionsOptimized || 0,
       };
     }
@@ -54,7 +52,6 @@ export function loadOptimizationStats(): OptimizationMetrics {
     ragChunksOptimized: 0,
     averageLatencyMsSaved: 0,
     overallEfficiencyPercentage: 0,
-    compoundHits: 0,
     smallQuestionsOptimized: 0,
   };
 }
@@ -64,13 +61,13 @@ function calculateEfficiency(stats: Partial<OptimizationMetrics>): number {
     (stats.totalOriginalTokens || 0) +
     (stats.cacheHits || 0) * 450 +
     (stats.instantRuleHits || 0) * 300 +
-    (stats.compoundHits || 0) * 600;
+    (stats.smallQuestionsOptimized || 0) * 400;
   const saved =
     (stats.totalTokensSaved || 0) +
     (stats.cacheHits || 0) * 450 +
     (stats.instantRuleHits || 0) * 300 +
-    (stats.compoundHits || 0) * 600;
-  if (orig <= 0) return 87.2; // improved baseline with compound optimization
+    (stats.smallQuestionsOptimized || 0) * 400;
+  if (orig <= 0) return 87.2;
   const ratio = (saved / orig) * 100;
   return Math.min(98.5, Math.max(75.0, Math.round(ratio * 10) / 10));
 }
@@ -84,7 +81,6 @@ export function recordOptimizationEvent(event: {
   usedSummary?: boolean;
   usedRag?: boolean;
   latencySavedMs?: number;
-  usedCompound?: boolean;
   isSmallQuestion?: boolean;
 }): OptimizationMetrics {
   const current = loadOptimizationStats();
@@ -98,10 +94,6 @@ export function recordOptimizationEvent(event: {
   if (event.isInstantRule) current.instantRuleHits += 1;
   if (event.usedSummary) current.summarizedDialogs += 1;
   if (event.usedRag) current.ragChunksOptimized += 1;
-  if (event.usedCompound) {
-    current.compoundHits = (current.compoundHits || 0) + 1;
-    current.smallQuestionsOptimized = (current.smallQuestionsOptimized || 0) + 1;
-  }
   if (event.isSmallQuestion) {
     current.smallQuestionsOptimized = (current.smallQuestionsOptimized || 0) + 1;
   }

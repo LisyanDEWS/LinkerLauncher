@@ -73,37 +73,30 @@ const ULTRA_MINIMAL_PROMPTS: Record<Language, string> = {
 
 const FALLBACKS: Record<ModelId, string[]> = {
   lnv1: [
-    "groq/compound-mini",
-    "groq/compound",
-    "llama-3.1-8b-instant",
+    "gemini-3.8-flash",
     "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
     "llama-3.3-70b",
     "meta/llama-3.3-70b-instruct",
     "openrouter/free",
   ],
   lv1pro: [
+    "gemini-3.8-flash",
     "llama-3.3-70b-versatile",
     "deepseek-r1-distill-llama-70b",
-    "groq/compound",
     "meta/llama-3.3-70b-instruct",
     "deepseek-ai/deepseek-r1",
     "meta-llama/llama-3.3-70b-instruct:free",
     "openrouter/free",
   ],
   lvision: [
+    "gemini-3.8-flash",
     "inclusionai/ling-3.0-flash-vl:free",
     "meta/llama-3.2-11b-vision-instruct",
     "google/gemini-2.0-flash-exp:free",
     "openrouter/free",
   ],
 };
-
-const COMPOUND_FALLBACKS = [
-  "groq/compound-mini",
-  "groq/compound",
-  "llama-3.1-8b-instant",
-  "llama-3.3-70b-versatile",
-];
 
 export async function initLrouteWarmup(): Promise<void> {
   try {
@@ -125,7 +118,7 @@ export async function initLrouteWarmup(): Promise<void> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
         body: JSON.stringify({
-          model: 'groq/compound-mini',
+          model: 'llama-3.1-8b-instant',
           messages: [{ role: 'user', content: 'hi' }],
           max_tokens: 5,
         }),
@@ -358,18 +351,10 @@ async function callServerAiProxy(
   };
 }
 
-const DIRECT_GROQ_MODELS_COMPOUND = [
-  "groq/compound-mini",
-  "groq/compound",
-  "llama-3.1-8b-instant",
-  "llama-3.3-70b-versatile",
-];
-
-const DIRECT_GROQ_MODELS_DEFAULT = [
-  "groq/compound-mini",
+const DIRECT_GROQ_MODELS = [
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
-  "llama-3.3-70b",
+  "qwen-2.5-32b",
 ];
 
 async function callGroqDirect(
@@ -377,7 +362,6 @@ async function callGroqDirect(
   temperature: number,
   maxCompletionTokens: number,
   signal?: AbortSignal,
-  useCompound: boolean = false,
 ): Promise<string | null> {
   if (!GROQ_API_KEY) return null;
 
@@ -386,43 +370,7 @@ async function callGroqDirect(
     content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
   }));
 
-  const modelsToTry = useCompound ? DIRECT_GROQ_MODELS_COMPOUND : DIRECT_GROQ_MODELS_DEFAULT;
-
-  if (useCompound && modelsToTry.length >= 2) {
-    const racePromises = modelsToTry.slice(0, 2).map(async (model) => {
-      try {
-        const res = await fetch(GROQ_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${GROQ_API_KEY}`,
-          },
-          signal,
-          body: JSON.stringify({
-            model,
-            messages: flatMessages,
-            temperature: Math.min(temperature, 0.35),
-            max_tokens: maxCompletionTokens,
-          }),
-        });
-        if (!res.ok) throw new Error("not ok");
-        const data = await res.json();
-        const text = data?.choices?.[0]?.message?.content;
-        if (text && String(text).trim()) return String(text).trim();
-        throw new Error("empty");
-      } catch (e) {
-        if (signal?.aborted) throw e;
-        return null;
-      }
-    });
-
-    try {
-      const winner = await Promise.any(racePromises.map(p => p.then(v => v ? Promise.resolve(v) : Promise.reject())));
-      if (winner) return winner;
-    } catch {}
-  }
-
-  for (const model of modelsToTry) {
+  for (const model of DIRECT_GROQ_MODELS) {
     try {
       const res = await fetch(GROQ_URL, {
         method: "POST",
@@ -434,7 +382,7 @@ async function callGroqDirect(
         body: JSON.stringify({
           model,
           messages: flatMessages,
-          temperature: useCompound ? Math.min(temperature, 0.35) : temperature,
+          temperature,
           max_tokens: maxCompletionTokens,
         }),
       });
@@ -519,11 +467,6 @@ export async function sendChatRequest(
     const isWeatherQuery =
       /погода|температура|forecast|weather|градус|дождь|снег|влажн|ветер|холодно|жарко/i.test(latestPrompt);
 
-    const useCompound = Boolean(
-      (routing.useGroqCompound || routing.category === "compound" || (routing.category === "fact" && isSmallQuestion(latestPrompt))) &&
-      !isYoutubeQuery &&
-      !isWeatherQuery
-    );
     const tiny = isTinyQuestion(latestPrompt) && !vision && attachments.length === 0 && !isYoutubeQuery && !isWeatherQuery;
 
     if (isYoutubeQuery && onNotice) {
@@ -531,8 +474,6 @@ export async function sendChatRequest(
     } else if (isWeatherQuery && onNotice) {
       onNotice(lang === "ru" ? "🌤️ Подключаюсь к сервису Погода..." : lang === "uk" ? "🌤️ Підключаюся до сервісу Погода..." : "🌤️ Connecting to Weather service...");
     } else if (routing.isAutomaticRoute && onNotice) {
-      onNotice(routing.reason);
-    } else if (useCompound && onNotice) {
       onNotice(routing.reason);
     }
 
@@ -582,7 +523,7 @@ export async function sendChatRequest(
       apiMessages = buildUltraFastContext(latestPrompt, lang, detected, systemPromptBase);
       adaptiveMaxTokens = Math.min(adaptiveMaxTokens, 512);
     } else {
-      const shouldDoExternalSearch = !useCompound && !imageAttachment &&
+      const shouldDoExternalSearch = !imageAttachment &&
         (/найди в интернете|поищи|google|гугл|новости|кто такой|что такое|курс|wiki|вики/i.test(latestPrompt) || needsWebSearch(latestPrompt));
 
       const integrationPromises: Promise<any>[] = [];
@@ -618,12 +559,6 @@ export async function sendChatRequest(
 
       // Inject critical language rule
       systemPromptBase += answerLangInstruction;
-
-      if (useCompound) {
-        systemPromptBase += lang === "ru"
-          ? "\n[Короткий вопрос — отвечай максимально кратко, 1-3 предложения.]"
-          : "\n[Short question — answer concisely, 1-3 sentences.]";
-      }
 
       if (webSearchData.context) {
         systemPromptBase += `\n\n${webSearchData.context}`;
@@ -661,7 +596,7 @@ export async function sendChatRequest(
 
     let proxyMissing = false;
     let lastServerError = "";
-    const fastTimeoutMs = tiny ? 8000 : useCompound ? 10000 : 15000;
+    const fastTimeoutMs = tiny ? 8000 : 16000;
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => timeoutController.abort(), fastTimeoutMs);
 
@@ -676,11 +611,11 @@ export async function sendChatRequest(
       : timeoutController.signal;
 
     try {
-      const requestedModel = useCompound ? "groq/compound-mini" : "openrouter/free";
+      const requestedModel = activeModelId === 'lvision' ? 'gemini-3.8-flash' : activeModelId === 'lv1pro' ? 'gemini-3.8-flash' : 'gemini-3.8-flash';
       const serverResult = await callServerAiProxy(
         apiMessages,
         requestedModel,
-        useCompound ? Math.min(info.temperature, 0.35) : info.temperature,
+        info.temperature,
         adaptiveMaxTokens,
         combinedSignal
       );
@@ -703,15 +638,13 @@ export async function sendChatRequest(
         const actualEstTokens = (apiMessages as any)._actualTokens || Math.ceil((apiMessages as any[]).reduce((acc, m) => acc + (typeof m.content === "string" ? m.content.length : 100), 0) / 3.8 + 250);
 
         const tokensSaved = Math.max(0, originalEstTokens - actualEstTokens);
-        const compoundBonus = useCompound ? Math.round(adaptiveMaxTokens * 0.7) : 0;
 
         recordOptimizationEvent({
-          originalTokens: Math.max(originalEstTokens, actualEstTokens) + compoundBonus,
+          originalTokens: Math.max(originalEstTokens, actualEstTokens),
           optimizedTokens: actualEstTokens,
-          tokensSaved: tokensSaved + compoundBonus,
+          tokensSaved,
           latencySavedMs: Math.max(200, 1200 - elapsed),
-          usedCompound: useCompound,
-          isSmallQuestion: useCompound,
+          isSmallQuestion: tiny,
         } as any);
 
         return responseText;
@@ -722,23 +655,21 @@ export async function sendChatRequest(
         console.warn("Server AI proxy unavailable, switching to direct.");
       } else if (!serverResult.ok) {
         lastServerError = serverResult.data?.detail || serverResult.data?.error || `HTTP ${serverResult.status}`;
-        console.warn("Server AI proxy returned error:", lastServerError);
+        console.warn("Server AI proxy returned error, falling back to secondary models:", lastServerError);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (signal?.aborted || err?.name === 'AbortError') {
         if (signal?.aborted) throw err;
-        console.warn("Server proxy timed out, trying fallback");
+        console.warn("Server proxy timed out, trying fallback models");
       } else {
         proxyMissing = true;
-        console.warn("Server proxy failed, trying fallback", err);
+        console.warn("Server proxy failed, trying fallback models", err);
       }
     }
 
     {
-      const fallbacks = useCompound
-        ? COMPOUND_FALLBACKS
-        : FALLBACKS[activeModelId] || ["openrouter/free", "llama-3.3-70b"];
+      const fallbacks = FALLBACKS[activeModelId] || ["gemini-3.8-flash", "llama-3.3-70b-versatile", "openrouter/free"];
 
       if (tiny && fallbacks.length >= 2) {
         const raceResults = await Promise.allSettled(
@@ -772,7 +703,7 @@ export async function sendChatRequest(
           const fbResult = await callServerAiProxy(
             apiMessages,
             fallbackModel,
-            useCompound ? 0.3 : info.temperature,
+            info.temperature,
             adaptiveMaxTokens,
             signal
           );
@@ -793,8 +724,7 @@ export async function sendChatRequest(
           apiMessages,
           info.temperature,
           adaptiveMaxTokens,
-          signal,
-          useCompound
+          signal
         );
         if (direct) {
           saveCachedResponse(latestPrompt, direct, activeModelId, answerLangCode, 0);

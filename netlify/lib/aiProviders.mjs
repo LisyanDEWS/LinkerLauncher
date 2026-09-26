@@ -54,16 +54,7 @@ export const OPENROUTER_MODELS = [
 
 export const CEREBRAS_MODELS = ['llama-3.3-70b', 'llama3.1-8b'];
 
-export const GROQ_COMPOUND_MODELS = [
-  'groq/compound-mini',
-  'groq/compound',
-  'llama-3.1-8b-instant',
-  'llama-3.3-70b-versatile',
-];
-
 export const GROQ_MODELS = [
-  'groq/compound-mini',
-  'groq/compound',
   'llama-3.3-70b-versatile',
   'deepseek-r1-distill-llama-70b',
   'llama-3.1-8b-instant',
@@ -271,7 +262,6 @@ const TIERS = [
     models: (requested, isSmall, withImage, currentInfo) => {
       if (withImage) return GATEWAY_VISION_MODELS;
       if (currentInfo) return GATEWAY_SEARCH_MODELS;
-      if (requested && requested.includes('compound')) return GATEWAY_FAST_MODELS;
       if (isSmall) return GATEWAY_FAST_MODELS;
       return GATEWAY_MODELS;
     },
@@ -281,25 +271,8 @@ const TIERS = [
     headers: GATEWAY_HEADERS,
   },
   {
-    name: 'groq-compound',
-    tier: 1,
-    key: 'groq',
-    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    models: (requested) => {
-      if (requested && requested.includes('compound')) {
-        return [requested, ...GROQ_COMPOUND_MODELS.filter(m => m !== requested)];
-      }
-      return GROQ_COMPOUND_MODELS;
-    },
-    timeout: 8000,
-    skipOnImage: true,
-    flatten: true,
-    onlyForSmall: true,
-    alsoForCurrentInfo: true,
-  },
-  {
     name: 'cerebras',
-    tier: 2,
+    tier: 1,
     key: 'cerebras',
     endpoint: 'https://api.cerebras.ai/v1/chat/completions',
     models: () => CEREBRAS_MODELS,
@@ -309,7 +282,7 @@ const TIERS = [
   },
   {
     name: 'groq',
-    tier: 3,
+    tier: 2,
     key: 'groq',
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
     models: () => GROQ_MODELS,
@@ -319,7 +292,7 @@ const TIERS = [
   },
   {
     name: 'nvidia',
-    tier: 4,
+    tier: 3,
     key: 'nvidia',
     endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
     models: () => NVIDIA_MODELS,
@@ -329,7 +302,7 @@ const TIERS = [
   },
   {
     name: 'openrouter',
-    tier: 5,
+    tier: 4,
     key: 'openrouter',
     endpoint: (keys) => keys.openrouterUrl,
     timeout: 18000,
@@ -369,17 +342,11 @@ export async function runChatCompletion({ messages, model, temperature = 0.6, ma
     }
   }
 
-  // When the user hints at CURRENT information, prefer the Groq Compound tier
-  // (built-in web search) over the plain gateway models.
-  const tierOrder = currentInfo && keys.groq
-    ? [TIERS.find((t) => t.name === 'groq-compound'), ...TIERS.filter((t) => t.name !== 'groq-compound')]
-    : TIERS;
-
-  for (const tier of tierOrder) {
+  for (const tier of TIERS) {
     const apiKey = keys[tier.key];
     if (!apiKey) continue;
     if (withImage && tier.skipOnImage) continue;
-    if (tier.onlyForSmall && !small && !isCompoundRequested && !(tier.alsoForCurrentInfo && currentInfo)) continue;
+    if (tier.onlyForSmall && !small && !(tier.alsoForCurrentInfo && currentInfo)) continue;
     const endpoint = typeof tier.endpoint === 'function' ? tier.endpoint(keys) : tier.endpoint;
     if (!endpoint) continue;
 

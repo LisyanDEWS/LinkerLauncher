@@ -5,8 +5,7 @@ export interface RouteDecision {
   reason: string;
   maxCompletionTokens: number;
   isAutomaticRoute: boolean;
-  category: "fact" | "chat" | "code" | "vision" | "compound";
-  useGroqCompound?: boolean;
+  category: "fact" | "chat" | "code" | "vision";
 }
 
 /**
@@ -19,8 +18,7 @@ const COMPLEX_CODE_PATTERNS = [
 ];
 
 /**
- * Small factual question patterns — perfect for Groq Compound (built-in search + tools)
- * These are short, direct questions that benefit from compound's speed and grounding.
+ * Small factual question patterns — short, direct questions.
  */
 const SMALL_QUESTION_INDICATORS = [
   /^(кто|что|где|когда|почему|зачем|как|сколько|чей|какой|какая)\b/i,
@@ -91,24 +89,23 @@ export function isTinyQuestion(prompt: string): boolean {
 export function calculateAdaptiveMaxTokens(
   prompt: string,
   modelId: ModelId,
-  category?: "fact" | "chat" | "code" | "vision" | "compound"
+  category?: "fact" | "chat" | "code" | "vision"
 ): number {
   const clean = prompt.trim();
   const len = clean.length;
 
-  // 0. Groq Compound path — ultra optimized token budgets
-  if (category === "compound" || category === "fact") {
-    if (len <= 20) return 256; // e.g. "hi", "2+2", "capital of france"
+  // 0. Quick fact / small question path
+  if (category === "fact") {
+    if (len <= 20) return 256;
     if (len <= 40) return 512;
     if (len <= 80) return 768;
     if (len <= 150) return 1024;
     if (len <= 250) return 1536;
-    return 2048; // still small vs default 4096
+    return 2048;
   }
 
   // 1. Vision (Images & screenshots)
   if (category === "vision" || modelId === "lvision") {
-    // Vision needs more for description but cap at 3k if question is small
     if (len <= 60) return 1024;
     if (len <= 150) return 2048;
     return 4096;
@@ -126,7 +123,7 @@ export function calculateAdaptiveMaxTokens(
     return 8192;
   }
 
-  // 3. Standard queries — adaptive based on length (was fixed 4096)
+  // 3. Standard queries — adaptive based on length
   if (len <= 50) return 1024;
   if (len <= 150) return 1536;
   if (len <= 300) return 2048;
@@ -137,7 +134,6 @@ export function calculateAdaptiveMaxTokens(
 /**
  * Intelligently routes the user's prompt to the optimal model
  * and dynamically assigns the completion limit.
- * NEW: Small questions -> Groq Compound Mini for speed + built-in search
  */
 export function routeRequest(
   prompt: string,
@@ -145,18 +141,30 @@ export function routeRequest(
   userSelectedModel: ModelId = "lnv1"
 ): RouteDecision {
   const hasImages = attachments.some((a) => a.isImage && Boolean(a.dataUrl));
+  const hasDocuments = attachments.some((a) => !a.isImage && (a.textContent || a.name.match(/\.(docx?|pdf|rtf|txt|odt|md|csv|json)$/i)));
   const clean = prompt.trim();
 
-  // 1. Vision Route (Photos, Screenshots) -> Lv1 Vision
+  // 1. Vision Route (Photos, Screenshots, WebP, PNG, JPEG) -> Lv1 Vision
   if (hasImages) {
     const tokens = calculateAdaptiveMaxTokens(clean, "lvision", "vision");
     return {
       modelId: "lvision",
-      reason: "Скриншот или изображение обнаружено — подключен Lv1 Vision",
+      reason: "Изображение обнаружено — подключен Lv1 Vision для детального анализа",
       maxCompletionTokens: tokens,
       isAutomaticRoute: userSelectedModel !== "lvision",
       category: "vision",
-      useGroqCompound: false,
+    };
+  }
+
+  // 1.5 Document Route (Word documents, PDFs, text files) -> Lv1 Pro
+  if (hasDocuments) {
+    const tokens = Math.max(4096, calculateAdaptiveMaxTokens(clean, "lv1pro", "code"));
+    return {
+      modelId: "lv1pro",
+      reason: "Документ прикреплен — подключен Lv1 Pro для глубокого анализа",
+      maxCompletionTokens: tokens,
+      isAutomaticRoute: userSelectedModel !== "lv1pro",
+      category: "code",
     };
   }
 
@@ -164,38 +172,34 @@ export function routeRequest(
   const isLargeOrCode =
     COMPLEX_CODE_PATTERNS.some((p) => p.test(clean)) ||
     clean.includes("```") ||
-    clean.length > 800 ||
-    (attachments.length > 0 && attachments.some((a) => (a.textContent?.length || 0) > 800));
+    clean.length > 800;
 
   if (isLargeOrCode) {
     const tokens = calculateAdaptiveMaxTokens(clean, "lv1pro", "code");
     return {
       modelId: "lv1pro",
-      reason: "Сложный анализ, длинный текст, код или таблицы — подключен Lv1 Pro 70B",
+      reason: "Сложный анализ, длинный текст, код или таблицы — подключен Lv1 Pro",
       maxCompletionTokens: tokens,
       isAutomaticRoute: userSelectedModel !== "lv1pro",
       category: "code",
-      useGroqCompound: false,
     };
   }
 
-  // 2.5 NEW: Small Question -> Groq Compound Mini (fastest, built-in tools)
-  // If question is tiny (<80 chars) or small factual (<=200 chars), use compound
+  // 2.5 Small Question -> LNv1 Fast (instant response)
   const currentInfo = needsWebSearch(clean);
   if (userSelectedModel !== "lv1pro" && userSelectedModel !== "lvision" && (isSmallQuestion(clean) || (currentInfo && !isLargeOrCode))) {
-    const tokens = calculateAdaptiveMaxTokens(clean, "lnv1", "compound");
+    const tokens = calculateAdaptiveMaxTokens(clean, "lnv1", "chat");
     const isTiny = isTinyQuestion(clean);
     return {
       modelId: "lnv1",
       reason: isTiny
-        ? "⚡ Крошечный вопрос — Groq Compound Mini (100-300 токенов, мгновенно)"
+        ? "⚡ Крошечный вопрос — LNv1 Fast (мгновенно)"
         : currentInfo
-          ? "🌐 Актуальная информация — Groq Compound Mini с поиском в интернете"
-          : "⚡ Короткий вопрос — Groq Compound Mini с поиском (быстро + точно)",
+          ? "🌐 Поиск информации — LNv1 Fast с актуальными данными"
+          : "⚡ Быстрый ответ — LNv1 Fast",
       maxCompletionTokens: tokens,
       isAutomaticRoute: false,
-      category: "compound",
-      useGroqCompound: true,
+      category: "chat",
     };
   }
 
@@ -208,21 +212,17 @@ export function routeRequest(
       maxCompletionTokens: tokens,
       isAutomaticRoute: false,
       category: "chat",
-      useGroqCompound: false,
     };
   }
 
   // 4. Fast Conversational Default -> LNv1
-  // But still use adaptive tokens (was fixed 4096, now dynamic)
   const tokens = calculateAdaptiveMaxTokens(clean, "lnv1", "chat");
   const isSmallish = clean.length <= 200;
-  const useCompoundDefault = isSmallish || currentInfo;
   return {
     modelId: "lnv1",
     reason: isSmallish ? "Быстрый ответ — LNv1 Fast (оптимизировано)" : "Быстрый ответ — LNv1 Fast",
     maxCompletionTokens: tokens,
     isAutomaticRoute: false,
     category: isSmallish ? "fact" : "chat",
-    useGroqCompound: useCompoundDefault,
   };
 }

@@ -80,7 +80,14 @@ export default function ChatInput({ onSend, disabled, onStop, initialText, onTex
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
-      <input ref={fileRef} type="file" multiple className="hidden" onChange={onFileInput} />
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        accept="image/*,.webp,.png,.jpeg,.jpg,.gif,.bmp,.svg,.docx,.doc,.txt,.md,.pdf,.json,.xml,.csv,.rtf"
+        className="hidden"
+        onChange={onFileInput}
+      />
       {dragging && (
         <div className="pointer-events-none absolute inset-x-4 inset-y-0 z-20 flex flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-[var(--s-brand)] bg-[var(--s-brand-container)]/90 backdrop-blur-sm">
           <UploadCloud className="h-8 w-8 text-[var(--s-brand)]" />

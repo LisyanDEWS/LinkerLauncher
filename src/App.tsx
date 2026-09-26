@@ -664,110 +664,21 @@ export default function App() {
     }
   };
 
-  // Fetch build info and automatically detect new GitHub commits to auto-update
+  // Static build info without background GitHub reload polling
   useEffect(() => {
     let isMounted = true;
-
-    const checkGithubCommits = async () => {
-      try {
-        let latestCommit: { sha: string; dateStr: string; formattedVersion?: string } | null = null;
-
-        // Try querying GitHub API directly with cache busting
-        try {
-          const res = await fetch(`https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=1&_t=${Date.now()}`, {
-            headers: { 'Accept': 'application/vnd.github+json' },
-            cache: 'no-store',
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data) && data[0]) {
-              const dStr = data[0].commit?.author?.date || data[0].commit?.committer?.date || '';
-              latestCommit = {
-                sha: data[0].sha,
-                dateStr: dStr,
-              };
-            }
-          }
-        } catch {
-          // Ignore direct GitHub fetch error and try server fallback
+    fetch(`/api/build-info?_t=${Date.now()}`, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!isMounted || !data) return;
+        if (data.buildVersion) {
+          setBuildVersion(data.buildVersion);
         }
-
-        // If direct fetch didn't return a commit, fallback to server endpoint
-        if (!latestCommit) {
-          try {
-            const fbRes = await fetch(`/api/build-info?_t=${Date.now()}`, { cache: 'no-store' });
-            if (fbRes.ok) {
-              const fbData = await fbRes.json();
-              if (fbData.sha && fbData.sha !== 'unknown') {
-                latestCommit = {
-                  sha: fbData.sha,
-                  dateStr: fbData.buildDate,
-                  formattedVersion: fbData.buildVersion,
-                };
-              }
-            }
-          } catch {
-            // Ignore fallback error
-          }
-        }
-
-        if (!isMounted || !latestCommit) return;
-
-        if (latestCommit.dateStr) {
-          const d = new Date(latestCommit.dateStr);
-          if (!isNaN(d.getTime())) {
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            setBuildVersion(`v${dd}-${mm}-${yyyy}`);
-          } else if (latestCommit.formattedVersion) {
-            setBuildVersion(latestCommit.formattedVersion);
-          }
-        }
-
-        const newSha = latestCommit.sha;
-        if (newSha && newSha !== 'unknown') {
-          const prevSha = localStorage.getItem('linkerru_last_commit_sha');
-          if (prevSha && prevSha !== newSha) {
-            // Developers pushed a new commit to GitHub — update 3 minutes after push
-            let delayMs = 0;
-            if (latestCommit.dateStr) {
-              const commitTimestamp = new Date(latestCommit.dateStr).getTime();
-              if (!isNaN(commitTimestamp)) {
-                const elapsed = Date.now() - commitTimestamp;
-                const THREE_MINUTES_MS = 3 * 60 * 1000;
-                if (elapsed < THREE_MINUTES_MS) {
-                  delayMs = THREE_MINUTES_MS - elapsed;
-                }
-              }
-            }
-            localStorage.setItem('linkerru_last_commit_sha', newSha);
-            if (delayMs > 0) {
-              setTimeout(() => {
-                localStorage.setItem('linkerru_is_updating', 'true');
-                window.location.reload();
-              }, delayMs);
-            } else {
-              localStorage.setItem('linkerru_is_updating', 'true');
-              window.location.reload();
-            }
-            return;
-          }
-          // Store current SHA baseline
-          localStorage.setItem('linkerru_last_commit_sha', newSha);
-        }
-      } catch {
-        // Silently catch background poll issues
-      }
-    };
-
-    checkGithubCommits();
-    // Poll every 30 seconds for new developer commits on GitHub
-    const interval = setInterval(checkGithubCommits, 30000);
+      })
+      .catch(() => {});
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
   }, []);
 
@@ -3413,10 +3324,10 @@ const extractWallpaperAnalysis = (imageUrl: string): Promise<WallpaperAnalysis> 
             <h3 className="text-base font-black text-[var(--on-surface)] tracking-tight">Lisyan AI</h3>
             <p className="text-xs text-[var(--on-surface-var)] font-semibold leading-relaxed mt-1 flex-1">
               {lang === 'ru'
-                ? 'Персональный ИИ-ассистент: GPT-OSS, Compound & Vision'
+                ? 'Персональный ИИ-ассистент: GPT-OSS, Gemini & Vision'
                 : lang === 'uk'
-                  ? 'Персональний ІІ-асистент: GPT-OSS, Compound & Vision'
-                  : 'Personal AI Assistant: GPT-OSS, Compound & Vision'}
+                  ? 'Персональний ІІ-асистент: GPT-OSS, Gemini & Vision'
+                  : 'Personal AI Assistant: GPT-OSS, Gemini & Vision'}
             </p>
           </div>
           <div className="flex items-center justify-between mt-4">

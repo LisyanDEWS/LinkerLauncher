@@ -2186,81 +2186,6 @@ export default function FullSettingsModal({
                                   : 'LinkerRu :Re — Material 3 Expressive web operating system featuring windowed app manager, modular homes, and seamless customization.')}
                           </p>
 
-                          {/* GitHub Auto-Update Card */}
-                          <div className="w-full p-4 bg-[var(--surface-dim)] border border-[var(--outline-var)] rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
-                            <div className="flex items-center gap-3 w-full sm:w-auto">
-                              <div className="w-9 h-9 rounded-xl bg-[var(--accent)]/15 text-[var(--accent)] flex items-center justify-center shrink-0">
-                                <RotateCw size={18} />
-                              </div>
-                              <div>
-                                <div className="text-xs font-black text-[var(--on-surface)]">
-                                  {lang === 'ru' ? 'Обновления из GitHub' : 'GitHub Auto-Updates'}
-                                </div>
-                                <div className="text-[11px] font-semibold text-[var(--on-surface-var)]">
-                                  {lang === 'ru' ? 'Автоматическая перезагрузка и установка при выходе коммитов' : 'Auto-reloads and installs on new commits'}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  playChime('click');
-                                  triggerToast?.(lang === 'ru' ? 'Проверка обновлений на GitHub...' : 'Checking GitHub for updates...');
-                                  try {
-                                    const res = await fetch(`https://api.github.com/repos/LisyanDEWS/LinkerLauncher/commits?per_page=1&_t=${Date.now()}`, {
-                                      headers: { 'Accept': 'application/vnd.github+json' },
-                                      cache: 'no-store',
-                                    });
-                                    if (res.ok) {
-                                      const data = await res.json();
-                                      if (Array.isArray(data) && data[0]?.sha) {
-                                        const newSha = data[0].sha;
-                                        const prevSha = localStorage.getItem('linkerru_last_commit_sha');
-                                        if (prevSha && prevSha !== newSha) {
-                                          let delayMs = 0;
-                                          const dateStr = data[0].commit?.author?.date || data[0].commit?.committer?.date;
-                                          if (dateStr) {
-                                            const commitTimestamp = new Date(dateStr).getTime();
-                                            if (!isNaN(commitTimestamp)) {
-                                              const elapsed = Date.now() - commitTimestamp;
-                                              const THREE_MINUTES_MS = 3 * 60 * 1000;
-                                              if (elapsed < THREE_MINUTES_MS) {
-                                                delayMs = THREE_MINUTES_MS - elapsed;
-                                              }
-                                            }
-                                          }
-                                          localStorage.setItem('linkerru_last_commit_sha', newSha);
-                                          if (delayMs > 0) {
-                                            const secLeft = Math.ceil(delayMs / 1000);
-                                            triggerToast?.(lang === 'ru' ? `Найдено обновление. Установка через ${secLeft} сек...` : lang === 'uk' ? `Знайдено оновлення. Встановлення через ${secLeft} сек...` : `Update found. Installing in ${secLeft}s...`);
-                                            setTimeout(() => {
-                                              localStorage.setItem('linkerru_is_updating', 'true');
-                                              window.location.reload();
-                                            }, delayMs);
-                                          } else {
-                                            localStorage.setItem('linkerru_is_updating', 'true');
-                                            window.location.reload();
-                                          }
-                                          return;
-                                        }
-                                        localStorage.setItem('linkerru_last_commit_sha', newSha);
-                                      }
-                                    }
-                                    triggerToast?.(lang === 'ru' ? 'У вас установлена последняя версия!' : 'You have the latest version!');
-                                  } catch {
-                                    triggerToast?.(lang === 'ru' ? 'Система актуальна.' : 'System is up to date.');
-                                  }
-                                }}
-                                className="px-3.5 py-1.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] text-xs font-bold hover:brightness-110 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                              >
-                                <RotateCw size={13} />
-                                {lang === 'ru' ? 'Проверить' : 'Check'}
-                              </button>
-                            </div>
-                          </div>
-
                           <div className="w-full pt-4 border-t border-[var(--outline-var)] mt-2">
                             <span className="text-[10px] font-black uppercase tracking-wider text-[var(--on-surface-var)] block mb-3">
                               {lang === 'ru' ? 'Разработчик и Технологии' : 'Developer & Technologies'}
@@ -2313,7 +2238,7 @@ export default function FullSettingsModal({
                                     Lisyan AI
                                   </div>
                                   <div className="text-[10px] font-bold text-[var(--on-surface-var)]">
-                                    GPT-OSS, Compound & Vision
+                                    GPT-OSS, Gemini & Vision
                                   </div>
                                 </div>
                               </div>
